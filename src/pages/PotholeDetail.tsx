@@ -17,13 +17,12 @@ import {
     MapPin,
     BarChart,
     History,
-    MessageSquare,
     ShieldCheck,
-    AlertCircle
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { cn } from '../lib/utils';
 import type { PotholeEvent, PotholeStatus } from '../types';
+import { EvidenceViewer } from '../components/EvidenceViewer';
 
 const STATUS_OPTS: PotholeStatus[] = ['New', 'Confirmed', 'Scheduled', 'Fixed', 'Rejected'];
 
@@ -132,70 +131,27 @@ const PotholeDetail = () => {
                     </div>
 
                     {/* Evidence Viewer */}
-                    <div className="card">
-                        <div className="p-4 border-b border-border font-semibold flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                                <MessageSquare size={18} className="text-primary" />
-                                Visual Evidence Analysis
-                            </div>
-                            <div className="text-[10px] bg-emerald-100 text-emerald-700 font-bold px-2 py-0.5 rounded uppercase">AI Verified</div>
-                        </div>
-                        <div className="p-4 bg-gray-900 flex items-center justify-center min-h-[400px] relative overflow-hidden group">
-                            {pothole.imageUrl ? (
-                                <>
-                                    <img
-                                        src={pothole.imageUrl}
-                                        alt="Pothole Evidence"
-                                        className="rounded-lg shadow-2xl max-w-full h-auto opacity-80 group-hover:opacity-100 transition-opacity"
-                                    />
-
-                                    {/* Mock Bounding Box Overlay */}
-                                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-32 border-2 border-emerald-400 rounded-sm shadow-[0_0_15px_rgba(52,211,153,0.5)] flex flex-col items-start justify-start p-1 pointer-events-none">
-                                        <div className="bg-emerald-400 text-black text-[8px] font-black px-1 rounded-sm uppercase mb-1">
-                                            Detection CID: {pothole.id}
-                                        </div>
-                                    </div>
-
-                                    {/* Overlay Data Panels */}
-                                    <div className="absolute top-8 left-8 flex flex-col gap-2">
-                                        <div className="bg-black/60 backdrop-blur-md border border-white/10 p-3 rounded-xl flex items-center gap-3">
-                                            <div className="p-2 bg-emerald-500 rounded-lg text-white">
-                                                <BarChart size={16} />
-                                            </div>
-                                            <div>
-                                                <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">Confidence</p>
-                                                <p className="text-sm font-black text-white">{(pothole.confidence * 100).toFixed(1)}%</p>
-                                            </div>
-                                        </div>
-                                        <div className="bg-black/60 backdrop-blur-md border border-white/10 p-3 rounded-xl flex items-center gap-3">
-                                            <div className={cn(
-                                                "p-2 rounded-lg text-white",
-                                                pothole.severity === 'High' ? 'bg-red-500' : 'bg-amber-500'
-                                            )}>
-                                                <AlertCircle size={16} />
-                                            </div>
-                                            <div>
-                                                <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">Severity</p>
-                                                <p className="text-sm font-black text-white uppercase">{pothole.severity}</p>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Technical Telemetry Metadata */}
-                                    <div className="absolute bottom-6 right-6 text-[9px] font-mono text-white/40 flex flex-col items-end">
-                                        <span>FRAME_ID: {pothole.frameId || '7X-992-B'}</span>
-                                        <span>LAT: {pothole.lat.toFixed(6)}</span>
-                                        <span>LON: {pothole.lon.toFixed(6)}</span>
-                                    </div>
-                                </>
-                            ) : (
-                                <div className="text-gray-400 flex flex-col items-center">
-                                    <div className="w-16 h-16 rounded-full bg-gray-800 mb-2" />
-                                    <p className="text-sm font-bold uppercase tracking-widest">Low Signal: No Image Data</p>
-                                </div>
-                            )}
-                        </div>
-                    </div>
+                    <EvidenceViewer
+                        imageUrl={pothole.imageUrl}
+                        bbox={pothole.bbox}
+                        badges={{
+                            confidence: pothole.confidence,
+                            severity: pothole.severity,
+                            status: pothole.status
+                        }}
+                        metadata={{
+                            timestamp: pothole.timestamp,
+                            lat: pothole.lat,
+                            lon: pothole.lon,
+                            district: pothole.district,
+                            roadName: pothole.roadName,
+                            runId: pothole.runId,
+                            frameId: pothole.frameId,
+                            modelName: pothole.modelName,
+                            modelVersion: pothole.modelVersion,
+                            inferenceTimeMs: pothole.inferenceTimeMs
+                        }}
+                    />
                 </div>
 
                 {/* Right Column: Workflow & Audit */}

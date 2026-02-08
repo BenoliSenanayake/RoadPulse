@@ -23,6 +23,16 @@ export interface PotholeEvent {
     imageUrl?: string;
     frameId?: string;
     runId: string;
+    bbox?: {
+        x: number;
+        y: number;
+        w: number;
+        h: number;
+        format?: 'REL' | 'ABS';
+    };
+    modelName?: string;
+    modelVersion?: string;
+    inferenceTimeMs?: number;
     createdAt: string;
     updatedAt: string;
 }

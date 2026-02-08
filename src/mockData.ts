@@ -30,8 +30,19 @@ const generatePotholes = (count: number): PotholeEvent[] => {
             status,
             roadName: `${region.name} Main Road ${i + 1}`,
             district: region.name,
-            imageUrl: `https://picsum.photos/seed/${i}/800/600`, // Placeholder image
+            imageUrl: `https://picsum.photos/seed/${i}/1280/720`, // Larger image for zoom
             runId: `RUN-${Math.floor(i / 5) + 1}`,
+            frameId: `FR-${Math.floor(Math.random() * 10000)}`,
+            bbox: {
+                x: 0.3 + Math.random() * 0.4,
+                y: 0.4 + Math.random() * 0.3,
+                w: 0.15 + Math.random() * 0.2,
+                h: 0.1 + Math.random() * 0.15,
+                format: 'REL'
+            },
+            modelName: "YOLOv8",
+            modelVersion: "v0.1",
+            inferenceTimeMs: 45 + Math.floor(Math.random() * 30),
             createdAt: timestamp,
             updatedAt: timestamp,
         };
