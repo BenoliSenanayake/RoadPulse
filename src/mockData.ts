@@ -116,19 +116,21 @@ export const resolveIssue = (runId: string, issueId: string, user: string) => {
 };
 
 export const getPotholes = (): PotholeEvent[] => {
-    const stored = localStorage.getItem('rp_potholes');
+    const key = 'rp_potholes_v2'; // Bumped version for new schema
+    const stored = localStorage.getItem(key);
     if (stored) return JSON.parse(stored);
-    localStorage.setItem('rp_potholes', JSON.stringify(initialPotholes));
+    localStorage.setItem(key, JSON.stringify(initialPotholes));
     return initialPotholes;
 };
 
 export const updatePotholeStatus = (id: string, status: PotholeEvent['status'], note: string, user: string) => {
+    const key = 'rp_potholes_v2';
     const potholes = getPotholes();
     const index = potholes.findIndex(p => p.id === id);
     if (index !== -1) {
         potholes[index].status = status;
         potholes[index].updatedAt = new Date().toISOString();
-        localStorage.setItem('rp_potholes', JSON.stringify(potholes));
+        localStorage.setItem(key, JSON.stringify(potholes));
 
         // Add audit log/repair update
         const updates = getRepairUpdates(id);

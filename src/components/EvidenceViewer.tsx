@@ -47,13 +47,13 @@ export const EvidenceViewer: React.FC<EvidenceViewerProps> = ({
     badges,
     metadata
 }) => {
+    console.log('EvidenceViewer BBox:', bbox);
     const [scale, setScale] = useState(1);
     const [offset, setOffset] = useState({ x: 0, y: 0 });
     const [isDragging, setIsDragging] = useState(false);
     const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
     const [isFullscreen, setIsFullscreen] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
-    const viewerRef = useRef<HTMLDivElement>(null);
 
     // Clamp scale between 1 and 4
     const updateScale = (delta: number) => {
@@ -151,28 +151,32 @@ export const EvidenceViewer: React.FC<EvidenceViewerProps> = ({
                 onMouseUp={handleMouseUp}
                 onMouseLeave={handleMouseUp}
             >
-                {/* Image & Bbox Layer */}
+                {/* Transform Layer */}
                 <div
-                    ref={viewerRef}
-                    className="w-full h-full flex items-center justify-center transition-transform duration-75 ease-out will-change-transform"
+                    className="absolute inset-0 flex items-center justify-center transition-transform duration-75 ease-out will-change-transform"
                     style={{
                         transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})`
                     }}
                 >
-                    <div className="relative inline-block max-w-[90%] max-h-[90%]">
+                    {/* Content Wrapper - This div matches the visible image dimensions */}
+                    <div className="relative inline-block max-w-[95%] max-h-[95%] shadow-2xl">
                         <img
                             src={imageUrl}
                             alt="Pothole Evidence"
-                            className="w-full h-full object-contain shadow-2xl pointer-events-none select-none"
+                            className="block w-full h-auto max-h-[80vh] pointer-events-none select-none rounded-sm"
+                            onLoad={() => {
+                                // Optional: handle image load to ensure bbox renders after size is known
+                                // but with REL % coords it should be automatic
+                            }}
                         />
 
                         {/* Bounding Box Overlay */}
                         {bboxStyle && (
                             <div
-                                className="absolute border-2 border-emerald-400 shadow-[0_0_20px_rgba(52,211,153,0.5)] flex flex-col items-start justify-start p-1 pointer-events-none"
+                                className="absolute border-2 border-emerald-400 shadow-[0_0_15px_rgba(52,211,153,0.5)] pointer-events-none z-10"
                                 style={bboxStyle}
                             >
-                                <div className="bg-emerald-400 text-black text-[10px] font-black px-1.5 py-0.5 rounded-sm uppercase mb-1 leading-none shadow-sm">
+                                <div className="absolute -top-5 left-[-2px] bg-emerald-400 text-black text-[10px] font-black px-1.5 py-0.5 rounded-sm uppercase leading-none shadow-sm whitespace-nowrap">
                                     Pothole DET
                                 </div>
                             </div>
