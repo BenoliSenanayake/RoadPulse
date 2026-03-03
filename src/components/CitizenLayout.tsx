@@ -16,8 +16,11 @@ const FAQ_ITEMS = [
 
 export const CitizenLayout = ({ children, hideFooter = false }: { children: ReactNode; hideFooter?: boolean }) => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
-    const { logout } = useAuth();
+    const { user, logout, getHomePath } = useAuth();
     const location = useLocation();
+
+    const isStaff = user && ['ADMIN', 'MAINTENANCE_OFFICER'].includes(user.role);
+    const unauthorized = location.state?.unauthorized;
 
     const navItems = [
         { name: 'Report Pothole', path: '/citizen', icon: PlusCircle },
@@ -26,6 +29,11 @@ export const CitizenLayout = ({ children, hideFooter = false }: { children: Reac
 
     return (
         <div className="min-h-screen bg-white font-sans text-slate-900">
+            {unauthorized && (
+                <div className="bg-rose-600 text-white py-2 px-4 text-center text-[10px] font-black uppercase tracking-[0.2em] animate-pulse">
+                    Access Denied: You have been returned to the Citizen Portal.
+                </div>
+            )}
             {/* Public Header */}
             <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-100">
                 <div className="max-w-7xl mx-auto px-4 h-16 sm:h-20 flex items-center justify-between">
@@ -35,6 +43,14 @@ export const CitizenLayout = ({ children, hideFooter = false }: { children: Reac
                     </Link>
 
                     <div className="hidden md:flex items-center gap-8">
+                        {isStaff && (
+                            <Link
+                                to={getHomePath()}
+                                className="px-4 py-2 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-all shadow-lg shadow-slate-900/10"
+                            >
+                                Staff Dashboard
+                            </Link>
+                        )}
                         {navItems.map(item => (
                             <Link
                                 key={item.path}
@@ -70,6 +86,16 @@ export const CitizenLayout = ({ children, hideFooter = false }: { children: Reac
             {isMenuOpen && (
                 <div className="fixed inset-0 z-40 bg-white pt-20 px-6 md:hidden">
                     <nav className="flex flex-col gap-6">
+                        {isStaff && (
+                            <Link
+                                to={getHomePath()}
+                                onClick={() => setIsMenuOpen(false)}
+                                className="flex items-center gap-4 text-2xl font-black text-slate-900 uppercase tracking-tighter"
+                            >
+                                <Shield size={28} className="text-primary" />
+                                Staff Dashboard
+                            </Link>
+                        )}
                         {navItems.map(item => (
                             <Link
                                 key={item.path}

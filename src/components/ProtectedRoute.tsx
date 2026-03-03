@@ -9,7 +9,7 @@ interface ProtectedRouteProps {
 }
 
 export const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
-    const { user, isAuthenticated, hasRole } = useAuth();
+    const { user, isAuthenticated, hasRole, getHomePath } = useAuth();
     const location = useLocation();
 
     // User check (redundant but safe)
@@ -18,7 +18,9 @@ export const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) 
     }
 
     if (allowedRoles && !hasRole(allowedRoles)) {
-        return <Navigate to="/overview" replace />;
+        // Redirect to their tactical home base if they don't have access
+        // We can optionally pass state here to show an alert on the home page
+        return <Navigate to={getHomePath()} state={{ unauthorized: true, from: location.pathname }} replace />;
     }
 
     return <>{children}</>;

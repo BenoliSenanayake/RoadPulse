@@ -7,6 +7,8 @@ import { CitizenLayout } from './components/CitizenLayout';
 
 // Lazy load pages
 const Login = lazy(() => import('./pages/Login'));
+const Signup = lazy(() => import('./pages/Signup'));
+const StaffLogin = lazy(() => import('./pages/StaffLogin'));
 const Overview = lazy(() => import('./pages/Overview'));
 const LiveMap = lazy(() => import('./pages/LiveMap'));
 const PotholesTable = lazy(() => import('./pages/PotholesTable'));
@@ -31,11 +33,9 @@ const Loading = () => (
   </div>
 );
 
-// Helper for dynamic landing page based on role
 const RootRedirect = () => {
-  const { user } = useAuth();
-  if (user?.role === 'CITIZEN') return <Navigate to="/citizen" replace />;
-  return <Navigate to="/overview" replace />;
+  const { getHomePath } = useAuth();
+  return <Navigate to={getHomePath()} replace />;
 };
 
 function App() {
@@ -45,20 +45,22 @@ function App() {
         <Suspense fallback={<Loading />}>
           <Routes>
             <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<Signup />} />
+            <Route path="/staff-login" element={<StaffLogin />} />
 
-            {/* Public/Citizen Routes */}
+            {/* Public/Citizen Routes (Staff allowed for inspection) */}
             <Route path="/citizen" element={
-              <ProtectedRoute allowedRoles={['CITIZEN']}>
+              <ProtectedRoute allowedRoles={['CITIZEN', 'ADMIN', 'MAINTENANCE_OFFICER']}>
                 <CitizenLayout><ReportWizard /></CitizenLayout>
               </ProtectedRoute>
             } />
             <Route path="/citizen/my-reports" element={
-              <ProtectedRoute allowedRoles={['CITIZEN']}>
+              <ProtectedRoute allowedRoles={['CITIZEN', 'ADMIN', 'MAINTENANCE_OFFICER']}>
                 <CitizenLayout><MyReports /></CitizenLayout>
               </ProtectedRoute>
             } />
             <Route path="/citizen/status/:id" element={
-              <ProtectedRoute allowedRoles={['CITIZEN']}>
+              <ProtectedRoute allowedRoles={['CITIZEN', 'ADMIN', 'MAINTENANCE_OFFICER']}>
                 <CitizenLayout><ReportStatus /></CitizenLayout>
               </ProtectedRoute>
             } />
