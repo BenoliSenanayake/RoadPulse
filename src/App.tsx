@@ -11,8 +11,10 @@ const LiveMap = lazy(() => import('./pages/LiveMap'));
 const PotholesTable = lazy(() => import('./pages/PotholesTable'));
 const PotholeDetail = lazy(() => import('./pages/PotholeDetail'));
 const Repairs = lazy(() => import('./pages/Repairs'));
-const InspectionRuns = lazy(() => import('./pages/InspectionRuns'));
+const CitizenPortal = lazy(() => import('./pages/CitizenPortal'));
+const ReviewQueue = lazy(() => import('./pages/ReviewQueue'));
 const Admin = lazy(() => import('./pages/Admin'));
+const Settings = lazy(() => import('./pages/Settings'));
 
 const Loading = () => (
   <div className="min-h-screen flex items-center justify-center">
@@ -59,7 +61,7 @@ function App() {
             } />
 
             <Route path="/potholes/:id" element={
-              <ProtectedRoute allowedRoles={['ADMIN', 'MAINTENANCE_OFFICER']}>
+              <ProtectedRoute allowedRoles={['ADMIN', 'MAINTENANCE_OFFICER', 'CITIZEN']}>
                 <Layout><PotholeDetail /></Layout>
               </ProtectedRoute>
             } />
@@ -70,15 +72,27 @@ function App() {
               </ProtectedRoute>
             } />
 
-            <Route path="/runs" element={
-              <ProtectedRoute allowedRoles={['ADMIN', 'VEHICLE_OPERATOR']}>
-                <Layout><InspectionRuns /></Layout>
+            <Route path="/report" element={
+              <ProtectedRoute allowedRoles={['CITIZEN']}>
+                <CitizenPortal />
+              </ProtectedRoute>
+            } />
+
+            <Route path="/review-queue" element={
+              <ProtectedRoute allowedRoles={['ADMIN', 'MAINTENANCE_OFFICER']}>
+                <Layout><ReviewQueue /></Layout>
               </ProtectedRoute>
             } />
 
             <Route path="/admin" element={
               <ProtectedRoute allowedRoles={['ADMIN']}>
                 <Layout><Admin /></Layout>
+              </ProtectedRoute>
+            } />
+
+            <Route path="/settings" element={
+              <ProtectedRoute allowedRoles={['ADMIN']}>
+                <Layout><Settings /></Layout>
               </ProtectedRoute>
             } />
 

@@ -1,4 +1,4 @@
-import type { PotholeEvent, User, InspectionRun, RepairUpdate } from './types';
+import type { PotholeEvent, User, CitizenReport, RepairUpdate, AuditLog } from './types';
 import { subDays } from 'date-fns';
 
 const statuses: PotholeEvent['status'][] = ['New', 'Confirmed', 'Scheduled', 'Fixed', 'Rejected'];
@@ -31,18 +31,6 @@ const generatePotholes = (count: number): PotholeEvent[] => {
             roadName: `${region.name} Main Road ${i + 1}`,
             district: region.name,
             imageUrl: `https://picsum.photos/seed/${i}/1280/720`, // Larger image for zoom
-            runId: `RUN-${Math.floor(i / 5) + 1}`,
-            frameId: `FR-${Math.floor(Math.random() * 10000)}`,
-            bbox: {
-                x: 0.3 + Math.random() * 0.4,
-                y: 0.4 + Math.random() * 0.3,
-                w: 0.15 + Math.random() * 0.2,
-                h: 0.1 + Math.random() * 0.15,
-                format: 'REL'
-            },
-            modelName: "YOLOv8",
-            modelVersion: "v0.1",
-            inferenceTimeMs: 45 + Math.floor(Math.random() * 30),
             createdAt: timestamp,
             updatedAt: timestamp,
         };
@@ -52,66 +40,227 @@ const generatePotholes = (count: number): PotholeEvent[] => {
 export const MOCK_USERS: User[] = [
     { id: 'u1', name: 'Admin User', email: 'admin@roadpulse.lk', role: 'ADMIN' },
     { id: 'u2', name: 'Maintenance Officer', email: 'officer@roadpulse.lk', role: 'MAINTENANCE_OFFICER' },
-    { id: 'u3', name: 'Vehicle Operator', email: 'operator@roadpulse.lk', role: 'VEHICLE_OPERATOR' },
+    { id: 'u3', name: 'Citizen Reporter', email: 'citizen@roadpulse.lk', role: 'CITIZEN' },
 ];
 
-export const MOCK_RUNS: InspectionRun[] = [
+export const MOCK_REPORTS: CitizenReport[] = [
     {
-        id: 'RUN-1',
-        vehicleId: 'WP-1234',
-        operatorName: 'John Doe',
-        startTime: subDays(new Date(), 1).toISOString(),
-        uploadProgress: 100,
-        issues: [],
-        status: 'ended',
-    },
-    {
-        id: 'RUN-2',
-        vehicleId: 'WP-5678',
-        operatorName: 'Jane Smith',
-        startTime: new Date().toISOString(),
-        uploadProgress: 45,
-        issues: [
-            {
-                id: 'ISS-1',
-                type: 'GPS_MISSING',
-                message: 'Intermittent GPS signal loss in Gampaha region',
-                timestamp: new Date().toISOString(),
-                resolved: false
-            },
-            {
-                id: 'ISS-2',
-                type: 'CAMERA_DISCONNECTED',
-                message: 'Rear-aux camera detached from stream',
-                timestamp: new Date().toISOString(),
-                resolved: false
-            }
-        ],
-        status: 'active',
-    },
+        id: 'CR-101',
+        citizenId: 'u3',
+        submittedBy: 'Citizen Reporter',
+        lat: 6.9272,
+        lon: 79.8613,
+        description: 'Large pothole near the junction.',
+        imageUrl: 'https://picsum.photos/seed/cr101/800/600',
+        aiStatus: 'PENDING',
+        status: 'New',
+        createdAt: new Date().toISOString()
+    }
 ];
+
+export const getAuditLogs = (): AuditLog[] => {
+    const stored = localStorage.getItem('rp_audit_logs');
+    if (stored) return JSON.parse(stored);
+    return [];
+};
+
+export const addAuditLog = (log: Omit<AuditLog, 'id' | 'timestamp'>) => {
+    const logs = getAuditLogs();
+    const newLog: AuditLog = {
+        ...log,
+        id: `ALG-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        timestamp: new Date().toISOString()
+    };
+    localStorage.setItem('rp_audit_logs', JSON.stringify([newLog, ...logs]));
+    return newLog;
+};
+
+export const getSystemSettings = () => {
+    const stored = localStorage.getItem('rp_settings');
+    if (stored) return JSON.parse(stored);
+    const defaultSettings = { acceptanceThreshold: 0.6 };
+    localStorage.setItem('rp_settings', JSON.stringify(defaultSettings));
+    return defaultSettings;
+};
 
 export const initialPotholes = generatePotholes(50);
 
-// Simple storage simulation
-export const getRuns = (): InspectionRun[] => {
-    const stored = localStorage.getItem('rp_runs');
+export const getReports = (): CitizenReport[] => {
+    const stored = localStorage.getItem('rp_reports');
     if (stored) return JSON.parse(stored);
-    localStorage.setItem('rp_runs', JSON.stringify(MOCK_RUNS));
-    return MOCK_RUNS;
+    localStorage.setItem('rp_reports', JSON.stringify(MOCK_REPORTS));
+    return MOCK_REPORTS;
 };
 
-export const resolveIssue = (runId: string, issueId: string, user: string) => {
-    const runs = getRuns();
-    const runIndex = runs.findIndex(r => r.id === runId);
-    if (runIndex !== -1) {
-        const issueIndex = runs[runIndex].issues.findIndex(i => i.id === issueId);
-        if (issueIndex !== -1) {
-            runs[runIndex].issues[issueIndex].resolved = true;
-            runs[runIndex].issues[issueIndex].resolvedAt = new Date().toISOString();
-            runs[runIndex].issues[issueIndex].resolvedBy = user;
-            localStorage.setItem('rp_runs', JSON.stringify(runs));
+export const submitReport = async (report: Omit<CitizenReport, 'id' | 'aiStatus' | 'status' | 'createdAt'>): Promise<CitizenReport> => {
+    const reports = getReports();
+    const newReport: CitizenReport = {
+        ...report,
+        id: `CR-${Date.now()}`,
+        aiStatus: 'PENDING',
+        status: 'New',
+        createdAt: new Date().toISOString()
+    };
+
+    // Save initial pending state
+    localStorage.setItem('rp_reports', JSON.stringify([newReport, ...reports]));
+
+    addAuditLog({
+        entityId: newReport.id,
+        entityType: 'REPORT',
+        action: 'SUBMITTED',
+        actor: 'CITIZEN',
+        actorName: newReport.submittedBy || 'Anonymous Citizen',
+        details: 'Citizen submitted a new report for validation.'
+    });
+
+    // Simulate AI Processing Network Call
+    return new Promise((resolve) => {
+        const inferenceTime = 800 + Math.random() * 2400; // 800 - 3200ms
+
+        setTimeout(() => {
+            const settings = getSystemSettings();
+            const confidence = Math.random();
+            const accepted = confidence >= settings.acceptanceThreshold;
+
+            newReport.aiConfidence = confidence;
+            newReport.modelName = "YOLOv8";
+            newReport.modelVersion = "v0.1";
+            newReport.inferenceTimeMs = Math.round(inferenceTime);
+
+            if (accepted) {
+                newReport.aiStatus = 'ACCEPTED';
+
+                addAuditLog({
+                    entityId: newReport.id,
+                    entityType: 'REPORT',
+                    action: 'AI_ACCEPTED',
+                    actor: 'SYSTEM',
+                    actorName: 'AI Validation Engine',
+                    details: `Automatically generated bounding box. Confidence: ${(confidence * 100).toFixed(1)}%`
+                });
+
+                // Generate plausible bbox (center-lower area, realistic size)
+                const w = 0.15 + Math.random() * 0.2; // 15-35% width
+                const h = 0.15 + Math.random() * 0.2; // 15-35% height
+                const x = 0.35 + Math.random() * 0.3; // 35-65% X offset (centered)
+                const y = 0.5 + Math.random() * 0.3;  // 50-80% Y offset (lower half)
+                newReport.bbox = [x, y, w, h];
+
+                // Create linked pothole
+                const potholes = getPotholes();
+                const newPothole: PotholeEvent = {
+                    id: `PH-${Date.now()}`,
+                    lat: newReport.lat,
+                    lon: newReport.lon,
+                    timestamp: new Date().toISOString(),
+                    confidence: confidence,
+                    severity: 'Medium',
+                    status: 'New',
+                    imageUrl: newReport.imageUrl,
+                    source: 'CITIZEN_REPORT',
+                    reportId: newReport.id,
+                    bbox: newReport.bbox,
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
+                };
+                localStorage.setItem('rp_potholes_v2', JSON.stringify([newPothole, ...potholes]));
+                newReport.linkedPotholeId = newPothole.id;
+
+            } else {
+                newReport.aiStatus = 'REJECTED';
+                newReport.aiReason = "No pothole-like features detected in the submitted image.";
+                newReport.status = 'Discarded';
+
+                addAuditLog({
+                    entityId: newReport.id,
+                    entityType: 'REPORT',
+                    action: 'AI_REJECTED',
+                    actor: 'SYSTEM',
+                    actorName: 'AI Validation Engine',
+                    details: `Validation failed with confidence: ${(confidence * 100).toFixed(1)}%. Reason: No features detected.`
+                });
+            }
+
+            // Update report with AI results
+            const updatedReports = getReports();
+            const index = updatedReports.findIndex(r => r.id === newReport.id);
+            if (index !== -1) {
+                updatedReports[index] = newReport;
+                localStorage.setItem('rp_reports', JSON.stringify(updatedReports));
+            }
+
+            resolve(newReport);
+        }, 1500 + Math.random() * 1000); // 1.5 - 2.5s delay
+    });
+};
+
+export const processReport = (id: string, action: 'accept' | 'reject', reason?: string, actorName: string = 'Maintenance Officer') => {
+    const reports = getReports();
+    const index = reports.findIndex(r => r.id === id);
+    if (index !== -1) {
+        if (action === 'accept') {
+            reports[index].aiStatus = 'ACCEPTED';
+            reports[index].aiConfidence = reports[index].aiConfidence || (0.85 + Math.random() * 0.1); // Mocked AI confidence if missing
+            reports[index].status = 'New';
+
+            addAuditLog({
+                entityId: id,
+                entityType: 'REPORT',
+                action: 'MANUAL_ACCEPTED',
+                actor: 'MAINTENANCE_OFFICER',
+                actorName,
+                details: 'Report manually overridden and accepted by officer.'
+            });
+
+            // Retroactively assign bbox and ML metadata if not present
+            if (!reports[index].bbox) {
+                reports[index].modelName = reports[index].modelName || "YOLOv8";
+                reports[index].modelVersion = reports[index].modelVersion || "v0.1";
+                reports[index].inferenceTimeMs = reports[index].inferenceTimeMs || Math.round(800 + Math.random() * 2400);
+                const w = 0.15 + Math.random() * 0.2;
+                const h = 0.15 + Math.random() * 0.2;
+                const x = 0.35 + Math.random() * 0.3;
+                const y = 0.5 + Math.random() * 0.3;
+                reports[index].bbox = [x, y, w, h];
+            }
+
+            if (!reports[index].linkedPotholeId) {
+                // Validation creates a PotholeEvent
+                const potholes = getPotholes();
+                const newPothole: PotholeEvent = {
+                    id: `PH-${Date.now()}`,
+                    lat: reports[index].lat,
+                    lon: reports[index].lon,
+                    timestamp: new Date().toISOString(),
+                    confidence: reports[index].aiConfidence!,
+                    severity: 'Medium',
+                    status: 'New',
+                    imageUrl: reports[index].imageUrl,
+                    source: 'CITIZEN_REPORT',
+                    reportId: reports[index].id,
+                    bbox: reports[index].bbox,
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
+                };
+                localStorage.setItem('rp_potholes_v2', JSON.stringify([newPothole, ...potholes]));
+                reports[index].linkedPotholeId = newPothole.id;
+            }
+        } else {
+            reports[index].aiStatus = 'REJECTED';
+            reports[index].aiReason = reason;
+            reports[index].status = 'Discarded';
+
+            addAuditLog({
+                entityId: id,
+                entityType: 'REPORT',
+                action: 'MANUAL_REJECTED',
+                actor: 'MAINTENANCE_OFFICER',
+                actorName,
+                details: `Manually rejected by officer. Reason: ${reason}`
+            });
         }
+        localStorage.setItem('rp_reports', JSON.stringify(reports));
     }
 };
 
@@ -131,6 +280,15 @@ export const updatePotholeStatus = (id: string, status: PotholeEvent['status'], 
         potholes[index].status = status;
         potholes[index].updatedAt = new Date().toISOString();
         localStorage.setItem(key, JSON.stringify(potholes));
+
+        addAuditLog({
+            entityId: id,
+            entityType: 'POTHOLE',
+            action: 'STATUS_CHANGED',
+            actor: 'MAINTENANCE_OFFICER',
+            actorName: user,
+            details: `Status updated to ${status}. Note: ${note}`
+        });
 
         // Add audit log/repair update
         const updates = getRepairUpdates(id);

@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
-    getRepairUpdates,
-    getPotholes,
-    updatePotholeStatus
-} from '../mockData';
+    updatePotholeStatus,
+    getPotholeById
+} from '../lib/api';
 import {
     MapContainer,
     TileLayer,
@@ -16,13 +15,15 @@ import {
     Calendar,
     MapPin,
     BarChart,
-    History,
     ShieldCheck,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { cn } from '../lib/utils';
 import type { PotholeEvent, PotholeStatus } from '../types';
 import { EvidenceViewer } from '../components/EvidenceViewer';
+import { ActivityTimeline } from '../components/ActivityTimeline';
+import { listCitizenReports } from '../lib/api';
+import type { CitizenReport } from '../types';
 
 const STATUS_OPTS: PotholeStatus[] = ['New', 'Confirmed', 'Scheduled', 'Fixed', 'Rejected'];
 
@@ -31,18 +32,22 @@ const PotholeDetail = () => {
     const navigate = useNavigate();
     const { user, hasRole } = useAuth();
     const [pothole, setPothole] = useState<PotholeEvent | null>(null);
-    const [updates, setUpdates] = useState<any[]>([]);
     const [newStatus, setNewStatus] = useState<PotholeStatus>('New');
     const [note, setNote] = useState('');
     const [isUpdating, setIsUpdating] = useState(false);
+    const [report, setReport] = useState<CitizenReport | null>(null);
 
     useEffect(() => {
-        const list = getPotholes();
-        const item = list.find(p => p.id === id);
+        const item = id ? getPotholeById(id) : undefined;
         if (item) {
             setPothole(item);
             setNewStatus(item.status);
-            setUpdates(getRepairUpdates(id!));
+
+            if (item.reportId) {
+                const reps = listCitizenReports();
+                const matched = reps.find(r => r.id === item.reportId);
+                if (matched) setReport(matched);
+            }
         }
     }, [id]);
 
@@ -52,10 +57,8 @@ const PotholeDetail = () => {
         setTimeout(() => {
             updatePotholeStatus(id, newStatus, note || `Status changed to ${newStatus}`, user.name);
             // Refresh
-            const list = getPotholes();
-            const item = list.find(p => p.id === id);
+            const item = id ? getPotholeById(id) : undefined;
             if (item) setPothole(item);
-            setUpdates(getRepairUpdates(id));
             setNote('');
             setIsUpdating(false);
         }, 500);
@@ -114,12 +117,30 @@ const PotholeDetail = () => {
                                 <div className="flex items-center gap-3">
                                     <div className="p-2 rounded-lg bg-gray-100 text-gray-400"><BarChart size={18} /></div>
                                     <div>
-                                        <p className="text-[10px] text-gray-400 font-bold uppercase">Detection Data</p>
-                                        <p className="text-sm font-semibold">Confidence: {(pothole.confidence * 100).toFixed(1)}% | Severity: {pothole.severity}</p>
+                                        <p className="text-[10px] text-gray-400 font-bold uppercase">Source Data</p>
+                                        <p className="text-sm font-semibold">Report ID: {pothole.reportId}</p>
                                     </div>
                                 </div>
                             </div>
-                            <div className="bg-white p-0 relative min-h-[250px]">
+
+                            {/* Citizen Report Info inserted above the map if available */}
+                            {report && (
+                                <div className="bg-white p-6 md:col-span-2 border-t border-border">
+                                    <h3 className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-2">Citizen Report Details</h3>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <p className="text-[10px] font-bold text-gray-400 uppercase">Reporter</p>
+                                            <p className="text-sm font-semibold">{report.submittedBy || 'Anonymous'}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] font-bold text-gray-400 uppercase">Citizen Description</p>
+                                            <p className="text-sm italic text-gray-600">"{report.description || 'No description provided.'}"</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="bg-white p-0 relative min-h-[250px] md:col-span-2">
                                 <MapContainer center={[pothole.lat, pothole.lon]} zoom={15} style={{ height: '100%', width: '100%' }}>
                                     <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
                                     <Marker position={[pothole.lat, pothole.lon]}>
@@ -133,7 +154,6 @@ const PotholeDetail = () => {
                     {/* Evidence Viewer */}
                     <EvidenceViewer
                         imageUrl={pothole.imageUrl}
-                        bbox={pothole.bbox}
                         badges={{
                             confidence: pothole.confidence,
                             severity: pothole.severity,
@@ -145,11 +165,12 @@ const PotholeDetail = () => {
                             lon: pothole.lon,
                             district: pothole.district,
                             roadName: pothole.roadName,
-                            runId: pothole.runId,
-                            frameId: pothole.frameId,
-                            modelName: pothole.modelName,
-                            modelVersion: pothole.modelVersion,
-                            inferenceTimeMs: pothole.inferenceTimeMs
+
+                            // Inject AI/ML metadata sourced from CitizenReport directly or Pothole 
+                            ...(pothole.bbox ? { bbox: pothole.bbox } : {}),
+                            ...(report?.modelName ? { modelName: report.modelName } : {}),
+                            ...(report?.modelVersion ? { modelVersion: report.modelVersion } : {}),
+                            ...(report?.inferenceTimeMs ? { inferenceTimeMs: report.inferenceTimeMs } : {})
                         }}
                     />
                 </div>
@@ -210,46 +231,8 @@ const PotholeDetail = () => {
                         )}
                     </div>
 
-                    {/* Audit Log / History */}
-                    <div className="card overflow-hidden">
-                        <div className="p-4 border-b border-border flex items-center gap-2 font-semibold">
-                            <History size={18} />
-                            Maintenance History
-                        </div>
-                        <div className="p-6 relative">
-                            <div className="absolute left-8 top-10 bottom-10 w-px bg-gray-200" />
-                            <div className="space-y-8 relative z-10">
-                                {updates.length === 0 ? (
-                                    <div className="text-center py-4 text-xs text-gray-400">No updates yet</div>
-                                ) : (
-                                    updates.slice().reverse().map((update) => (
-                                        <div key={update.id} className="flex gap-4">
-                                            <div className="w-4 h-4 rounded-full bg-white border-2 border-primary ring-4 ring-primary/10 mt-1 shrink-0" />
-                                            <div>
-                                                <div className="flex items-center gap-2 mb-1">
-                                                    <span className="text-xs font-bold text-text uppercase p-1 bg-gray-100 rounded leading-none">{update.status}</span>
-                                                    <span className="text-[10px] text-gray-400">{new Date(update.updatedAt).toLocaleDateString()}</span>
-                                                </div>
-                                                <p className="text-xs text-gray-700 leading-relaxed mb-1">{update.note}</p>
-                                                <p className="text-[10px] text-gray-500 font-medium">— {update.updatedBy}</p>
-                                            </div>
-                                        </div>
-                                    ))
-                                )}
-                                {/* Original Detection Entry */}
-                                <div className="flex gap-4">
-                                    <div className="w-4 h-4 rounded-full bg-gray-200 border-2 border-white mt-1 shrink-0" />
-                                    <div>
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <span className="text-xs font-bold text-gray-400 uppercase p-1 bg-gray-50 rounded leading-none">Detected</span>
-                                            <span className="text-[10px] text-gray-400">{new Date(pothole.timestamp).toLocaleDateString()}</span>
-                                        </div>
-                                        <p className="text-xs text-gray-500 italic">Initial system detection from {pothole.runId}</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    {/* Activity Timeline */}
+                    <ActivityTimeline entityId={pothole.id} />
                 </div>
             </div>
         </div>

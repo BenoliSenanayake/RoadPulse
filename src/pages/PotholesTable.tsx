@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import {
-    getPotholes
-} from '../mockData';
+    listPotholes
+} from '../lib/api';
 import {
     Search,
     Download,
@@ -18,7 +18,7 @@ const PotholesTable = () => {
     const [statusFilter, setStatusFilter] = useState<string>('All');
     const [severityFilter, setSeverityFilter] = useState<string>('All');
 
-    const potholes = useMemo(() => getPotholes(), []);
+    const potholes = useMemo(() => listPotholes(), []);
 
     const filteredPotholes = useMemo<PotholeEvent[]>(() => {
         return potholes.filter(p => {
@@ -42,6 +42,8 @@ const PotholesTable = () => {
             District: p.district,
             Severity: p.severity,
             Status: p.status,
+            Source: p.source || 'CITIZEN_REPORT',
+            ReportID: p.reportId || 'N/A',
             Confidence: (p.confidence * 100).toFixed(1) + '%'
         }));
 
@@ -122,7 +124,7 @@ const PotholesTable = () => {
                                 </th>
                                 <th className="px-6 py-4 text-[10px] uppercase tracking-wider font-bold text-gray-500">Location</th>
                                 <th className="px-6 py-4 text-[10px] uppercase tracking-wider font-bold text-gray-500">Date Detected</th>
-                                <th className="px-6 py-4 text-[10px] uppercase tracking-wider font-bold text-gray-500">Severity</th>
+                                <th className="px-6 py-4 text-[10px] uppercase tracking-wider font-bold text-gray-500">Source</th>
                                 <th className="px-6 py-4 text-[10px] uppercase tracking-wider font-bold text-gray-500">Confidence</th>
                                 <th className="px-6 py-4 text-[10px] uppercase tracking-wider font-bold text-gray-500">Status</th>
                                 <th className="px-6 py-4 text-[10px] uppercase tracking-wider font-bold text-gray-500 text-right">Actions</th>
@@ -142,14 +144,12 @@ const PotholesTable = () => {
                                         {new Date(p.timestamp).toLocaleDateString()}
                                     </td>
                                     <td className="px-6 py-4">
-                                        <span className={cn(
-                                            "px-2 py-1 rounded text-[10px] font-bold uppercase",
-                                            p.severity === 'High' ? "bg-red-100 text-red-700" :
-                                                p.severity === 'Medium' ? "bg-amber-100 text-amber-700" :
-                                                    "bg-emerald-100 text-emerald-700"
-                                        )}>
-                                            {p.severity}
-                                        </span>
+                                        <div className="flex flex-col text-sm">
+                                            <span className="font-semibold text-gray-800 tracking-tight">Citizen</span>
+                                            {p.reportId && (
+                                                <span className="text-[10px] font-mono text-gray-500">{p.reportId.split('-')[0]}...</span>
+                                            )}
+                                        </div>
                                     </td>
                                     <td className="px-6 py-4 text-sm font-medium text-gray-600">
                                         {(p.confidence * 100).toFixed(0)}%

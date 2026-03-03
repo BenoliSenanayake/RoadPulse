@@ -7,7 +7,6 @@ import {
     AlertCircle,
     Clock,
     Crosshair,
-    Cpu,
     Camera
 } from 'lucide-react';
 import { cn } from '../lib/utils';
@@ -15,13 +14,6 @@ import type { Severity, PotholeStatus } from '../types';
 
 interface EvidenceViewerProps {
     imageUrl?: string;
-    bbox?: {
-        x: number;
-        y: number;
-        w: number;
-        h: number;
-        format?: 'REL' | 'ABS';
-    };
     badges: {
         confidence: number;
         severity: Severity;
@@ -33,21 +25,18 @@ interface EvidenceViewerProps {
         lon: number;
         district?: string;
         roadName?: string;
-        runId: string;
-        frameId?: string;
+        inferenceTimeMs?: number;
         modelName?: string;
         modelVersion?: string;
-        inferenceTimeMs?: number;
+        bbox?: [number, number, number, number]; // [x, y, w, h]
     };
 }
 
 export const EvidenceViewer: React.FC<EvidenceViewerProps> = ({
     imageUrl,
-    bbox,
     badges,
     metadata
 }) => {
-    console.log('EvidenceViewer BBox:', bbox);
     const [scale, setScale] = useState(1);
     const [offset, setOffset] = useState({ x: 0, y: 0 });
     const [isDragging, setIsDragging] = useState(false);
@@ -111,20 +100,6 @@ export const EvidenceViewer: React.FC<EvidenceViewerProps> = ({
         return () => document.removeEventListener('fullscreenchange', handleFsChange);
     }, []);
 
-    // Convert relative bbox to percentages
-    const bboxStyle = bbox && bbox.format === 'REL' ? {
-        left: `${bbox.x * 100}%`,
-        top: `${bbox.y * 100}%`,
-        width: `${bbox.w * 100}%`,
-        height: `${bbox.h * 100}%`
-    } : bbox ? {
-        // If ABS, we'd need image dimensions, but prioritizing REL as requested
-        left: `${bbox.x}px`,
-        top: `${bbox.y}px`,
-        width: `${bbox.w}px`,
-        height: `${bbox.h}px`
-    } : null;
-
     if (!imageUrl) {
         return (
             <div className="card h-[500px] flex flex-col items-center justify-center bg-gray-50 border-dashed border-2">
@@ -164,20 +139,20 @@ export const EvidenceViewer: React.FC<EvidenceViewerProps> = ({
                             src={imageUrl}
                             alt="Pothole Evidence"
                             className="block w-full h-auto max-h-[80vh] pointer-events-none select-none rounded-sm"
-                            onLoad={() => {
-                                // Optional: handle image load to ensure bbox renders after size is known
-                                // but with REL % coords it should be automatic
-                            }}
                         />
-
                         {/* Bounding Box Overlay */}
-                        {bboxStyle && (
+                        {metadata.bbox && (
                             <div
-                                className="absolute border-2 border-emerald-400 shadow-[0_0_15px_rgba(52,211,153,0.5)] pointer-events-none z-10"
-                                style={bboxStyle}
+                                className="absolute border-2 border-primary bg-primary/20 shadow-[0_0_15px_rgba(37,99,235,0.5)] z-10"
+                                style={{
+                                    left: `${metadata.bbox[0] * 100}%`,
+                                    top: `${metadata.bbox[1] * 100}%`,
+                                    width: `${metadata.bbox[2] * 100}%`,
+                                    height: `${metadata.bbox[3] * 100}%`
+                                }}
                             >
-                                <div className="absolute -top-5 left-[-2px] bg-emerald-400 text-black text-[10px] font-black px-1.5 py-0.5 rounded-sm uppercase leading-none shadow-sm whitespace-nowrap">
-                                    Pothole DET
+                                <div className="absolute -top-6 left-[-2px] bg-primary text-white text-[10px] font-black px-2 py-1 uppercase tracking-widest whitespace-nowrap">
+                                    {metadata.modelName || 'POTHOLE'} {(badges.confidence * 100).toFixed(1)}%
                                 </div>
                             </div>
                         )}
@@ -291,32 +266,18 @@ export const EvidenceViewer: React.FC<EvidenceViewerProps> = ({
                         <div className="flex items-start gap-4">
                             <div className="p-2 bg-white/5 rounded-lg text-white/40"><Camera size={18} /></div>
                             <div>
-                                <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Data Context</p>
-                                <p className="text-sm font-bold text-white/90">RUN: {metadata.runId}</p>
-                                <p className="text-xs text-gray-500">FRAME: {metadata.frameId || 'N/A'}</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="h-px bg-white/5" />
-
-                    {/* AI Model Section */}
-                    <div className="space-y-4">
-                        <div className="flex items-start gap-4">
-                            <div className="p-2 bg-white/5 rounded-lg text-white/40"><Cpu size={18} /></div>
-                            <div>
-                                <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Inference Engine</p>
-                                <p className="text-sm font-bold text-white/90">{metadata.modelName || 'Neural Engine'}</p>
-                                <p className="text-xs text-gray-500">Version {metadata.modelVersion || 'v1.0'}</p>
+                                <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Source</p>
+                                <p className="text-sm font-bold text-white/90">Citizen Report / AI Detected</p>
                             </div>
                         </div>
 
-                        {metadata.inferenceTimeMs && (
-                            <div className="p-4 bg-white/3 rounded-xl border border-white/5">
-                                <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">Inference Latency</p>
-                                <div className="flex items-end gap-2">
-                                    <span className="text-2xl font-black text-emerald-400 tabular-nums">{metadata.inferenceTimeMs}</span>
-                                    <span className="text-xs font-bold text-gray-500 pb-1 uppercase">ms</span>
+                        {metadata.modelName && (
+                            <div className="flex items-start gap-4">
+                                <div className="p-2 bg-white/5 rounded-lg text-white/40"><BarChart size={18} /></div>
+                                <div>
+                                    <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">ML Pipeline</p>
+                                    <p className="text-sm font-bold text-white/90 tabular-nums">Model: {metadata.modelName} ({metadata.modelVersion})</p>
+                                    {metadata.inferenceTimeMs && <p className="text-xs text-gray-500">Inference: {metadata.inferenceTimeMs}ms</p>}
                                 </div>
                             </div>
                         )}

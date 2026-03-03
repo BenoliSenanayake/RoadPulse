@@ -45,7 +45,7 @@ const LoginPage = () => {
                                 >
                                     <option value="admin@roadpulse.lk">Admin (admin@roadpulse.lk)</option>
                                     <option value="officer@roadpulse.lk">Officer (officer@roadpulse.lk)</option>
-                                    <option value="operator@roadpulse.lk">Operator (operator@roadpulse.lk)</option>
+                                    <option value="citizen@roadpulse.lk">Citizen (citizen@roadpulse.lk)</option>
                                 </select>
                             </div>
                         </div>

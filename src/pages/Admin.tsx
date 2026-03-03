@@ -1,8 +1,7 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import {
     MOCK_USERS,
-    getPotholes,
-    getRepairUpdates
+    getAuditLogs
 } from '../mockData';
 import {
     Users,
@@ -10,22 +9,27 @@ import {
     Settings,
     FileText,
     UserPlus,
-    ArrowRight,
+    Filter,
     Database
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 const AdminPage = () => {
-    // Aggregate all audit logs for demonstration
-    const allAuditLogs = useMemo(() => {
-        const potholes = getPotholes();
-        let logs: any[] = [];
-        potholes.forEach(p => {
-            const updates = getRepairUpdates(p.id);
-            updates.forEach(u => logs.push({ ...u, potholeId: p.id }));
-        });
-        return logs.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-    }, []);
+    const [filterAction, setFilterAction] = useState<string>('ALL');
+    const [filterType, setFilterType] = useState<string>('ALL');
+
+    const filteredLogs = useMemo(() => {
+        let logs = getAuditLogs();
+
+        if (filterAction !== 'ALL') {
+            logs = logs.filter(l => l.action === filterAction);
+        }
+        if (filterType !== 'ALL') {
+            logs = logs.filter(l => l.entityType === filterType);
+        }
+
+        return logs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    }, [filterAction, filterType]);
 
     return (
         <div className="space-y-6">
@@ -119,34 +123,82 @@ const AdminPage = () => {
 
                     {/* Central Audit Log */}
                     <div className="card">
-                        <div className="p-4 border-b border-border flex items-center gap-2">
-                            <FileText size={18} className="text-primary" />
-                            <h4 className="font-bold">Central Governance Audit Log</h4>
+                        <div className="p-4 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div className="flex items-center gap-2">
+                                <FileText size={18} className="text-primary" />
+                                <h4 className="font-bold tracking-tight">System Audit Trail</h4>
+                            </div>
+
+                            <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-lg text-xs font-bold text-gray-500 border border-gray-200">
+                                    <Filter size={14} /> Filters
+                                </div>
+                                <select
+                                    className="text-xs font-bold bg-white border border-gray-200 rounded-lg px-2 py-1.5 focus:ring-primary shadow-sm"
+                                    value={filterType}
+                                    onChange={(e) => setFilterType(e.target.value)}
+                                >
+                                    <option value="ALL">All Entities</option>
+                                    <option value="REPORT">Citizen Reports</option>
+                                    <option value="POTHOLE">Potholes</option>
+                                </select>
+                                <select
+                                    className="text-xs font-bold bg-white border border-gray-200 rounded-lg px-2 py-1.5 focus:ring-primary shadow-sm"
+                                    value={filterAction}
+                                    onChange={(e) => setFilterAction(e.target.value)}
+                                >
+                                    <option value="ALL">All Actions</option>
+                                    <option value="SUBMITTED">Submitted</option>
+                                    <option value="AI_ACCEPTED">AI Accepted</option>
+                                    <option value="AI_REJECTED">AI Rejected</option>
+                                    <option value="MANUAL_ACCEPTED">Manual Accepted</option>
+                                    <option value="MANUAL_REJECTED">Manual Rejected</option>
+                                    <option value="STATUS_CHANGED">Status Changed</option>
+                                </select>
+                            </div>
                         </div>
-                        <div className="max-h-[400px] overflow-y-auto">
-                            {allAuditLogs.length === 0 ? (
-                                <div className="p-12 text-center text-gray-400 text-sm">No administrative actions logged yet.</div>
+
+                        <div className="max-h-[600px] overflow-y-auto w-full custom-scroll">
+                            {filteredLogs.length === 0 ? (
+                                <div className="p-16 text-center text-gray-400 text-sm font-medium">No actions match the current filters.</div>
                             ) : (
-                                <table className="w-full text-left">
-                                    <thead className="sticky top-0 bg-white border-b border-border text-[9px] font-black text-gray-400 uppercase">
+                                <table className="w-full text-left border-collapse">
+                                    <thead className="sticky top-0 bg-gray-50 border-b border-border text-[10px] font-black text-gray-500 uppercase tracking-widest shadow-sm">
                                         <tr>
-                                            <th className="px-6 py-3">Timestamp</th>
-                                            <th className="px-6 py-3">Actor</th>
-                                            <th className="px-6 py-3">Action</th>
-                                            <th className="px-6 py-3">Entity</th>
+                                            <th className="px-6 py-4 whitespace-nowrap">Timestamp</th>
+                                            <th className="px-6 py-4">Actor</th>
+                                            <th className="px-6 py-4">Event Flow</th>
+                                            <th className="px-6 py-4 border-l border-gray-200 text-right">Target</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-border">
-                                        {allAuditLogs.map(log => (
-                                            <tr key={log.id} className="text-[11px] hover:bg-gray-50">
-                                                <td className="px-6 py-3 text-gray-500">{new Date(log.updatedAt).toLocaleString()}</td>
-                                                <td className="px-6 py-3 font-bold text-gray-700">{log.updatedBy}</td>
-                                                <td className="px-6 py-3">
-                                                    Changed status to <span className="font-black text-primary uppercase">{log.status}</span>
+                                    <tbody className="divide-y divide-gray-100">
+                                        {filteredLogs.map(log => (
+                                            <tr key={log.id} className="text-xs hover:bg-gray-50/50 transition-colors">
+                                                <td className="px-6 py-4 text-gray-500 whitespace-nowrap font-medium">
+                                                    {new Date(log.timestamp).toLocaleString()}
                                                 </td>
-                                                <td className="px-6 py-3">
-                                                    <div className="flex items-center gap-1 font-mono text-gray-400">
-                                                        {log.potholeId} <ArrowRight size={10} />
+                                                <td className="px-6 py-4">
+                                                    <div className="flex flex-col">
+                                                        <span className="font-bold text-gray-800">{log.actorName || 'System'}</span>
+                                                        <span className="text-[10px] text-gray-400 font-black tracking-widest uppercase">{log.actor.replace('_', ' ')}</span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="flex flex-col gap-1 max-w-sm">
+                                                        <span className="font-black text-[11px] px-2 py-1 rounded bg-gray-100 text-gray-700 w-fit uppercase tracking-widest">
+                                                            {log.action.replace('_', ' ')}
+                                                        </span>
+                                                        <span className="text-gray-600 truncate" title={log.details}>
+                                                            {log.details}
+                                                        </span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 border-l border-gray-50 text-right">
+                                                    <span className={`px-2 py-1 rounded font-black text-[10px] uppercase tracking-widest ${log.entityType === 'POTHOLE' ? 'bg-orange-100 text-orange-800 border-orange-200 border' : 'bg-blue-100 text-blue-800 border-blue-200 border'}`}>
+                                                        {log.entityType}
+                                                    </span>
+                                                    <div className="text-[10px] text-gray-400 font-mono mt-1">
+                                                        {log.entityId}
                                                     </div>
                                                 </td>
                                             </tr>

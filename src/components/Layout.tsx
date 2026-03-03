@@ -12,7 +12,8 @@ import {
     Menu,
     X,
     Bell,
-    Search
+    Search,
+    Settings as SettingsIcon
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { cn } from '../lib/utils';
@@ -22,12 +23,14 @@ const Sidebar = ({ isOpen, toggle }: { isOpen: boolean; toggle: () => void }) =>
     const location = useLocation();
 
     const menuItems = [
-        { name: 'Overview', icon: LayoutDashboard, path: '/overview', roles: ['ADMIN', 'MAINTENANCE_OFFICER', 'VEHICLE_OPERATOR'] },
+        { name: 'Overview', icon: LayoutDashboard, path: '/overview', roles: ['ADMIN', 'MAINTENANCE_OFFICER'] },
         { name: 'Live Map', icon: MapIcon, path: '/map', roles: ['ADMIN', 'MAINTENANCE_OFFICER'] },
         { name: 'Potholes', icon: AlertTriangle, path: '/potholes', roles: ['ADMIN', 'MAINTENANCE_OFFICER'] },
         { name: 'Repairs', icon: Wrench, path: '/repairs', roles: ['ADMIN', 'MAINTENANCE_OFFICER'] },
-        { name: 'Inspection Runs', icon: Truck, path: '/runs', roles: ['ADMIN', 'VEHICLE_OPERATOR'] },
+        { name: 'Review Queue', icon: Truck, path: '/review-queue', roles: ['ADMIN', 'MAINTENANCE_OFFICER'] },
+        { name: 'Submit Report', icon: AlertTriangle, path: '/report', roles: ['CITIZEN'] },
         { name: 'Admin', icon: Users, path: '/admin', roles: ['ADMIN'] },
+        { name: 'Settings', icon: SettingsIcon, path: '/settings', roles: ['ADMIN'] },
     ];
 
     const filteredMenu = menuItems.filter(item => hasRole(item.roles as any));

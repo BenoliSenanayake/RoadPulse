@@ -20,7 +20,7 @@ import {
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import * as L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { getPotholes } from '../mockData';
+import { listPotholes, listCitizenReports } from '../lib/api';
 import { cn } from '../lib/utils';
 
 // Fix leaflet icon issue
@@ -63,17 +63,21 @@ const STATUS_COLORS = {
 };
 
 const Overview = () => {
-    const potholes = useMemo(() => getPotholes(), []);
+    const potholes = useMemo(() => listPotholes(), []);
 
     const stats = useMemo(() => {
         const total = potholes.length;
         const fixed = potholes.filter(p => p.status === 'Fixed').length;
-        const newItems = potholes.filter(p => p.status === 'New').length;
+
+        const allReports = listCitizenReports();
+        const pendingReports = allReports.filter(r => r.aiStatus === 'PENDING').length;
+        const acceptedReports = allReports.filter(r => r.aiStatus === 'ACCEPTED').length;
+
         return [
-            { title: 'Total Detections', value: total, icon: AlertTriangle, color: '[#2563EB]', trend: '+12% from last week' },
-            { title: 'New (Unconfirmed)', value: newItems, icon: Clock, color: '[#F59E0B]', trend: '-4% from yesterday' },
-            { title: 'Total Repaired', value: fixed, icon: CheckCircle2, color: '[#16A34A]', trend: '+8% this month' },
-            { title: 'Avg. Confidence', value: '88.4%', icon: TrendingUp, color: '[#14B8A6]' },
+            { title: 'Total Potholes', value: total, icon: AlertTriangle, color: '[#2563EB]', trend: '+12% from last week' },
+            { title: 'Pending Reports', value: pendingReports, icon: Clock, color: '[#ec4899]', trend: 'Requires Review' },
+            { title: 'Accepted Reports', value: acceptedReports, icon: TrendingUp, color: '[#F59E0B]', trend: 'Confirmed cases' },
+            { title: 'Fixed Count', value: fixed, icon: CheckCircle2, color: '[#16A34A]', trend: '+8% this month' },
         ];
     }, [potholes]);
 

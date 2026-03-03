@@ -10,8 +10,8 @@ import {
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import * as L from 'leaflet';
 import {
-    getPotholes
-} from '../mockData';
+    listPotholes
+} from '../lib/api';
 import {
     Search,
     Layers,
@@ -62,7 +62,7 @@ const LiveMap = () => {
     const [selectedPothole, setSelectedPothole] = useState<PotholeEvent | null>(null);
     const [mapCenter, setMapCenter] = useState<[number, number] | null>(null);
 
-    const potholes = useMemo(() => getPotholes(), []);
+    const potholes = useMemo(() => listPotholes(), []);
 
     const filtered = useMemo(() => {
         return potholes.filter(p => {
@@ -77,8 +77,8 @@ const LiveMap = () => {
     const stats = useMemo(() => {
         return {
             total: filtered.length,
-            highSeverity: filtered.filter(p => p.severity === 'High').length,
-            new: filtered.filter(p => p.status === 'New').length
+            reportsPending: filtered.filter(p => p.status === 'New').length,
+            repairsScheduled: filtered.filter(p => p.status === 'Scheduled').length
         };
     }, [filtered]);
 
@@ -159,9 +159,9 @@ const LiveMap = () => {
                         <p className="text-[10px] font-black text-gray-400 uppercase mb-1">Total</p>
                         <p className="text-xl font-black text-text">{stats.total}</p>
                     </div>
-                    <div className="card p-4 bg-white border-l-4 border-l-red-500">
-                        <p className="text-[10px] font-black text-gray-400 uppercase mb-1">Severe</p>
-                        <p className="text-xl font-black text-text">{stats.highSeverity}</p>
+                    <div className="card p-4 bg-white border-l-4 border-l-amber-500">
+                        <p className="text-[10px] font-black text-gray-400 uppercase mb-1">Scheduled</p>
+                        <p className="text-xl font-black text-text">{stats.repairsScheduled}</p>
                     </div>
                 </div>
             </div>
@@ -231,15 +231,18 @@ const LiveMap = () => {
                                                 <span className="text-[10px] font-black text-primary uppercase">{p.id}</span>
                                                 <span className={cn(
                                                     "px-1.5 py-0.5 rounded text-[8px] font-black text-white uppercase",
-                                                    p.severity === 'High' ? 'bg-red-500' : 'bg-primary'
-                                                )}>{p.severity}</span>
+                                                    p.status === 'New' ? 'bg-blue-600' :
+                                                        p.status === 'Confirmed' ? 'bg-amber-500' :
+                                                            p.status === 'Scheduled' ? 'bg-purple-500' :
+                                                                p.status === 'Fixed' ? 'bg-emerald-600' : 'bg-red-500'
+                                                )}>{p.status}</span>
                                             </div>
                                             <p className="text-xs font-bold text-gray-800 mb-3">{p.roadName || 'Unnamed Road'}</p>
                                             <Link
                                                 to={`/potholes/${p.id}`}
                                                 className="block w-full text-center py-2 bg-gray-900 text-white rounded-lg text-[10px] font-black uppercase hover:bg-primary transition-colors"
                                             >
-                                                Inspection File
+                                                View Details
                                             </Link>
                                         </div>
                                     </Popup>
@@ -255,7 +258,9 @@ const LiveMap = () => {
                             center={[p.lat, p.lon]}
                             radius={400} // meters
                             pathOptions={{
-                                fillColor: p.severity === 'High' ? '#EF4444' : '#F59E0B',
+                                fillColor: p.status === 'New' || p.status === 'Rejected' ? '#EF4444' :
+                                    p.status === 'Confirmed' ? '#F59E0B' :
+                                        p.status === 'Scheduled' ? '#A855F7' : '#10B981',
                                 color: 'transparent',
                                 fillOpacity: 0.3
                             }}
@@ -317,7 +322,7 @@ const LiveMap = () => {
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-start justify-between mb-1">
                                             <h4 className="text-xs font-black text-text truncate uppercase tracking-tighter">{p.id}</h4>
-                                            {p.severity === 'High' && <AlertCircle size={14} className="text-red-500 shrink-0" />}
+                                            {p.status === 'New' && <AlertCircle size={14} className="text-blue-500 shrink-0" />}
                                         </div>
                                         <p className="text-[10px] font-bold text-gray-500 truncate mb-2">{p.roadName || 'Unnamed Road'}</p>
                                         <div className="flex items-center gap-2">

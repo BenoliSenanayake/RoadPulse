@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { getPotholes } from '../mockData';
+import { listPotholes } from '../lib/api';
 import {
     Wrench,
     Calendar,
@@ -10,7 +10,7 @@ import { Link } from 'react-router-dom';
 import { cn } from '../lib/utils';
 
 const RepairsPage = () => {
-    const potholes = useMemo(() => getPotholes(), []);
+    const potholes = useMemo(() => listPotholes(), []);
 
     // Filter for items that need repair or are being repaired
     const repairQueue = useMemo(() => {

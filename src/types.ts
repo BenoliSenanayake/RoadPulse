@@ -1,7 +1,6 @@
 export type PotholeStatus = 'New' | 'Confirmed' | 'Scheduled' | 'Fixed' | 'Rejected';
 export type Severity = 'Low' | 'Medium' | 'High';
-export type UserRole = 'MAINTENANCE_OFFICER' | 'VEHICLE_OPERATOR' | 'ADMIN';
-export type IssueType = 'GPS_MISSING' | 'UPLOAD_STALLED' | 'CAMERA_DISCONNECTED' | 'LOW_STORAGE';
+export type UserRole = 'MAINTENANCE_OFFICER' | 'CITIZEN' | 'ADMIN';
 
 export interface User {
     id: string;
@@ -21,18 +20,9 @@ export interface PotholeEvent {
     roadName?: string;
     district?: string;
     imageUrl?: string;
-    frameId?: string;
-    runId: string;
-    bbox?: {
-        x: number;
-        y: number;
-        w: number;
-        h: number;
-        format?: 'REL' | 'ABS';
-    };
-    modelName?: string;
-    modelVersion?: string;
-    inferenceTimeMs?: number;
+    source?: 'SYSTEM' | 'CITIZEN_REPORT';
+    reportId?: string;
+    bbox?: [number, number, number, number]; // [x, y, width, height] relative to image (0-1)
     createdAt: string;
     updatedAt: string;
 }
@@ -46,23 +36,42 @@ export interface RepairUpdate {
     updatedAt: string;
 }
 
-export interface InspectionIssue {
+export interface CitizenReport {
     id: string;
-    type: IssueType;
-    message: string;
-    timestamp: string;
-    resolved: boolean;
-    resolvedAt?: string;
-    resolvedBy?: string;
+    citizenId: string;
+    submittedBy?: string; // Optional for mock
+    lat: number;
+    lon: number;
+    description?: string;
+    imageUrl: string;
+    aiStatus: 'PENDING' | 'ACCEPTED' | 'REJECTED';
+    aiConfidence?: number;
+    aiReason?: string;
+    modelName?: string;
+    modelVersion?: string;
+    inferenceTimeMs?: number;
+    bbox?: [number, number, number, number];
+    linkedPotholeId?: string;
+    status: 'New' | 'Discarded'; // Mapping from assignment
+    createdAt: string; // Keep as submittedAt alias
 }
 
-export interface InspectionRun {
+export type AuditLogAction =
+    | 'SUBMITTED'
+    | 'AI_PENDING'
+    | 'AI_ACCEPTED'
+    | 'AI_REJECTED'
+    | 'MANUAL_ACCEPTED'
+    | 'MANUAL_REJECTED'
+    | 'STATUS_CHANGED';
+
+export interface AuditLog {
     id: string;
-    vehicleId: string;
-    operatorName: string;
-    startTime: string;
-    endTime?: string;
-    uploadProgress: number; // 0-100
-    issues: InspectionIssue[];
-    status: 'active' | 'ended' | 'failed';
+    timestamp: string;
+    entityId: string; // Pothole ID or CitizenReport ID
+    entityType: 'POTHOLE' | 'REPORT';
+    action: AuditLogAction;
+    actor: 'CITIZEN' | 'SYSTEM' | 'MAINTENANCE_OFFICER' | 'ADMIN';
+    actorName?: string;
+    details?: string; // JSON string or human-readable details
 }
