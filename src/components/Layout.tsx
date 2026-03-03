@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { cn } from '../lib/utils';
+import logo from '../assets/logo.png';
 
 const Sidebar = ({ isOpen, toggle }: { isOpen: boolean; toggle: () => void }) => {
     const { user, logout, hasRole } = useAuth();
@@ -54,9 +55,7 @@ const Sidebar = ({ isOpen, toggle }: { isOpen: boolean; toggle: () => void }) =>
                     {/* Logo */}
                     <div className="flex items-center justify-between h-16 px-6 border-b border-border">
                         <Link to="/" className="flex items-center gap-2">
-                            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-                                <div className="w-2 h-2 rounded-full bg-white animate-pulse" />
-                            </div>
+                            <img src={logo} alt="RoadPulse Logo" className="w-8 h-8 object-contain" />
                             <span className="text-xl font-bold text-text tracking-tight">RoadPulse</span>
                         </Link>
                         <button onClick={toggle} className="lg:hidden p-1 text-gray-500">

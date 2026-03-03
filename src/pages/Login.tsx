@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Mail, Lock, LogIn } from 'lucide-react';
+import logo from '../assets/logo.png';
 
 const LoginPage = () => {
     const [email, setEmail] = useState('officer@roadpulse.lk');
@@ -25,8 +26,8 @@ const LoginPage = () => {
         <div className="min-h-screen flex items-center justify-center bg-background px-4">
             <div className="max-w-md w-full">
                 <div className="text-center mb-10">
-                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary mb-4 shadow-lg shadow-primary/20">
-                        <div className="w-4 h-4 rounded-full bg-white animate-pulse" />
+                    <div className="inline-flex items-center justify-center mb-4">
+                        <img src={logo} alt="RoadPulse Logo" className="w-20 h-20 object-contain drop-shadow-xl" />
                     </div>
                     <h1 className="text-3xl font-bold text-text mb-2 tracking-tight">RoadPulse</h1>
                     <p className="text-gray-500">Sri Lanka Road Maintenance Portal</p>
