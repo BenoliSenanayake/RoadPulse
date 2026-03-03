@@ -2,11 +2,15 @@ import { useState, useMemo, useEffect } from 'react';
 import { listCitizenReports, reviewCitizenReport } from '../lib/api';
 import type { CitizenReport } from '../types';
 import { formatDistanceToNow, isAfter, subHours, subDays } from 'date-fns';
-import { CheckCircle, XCircle, MapPin, AlertTriangle, Filter, ExternalLink } from 'lucide-react';
+import { MapPin, AlertTriangle, Filter, ChevronRight, Inbox, XCircle } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { Link } from 'react-router-dom';
 import { ActivityTimeline } from '../components/ActivityTimeline';
+import { ResponsiveDataList } from '../components/ResponsiveDataList';
+import { cn } from '../lib/utils';
+import { StatusPill } from '../components/StatusPill';
+import { EmptyState } from '../components/EmptyState';
 
 // Fix Leaflet's default icon path issues
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -32,7 +36,7 @@ const ReviewQueue = () => {
     // Filters
     const [filterStatus, setFilterStatus] = useState<'ALL' | 'PENDING' | 'ACCEPTED' | 'REJECTED'>('PENDING');
     const [filterDate, setFilterDate] = useState<'ALL' | '24H' | '7D'>('ALL');
-    const [filterConfidence, setFilterConfidence] = useState<'ALL' | 'HIGH' | 'LOW'>('ALL');
+    const [filterConfidence, _setFilterConfidence] = useState<'ALL' | 'HIGH' | 'LOW'>('ALL');
 
     useEffect(() => {
         setReports(listCitizenReports().sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
@@ -69,27 +73,110 @@ const ReviewQueue = () => {
         }
     };
 
-    const getStatusStyles = (status: CitizenReport['aiStatus']) => {
-        switch (status) {
-            case 'ACCEPTED': return 'bg-green-100 text-green-800 border-green-200';
-            case 'REJECTED': return 'bg-red-100 text-red-800 border-red-200';
-            default: return 'bg-blue-100 text-blue-800 border-blue-200';
+    const columns = [
+        {
+            header: 'Incident ID',
+            render: (report: CitizenReport) => (
+                <div className="flex flex-col">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">
+                        {formatDistanceToNow(new Date(report.createdAt), { addSuffix: true })}
+                    </span>
+                    <span className={cn(
+                        "text-xs font-black tracking-tight transition-colors",
+                        selectedReport?.id === report.id ? "text-white" : "text-slate-900 group-hover:text-accent"
+                    )}>
+                        #{report.id.split('-')[0]}
+                    </span>
+                </div>
+            )
+        },
+        {
+            header: 'Location Discovery',
+            render: (report: CitizenReport) => (
+                <div className="flex items-center gap-3">
+                    <div className={cn(
+                        "p-1.5 rounded-lg transition-colors",
+                        selectedReport?.id === report.id ? "bg-white/10 text-white" : "bg-slate-50 text-slate-400"
+                    )}>
+                        <MapPin size={12} />
+                    </div>
+                    <div className="flex flex-col">
+                        <span className={cn(
+                            "text-[11px] font-black truncate max-w-[120px] uppercase tracking-tight",
+                            selectedReport?.id === report.id ? "text-white" : "text-slate-700"
+                        )}>
+                            {report.description ? report.description.split('] ')[0].replace('[', '') : `${report.lat.toFixed(2)}, ${report.lon.toFixed(2)}`}
+                        </span>
+                    </div>
+                </div>
+            )
+        },
+        {
+            header: 'AI Intel',
+            className: 'text-center',
+            render: (report: CitizenReport) => (
+                <div className="flex flex-col items-center gap-1.5">
+                    <StatusPill status={report.aiStatus as any} />
+                    {report.aiConfidence !== undefined && (
+                        <span className={cn(
+                            "text-[10px] font-black font-mono uppercase tracking-[0.1em]",
+                            selectedReport?.id === report.id ? "text-slate-400" : "text-slate-400"
+                        )}>
+                            {(report.aiConfidence * 100).toFixed(0)}% Match
+                        </span>
+                    )}
+                </div>
+            )
         }
-    };
+    ];
+
+    const renderCard = (report: CitizenReport) => (
+        <div className={cn(
+            "p-5 transition-all duration-300",
+            selectedReport?.id === report.id ? 'bg-slate-900 text-white shadow-2xl' : 'hover:bg-slate-50'
+        )}>
+            <div className="flex items-start justify-between mb-4">
+                <div className="flex flex-col">
+                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">
+                        {formatDistanceToNow(new Date(report.createdAt), { addSuffix: true })}
+                    </span>
+                    <h3 className="text-sm font-black tracking-tight">#{report.id.split('-')[0]}</h3>
+                </div>
+                <StatusPill status={report.aiStatus as any} />
+            </div>
+
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                    <MapPin size={12} className={selectedReport?.id === report.id ? "text-white/40" : "text-slate-400"} />
+                    <span className="text-[10px] font-bold truncate max-w-[150px]">
+                        {report.description ? report.description.split('] ')[0].replace('[', '') : `${report.lat.toFixed(2)}, ${report.lon.toFixed(2)}`}
+                    </span>
+                </div>
+                {report.aiConfidence !== undefined && (
+                    <span className={cn(
+                        "text-[10px] font-black font-mono",
+                        selectedReport?.id === report.id ? "text-white/40" : "text-slate-300"
+                    )}>
+                        {(report.aiConfidence * 100).toFixed(0)}%
+                    </span>
+                )}
+            </div>
+        </div>
+    );
 
     return (
-        <div className="h-[calc(100vh-8rem)] flex flex-col space-y-4">
+        <div className="h-[calc(100vh-8rem)] flex flex-col space-y-6 animate-fade-in-up">
             {/* Header & Filters */}
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 shrink-0">
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 shrink-0 px-2">
                 <div>
-                    <h1 className="text-3xl font-bold text-text tracking-tight mb-2">Review Queue</h1>
-                    <p className="text-gray-500">Citizen reports requiring validation or already processed by AI.</p>
+                    <h1 className="section-heading mb-1">Audit Operations</h1>
+                    <p className="text-slate-500 font-bold text-sm">Strategic validation of citizen intelligence reports.</p>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-3 bg-white p-2 rounded-xl shadow-sm border border-border">
-                    <div className="flex items-center gap-2 pl-2 border-r border-border pr-3">
-                        <Filter size={16} className="text-gray-400" />
-                        <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Filters</span>
+                <div className="flex flex-wrap items-center gap-3 bg-white p-2 rounded-2xl shadow-premium border border-slate-100">
+                    <div className="flex items-center gap-2 pl-3 border-r border-slate-100 pr-4">
+                        <Filter size={14} className="text-slate-400" />
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Tactical Filters</span>
                     </div>
 
                     <select
@@ -98,12 +185,12 @@ const ReviewQueue = () => {
                             setFilterStatus(e.target.value as any);
                             setSelectedReport(null);
                         }}
-                        className="text-sm bg-gray-50 border-none rounded-lg focus:ring-0 cursor-pointer font-medium text-gray-700"
+                        className="text-[11px] font-black uppercase tracking-widest bg-slate-50 border-none rounded-xl focus:ring-4 ring-slate-900/5 cursor-pointer text-slate-700 px-4 py-2 outline-none transition-all hover:bg-slate-100"
                     >
-                        <option value="ALL">All Statuses</option>
-                        <option value="PENDING">Pending Only</option>
-                        <option value="ACCEPTED">Accepted Only</option>
-                        <option value="REJECTED">Rejected Only</option>
+                        <option value="ALL">Status: All</option>
+                        <option value="PENDING">Status: Pending</option>
+                        <option value="ACCEPTED">Status: Accepted</option>
+                        <option value="REJECTED">Status: Rejected</option>
                     </select>
 
                     <select
@@ -112,125 +199,63 @@ const ReviewQueue = () => {
                             setFilterDate(e.target.value as any);
                             setSelectedReport(null);
                         }}
-                        className="text-sm bg-gray-50 border-none rounded-lg focus:ring-0 cursor-pointer font-medium text-gray-700"
+                        className="text-[11px] font-black uppercase tracking-widest bg-slate-50 border-none rounded-xl focus:ring-4 ring-slate-900/5 cursor-pointer text-slate-700 px-4 py-2 outline-none transition-all hover:bg-slate-100"
                     >
-                        <option value="ALL">All Time</option>
-                        <option value="24H">Last 24 Hours</option>
-                        <option value="7D">Last 7 Days</option>
-                    </select>
-
-                    <select
-                        value={filterConfidence}
-                        onChange={e => {
-                            setFilterConfidence(e.target.value as any);
-                            setSelectedReport(null);
-                        }}
-                        className="text-sm bg-gray-50 border-none rounded-lg focus:ring-0 cursor-pointer font-medium text-gray-700"
-                    >
-                        <option value="ALL">Any Confidence</option>
-                        <option value="HIGH">High (&gt;80%)</option>
-                        <option value="LOW">Low (&lt;80%)</option>
+                        <option value="ALL">Time: All History</option>
+                        <option value="24H">Time: Last 24H</option>
+                        <option value="7D">Time: Last 7D</option>
                     </select>
                 </div>
             </div>
 
-            <div className="flex gap-6 overflow-hidden flex-1">
-                {/* Table View */}
-                <div className={`card flex-1 flex flex-col overflow-hidden transition-all duration-300 ${selectedReport ? 'hidden lg:flex lg:w-1/2' : 'w-full'}`}>
-                    <div className="overflow-x-auto flex-1">
-                        <table className="w-full text-left border-collapse">
-                            <thead className="sticky top-0 bg-gray-50 z-10 shadow-sm">
-                                <tr>
-                                    <th className="px-4 py-4 text-xs uppercase tracking-wider font-bold text-gray-500 border-b border-border">Date & ID</th>
-                                    <th className="px-4 py-4 text-xs uppercase tracking-wider font-bold text-gray-500 border-b border-border">Location</th>
-                                    <th className="px-4 py-4 text-xs uppercase tracking-wider font-bold text-gray-500 border-b border-border w-32">AI Status</th>
-                                    <th className="px-4 py-4 text-xs uppercase tracking-wider font-bold text-gray-500 border-b border-border text-center">Config</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-border overflow-y-auto">
-                                {filteredReports.length === 0 ? (
-                                    <tr>
-                                        <td colSpan={4} className="p-12 text-center text-gray-500">
-                                            <CheckCircle size={40} className="mx-auto mb-4 text-gray-300" />
-                                            No reports match your filters.
-                                        </td>
-                                    </tr>
-                                ) : (
-                                    filteredReports.map(report => (
-                                        <tr
-                                            key={report.id}
-                                            onClick={() => setSelectedReport(report)}
-                                            className={`cursor-pointer transition-colors group ${selectedReport?.id === report.id ? 'bg-primary/5' : 'hover:bg-gray-50'}`}
-                                        >
-                                            <td className="px-4 py-4">
-                                                <div className="flex flex-col">
-                                                    <span className="text-[11px] font-bold text-gray-400 mb-1">
-                                                        {formatDistanceToNow(new Date(report.createdAt), { addSuffix: true })}
-                                                    </span>
-                                                    <span className={`text-sm font-mono font-bold ${selectedReport?.id === report.id ? 'text-primary' : 'text-gray-900 group-hover:text-primary transition-colors'}`}>
-                                                        {report.id}
-                                                    </span>
-                                                </div>
-                                            </td>
-                                            <td className="px-4 py-4">
-                                                <div className="flex items-center gap-2">
-                                                    <MapPin size={14} className="text-gray-400 shrink-0" />
-                                                    <div className="flex flex-col">
-                                                        <span className="text-sm font-semibold text-gray-700 truncate max-w-[150px]">
-                                                            {report.description ? report.description.split('] ')[0].replace('[', '') : `${report.lat.toFixed(4)}, ${report.lon.toFixed(4)}`}
-                                                        </span>
-                                                        <span className="text-[10px] text-gray-500">
-                                                            {report.lat.toFixed(4)}, {report.lon.toFixed(4)}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td className="px-4 py-4">
-                                                <span className={`px-2 py-1 flex items-center justify-center rounded text-[10px] font-bold uppercase tracking-wider border ${getStatusStyles(report.aiStatus)}`}>
-                                                    {report.aiStatus}
-                                                </span>
-                                            </td>
-                                            <td className="px-4 py-4 text-center align-middle">
-                                                {report.aiConfidence !== undefined ? (
-                                                    <span className={`text-xs font-mono font-bold px-2 py-1 rounded bg-gray-100 inline-block ${report.aiConfidence >= 0.8 ? 'text-green-600' : report.aiConfidence < 0.5 ? 'text-red-600' : 'text-yellow-600'}`}>
-                                                        {(report.aiConfidence * 100).toFixed(0)}%
-                                                    </span>
-                                                ) : (
-                                                    <span className="text-xs text-gray-400">-</span>
-                                                )}
-                                            </td>
-                                        </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
+            <div className="flex gap-6 overflow-hidden flex-1 pb-4">
+                {/* List View */}
+                <div className={cn(
+                    "card-premium flex-1 flex flex-col overflow-hidden transition-all duration-500 border-none shadow-premium",
+                    selectedReport ? "hidden lg:flex lg:w-1/2" : "w-full"
+                )}>
+                    <ResponsiveDataList
+                        data={filteredReports}
+                        columns={columns}
+                        renderCard={renderCard}
+                        keyExtractor={(r) => r.id}
+                        onRowClick={(r) => setSelectedReport(r)}
+                        className="flex-1 overflow-y-auto custom-scroll"
+                        emptyState={
+                            <div className="p-12">
+                                <EmptyState
+                                    title="Sector Nominal"
+                                    description="No intelligence reports match your active tactical filters. All submissions cleared."
+                                    icon={Inbox}
+                                />
+                            </div>
+                        }
+                    />
                 </div>
 
                 {/* Detail View Drawer/Pane */}
                 {selectedReport && (
-                    <div className="card w-full lg:w-1/2 flex flex-col overflow-hidden bg-white shadow-xl lg:shadow-none border-l-0 lg:border-l border-border rounded-none lg:rounded-2xl">
-                        {/* Drawer Header for Mobile */}
-                        <div className="lg:hidden flex items-center justify-between p-4 border-b border-border bg-gray-50">
-                            <span className="font-bold text-gray-700">Report Details</span>
-                            <button onClick={() => setSelectedReport(null)} className="text-gray-500 hover:text-gray-900">
+                    <div className="flex-1 lg:w-1/2 flex flex-col overflow-hidden bg-white shadow-premium rounded-[2.5rem] border border-slate-100 relative z-20 animate-fade-in-up">
+                        <div className="lg:hidden flex items-center justify-between p-6 border-b border-slate-50 bg-slate-50/50">
+                            <span className="text-xs font-black text-slate-900 uppercase tracking-widest">Tactical Breakdown</span>
+                            <button onClick={() => setSelectedReport(null)} className="p-2 -mr-2 text-slate-400 hover:text-slate-900 transition-colors">
                                 <XCircle size={24} />
                             </button>
                         </div>
 
-                        <div className="overflow-y-auto flex-1">
+                        <div className="overflow-y-auto flex-1 custom-scroll">
                             {/* Hero Image Container */}
-                            <div className="relative h-64 bg-gray-900 flex items-center justify-center custom-scroll">
+                            <div className="relative h-80 bg-slate-900 flex items-center justify-center group overflow-hidden">
                                 <img
                                     src={selectedReport.imageUrl}
                                     alt="Pothole"
-                                    className="max-w-full max-h-full object-contain"
+                                    className="max-w-full max-h-full object-contain transition-transform duration-1000 group-hover:scale-105"
                                 />
 
                                 {/* BBox Overlay if available */}
                                 {selectedReport.aiStatus === 'ACCEPTED' && selectedReport.bbox && (
                                     <div
-                                        className="absolute border-4 border-emerald-400 shadow-[0_0_20px_rgba(52,211,153,0.4)] pointer-events-none z-10"
+                                        className="absolute border-2 border-emerald-400 shadow-[0_0_40px_rgba(52,211,153,0.6)] pointer-events-none z-10 rounded-sm animate-pulse"
                                         style={{
                                             left: `${selectedReport.bbox[0] * 100}%`,
                                             top: `${selectedReport.bbox[1] * 100}%`,
@@ -238,59 +263,68 @@ const ReviewQueue = () => {
                                             height: `${selectedReport.bbox[3] * 100}%`
                                         }}
                                     >
-                                        <div className="absolute -top-7 left-[-4px] bg-emerald-400 text-black text-[10px] font-black px-2 py-1 uppercase tracking-wider shadow-md whitespace-nowrap">
-                                            {selectedReport.modelName || 'POTHOLE'} {(selectedReport.aiConfidence! * 100).toFixed(1)}%
+                                        <div className="absolute -top-7 left-[-2px] bg-emerald-400 text-slate-900 text-[9px] font-black px-3 py-1 rounded-t-sm uppercase tracking-widest shadow-xl whitespace-nowrap">
+                                            {selectedReport.modelName || 'POTHOLE_V2'} {(selectedReport.aiConfidence! * 100).toFixed(1)}%
                                         </div>
                                     </div>
                                 )}
                             </div>
 
-                            <div className="p-6 space-y-8">
+                            <div className="p-10 space-y-12">
                                 {/* Metadata & Map Grid */}
-                                <div className="grid grid-cols-2 gap-6">
-                                    <div className="space-y-4">
+                                <div className="grid grid-cols-2 gap-10">
+                                    <div className="space-y-8">
                                         <div>
-                                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Reporter</p>
-                                            <p className="text-sm font-semibold text-gray-800">{selectedReport.submittedBy}</p>
+                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Subject Origin</p>
+                                            <p className="text-sm font-black text-slate-900 tracking-tight">{selectedReport.submittedBy}</p>
                                         </div>
                                         <div>
-                                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Citizen Note</p>
-                                            <p className="text-sm text-gray-600 italic">"{selectedReport.description || 'No notes provided.'}"</p>
+                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Citizen Testimony</p>
+                                            <p className="text-xs font-bold text-slate-500 italic leading-relaxed border-l-4 border-slate-100 pl-4 py-1">
+                                                "{selectedReport.description || 'No testimony provided.'}"
+                                            </p>
                                         </div>
                                     </div>
-                                    <div className="h-32 rounded-xl overflow-hidden border border-gray-200 shadow-inner translate-z-0">
+                                    <div className="h-44 rounded-[2rem] overflow-hidden border border-slate-100 shadow-premium relative">
                                         <MapContainer center={[selectedReport.lat, selectedReport.lon]} zoom={15} style={{ height: '100%', width: '100%' }} zoomControl={false} dragging={false}>
                                             <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
                                             <MapController center={[selectedReport.lat, selectedReport.lon]} />
                                             <Marker position={[selectedReport.lat, selectedReport.lon]} />
                                         </MapContainer>
+                                        <div className="absolute inset-0 ring-1 ring-inset ring-slate-900/5 rounded-[2rem] pointer-events-none" />
                                     </div>
                                 </div>
 
-                                {/* AI Analysis Panel */}
-                                <div className={`rounded-xl p-5 border ${selectedReport.aiStatus === 'PENDING' ? 'bg-blue-50 border-blue-100' :
-                                    selectedReport.aiStatus === 'ACCEPTED' ? 'bg-green-50 border-green-100' :
-                                        'bg-red-50 border-red-100'
-                                    }`}>
-                                    <div className="flex items-center justify-between mb-4">
-                                        <div className="flex items-center gap-2">
-                                            <AlertTriangle size={16} className={selectedReport.aiStatus === 'ACCEPTED' ? 'text-green-600' : selectedReport.aiStatus === 'REJECTED' ? 'text-red-600' : 'text-blue-600'} />
-                                            <span className="font-black text-sm uppercase tracking-wider text-gray-800">System Analysis</span>
+                                {/* AI Intelligence Report */}
+                                <div className={cn(
+                                    "card-premium p-8 border-none shadow-xl",
+                                    selectedReport.aiStatus === 'PENDING' ? 'bg-amber-50/50' :
+                                        selectedReport.aiStatus === 'ACCEPTED' ? 'bg-emerald-50/50' :
+                                            'bg-rose-50/50'
+                                )}>
+                                    <div className="flex items-center justify-between mb-8">
+                                        <div className="flex items-center gap-3">
+                                            <AlertTriangle size={16} className={cn(
+                                                selectedReport.aiStatus === 'ACCEPTED' ? 'text-emerald-600' :
+                                                    selectedReport.aiStatus === 'REJECTED' ? 'text-rose-600' : 'text-amber-600'
+                                            )} />
+                                            <span className="text-[11px] font-black uppercase tracking-widest text-slate-900">Intelligence Brief</span>
                                         </div>
-                                        <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider bg-white shadow-sm ${selectedReport.aiStatus === 'ACCEPTED' ? 'text-green-700' : selectedReport.aiStatus === 'REJECTED' ? 'text-red-700' : 'text-blue-700'}`}>
-                                            {selectedReport.aiStatus}
-                                        </span>
+                                        <StatusPill status={selectedReport.aiStatus as any} />
                                     </div>
 
                                     {selectedReport.aiConfidence !== undefined && (
-                                        <div className="mb-4">
-                                            <div className="flex justify-between text-xs font-bold mb-1">
-                                                <span className="text-gray-500">Confidence Score</span>
-                                                <span className="text-gray-700">{(selectedReport.aiConfidence * 100).toFixed(1)}%</span>
+                                        <div className="mb-8">
+                                            <div className="flex justify-between text-[10px] font-black uppercase tracking-widest mb-3 text-slate-500">
+                                                <span>Confidence Accuracy</span>
+                                                <span className="font-mono bg-white px-2 py-0.5 rounded shadow-sm">{(selectedReport.aiConfidence * 100).toFixed(1)}%</span>
                                             </div>
-                                            <div className="w-full h-2 bg-white rounded-full overflow-hidden border border-gray-200">
+                                            <div className="w-full h-2 bg-white rounded-full overflow-hidden shadow-inner">
                                                 <div
-                                                    className={`h-full ${selectedReport.aiConfidence >= 0.6 ? 'bg-emerald-500' : 'bg-red-500'}`}
+                                                    className={cn(
+                                                        "h-full transition-all duration-1000 ease-out",
+                                                        selectedReport.aiConfidence >= 0.6 ? 'bg-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.5)]' : 'bg-rose-500 shadow-[0_0_15px_rgba(244,63,94,0.5)]'
+                                                    )}
                                                     style={{ width: `${selectedReport.aiConfidence * 100}%` }}
                                                 />
                                             </div>
@@ -298,51 +332,51 @@ const ReviewQueue = () => {
                                     )}
 
                                     {selectedReport.aiReason && (
-                                        <p className="text-sm font-medium text-red-800 bg-white/50 p-3 rounded-lg mt-3 border border-red-100">
-                                            <span className="block text-[10px] font-black text-red-600/70 uppercase mb-1">Rejection Reason</span>
-                                            {selectedReport.aiReason}
-                                        </p>
+                                        <div className="p-5 bg-white rounded-2xl border border-slate-100 shadow-sm">
+                                            <span className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 leading-none">Diagnostic Log</span>
+                                            <p className="text-xs font-bold leading-relaxed text-slate-700">{selectedReport.aiReason}</p>
+                                        </div>
                                     )}
                                 </div>
 
-                                {/* Timeline Integration */}
-                                <div className="mt-4">
+                                {/* Operational Timeline */}
+                                <div className="pt-4">
                                     <ActivityTimeline entityId={selectedReport.id} />
                                 </div>
                             </div>
                         </div>
 
-                        {/* Actions Footer */}
-                        <div className="p-4 border-t border-border bg-gray-50 shrink-0">
+                        {/* Tactical Actions Footer */}
+                        <div className="p-8 border-t border-slate-100 bg-white shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.05)] shrink-0">
                             {selectedReport.aiStatus === 'ACCEPTED' && selectedReport.linkedPotholeId ? (
                                 <Link
                                     to={`/potholes/${selectedReport.linkedPotholeId}`}
-                                    className="w-full py-4 bg-white border border-gray-300 text-gray-900 font-bold rounded-xl shadow-sm hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
+                                    className="btn-premium w-full py-5 bg-slate-900 text-white shadow-2xl shadow-slate-900/20 hover:bg-black transition-all hover-lift"
                                 >
-                                    Open Official Pothole Record
-                                    <ExternalLink size={18} />
+                                    Access Official Record
+                                    <ChevronRight size={18} />
                                 </Link>
                             ) : (
-                                <div className="space-y-3">
+                                <div className="space-y-4">
                                     <input
                                         type="text"
-                                        placeholder="Reason for rejection (required if rejecting)..."
-                                        className="w-full px-4 py-3 text-sm bg-white border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                        placeholder="Enter mandatory audit rationale..."
+                                        className="w-full px-6 py-4 text-xs font-bold bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-4 focus:ring-slate-900/5 focus:border-slate-400 transition-all shadow-inner"
                                         value={rejectionReason}
                                         onChange={e => setRejectionReason(e.target.value)}
                                     />
-                                    <div className="flex gap-3">
+                                    <div className="flex gap-4">
                                         <button
                                             onClick={() => handleAction(selectedReport.id, 'reject')}
-                                            className="flex-1 py-3 bg-white border border-red-200 text-red-600 hover:bg-red-50 font-bold rounded-xl transition-colors shadow-sm"
+                                            className="flex-1 py-4 bg-white text-rose-600 border border-rose-100 hover:bg-rose-50 font-black text-[10px] uppercase tracking-widest rounded-2xl transition-all shadow-sm active:scale-95 hover:border-rose-200"
                                         >
-                                            Reject
+                                            Decline Case
                                         </button>
                                         <button
                                             onClick={() => handleAction(selectedReport.id, 'accept')}
-                                            className="flex-[2] py-3 bg-gray-900 border border-transparent text-white hover:bg-black font-bold rounded-xl transition-all shadow-md active:scale-95"
+                                            className="flex-[2] py-4 bg-slate-900 text-white hover:bg-black font-black text-[10px] uppercase tracking-widest rounded-2xl transition-all shadow-xl shadow-slate-900/20 active:scale-95 hover-lift"
                                         >
-                                            Accept & Link
+                                            Validate & Confirm
                                         </button>
                                     </div>
                                 </div>

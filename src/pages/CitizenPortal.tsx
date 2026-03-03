@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { submitCitizenReport, listCitizenReports } from '../lib/api';
-import { Upload, MapPin, CheckCircle2, XCircle, Loader2, Locate, LogOut, Navigation, ArrowRight, AlertTriangle } from 'lucide-react';
+import { Upload, MapPin, CheckCircle2, XCircle, Loader2, Locate, Navigation, ArrowRight, AlertTriangle, PlusCircle } from 'lucide-react';
 import type { CitizenReport } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
@@ -9,6 +9,7 @@ import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { formatDistanceToNow } from 'date-fns';
 import { ActivityTimeline } from '../components/ActivityTimeline';
+import { StatusPill } from '../components/StatusPill';
 
 // Fix Leaflet's default icon path issues
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -38,7 +39,7 @@ function MapController({ center }: { center: [number, number] }) {
 }
 
 const CitizenPortal = () => {
-    const { logout, user } = useAuth();
+    const { user } = useAuth();
     const [lat, setLat] = useState('6.9271');
     const [lon, setLon] = useState('79.8612');
     const [description, setDescription] = useState('');
@@ -128,34 +129,13 @@ const CitizenPortal = () => {
         setFormError('');
     };
 
-    // Clean Standalone Header
-    const Header = () => (
-        <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
-            <div className="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shadow-md shadow-primary/20">
-                        <div className="w-2 h-2 rounded-full bg-white animate-pulse" />
-                    </div>
-                    <span className="text-xl font-black text-gray-900 tracking-tight">RoadPulse</span>
-                </div>
-                <div className="flex items-center gap-4">
-                    <span className="text-sm font-semibold text-gray-500 hidden sm:block">Welcome, {user?.name.split(' ')[0]}</span>
-                    <button
-                        onClick={logout}
-                        className="flex items-center gap-2 text-sm text-gray-500 hover:text-red-600 font-bold transition-colors"
-                    >
-                        <LogOut size={16} />
-                        <span className="hidden sm:inline">Sign Out</span>
-                    </button>
-                </div>
-            </div>
-        </header>
-    );
+    // Clean Standalone Header (Removed since Layout handles it now)
+    // We can still use a sub-header for portal specific CTAs if needed
+
 
     if (isSubmitting) {
         return (
-            <div className="min-h-screen bg-gray-50">
-                <Header />
+            <div className="bg-slate-50 min-h-screen -m-4 sm:-m-6 lg:-m-8 p-4 sm:p-12 transition-all animate-in fade-in duration-500">
                 <div className="max-w-3xl mx-auto py-12 px-4">
                     <div className="bg-white rounded-3xl p-12 text-center space-y-6 shadow-xl relative overflow-hidden border border-gray-100">
                         <div className="absolute top-0 left-0 w-full h-1 bg-blue-100">
@@ -180,8 +160,7 @@ const CitizenPortal = () => {
     if (result) {
         const isAccepted = result.aiStatus === 'ACCEPTED';
         return (
-            <div className="min-h-screen bg-gray-50">
-                <Header />
+            <div className="bg-slate-50 min-h-screen -m-4 sm:-m-6 lg:-m-8 p-4 sm:p-12 transition-all animate-in fade-in duration-500">
                 <div className="max-w-3xl mx-auto py-12 px-4">
                     <div className="bg-white rounded-3xl p-10 text-center space-y-6 shadow-xl relative overflow-hidden border border-gray-100">
                         <div className={`absolute top-0 left-0 w-full h-2 ${isAccepted ? 'bg-green-500' : 'bg-red-500'}`} />
@@ -255,16 +234,61 @@ const CitizenPortal = () => {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 pb-20">
-            <Header />
-            <div className="max-w-4xl mx-auto py-8 px-4 space-y-8">
-                <div>
-                    <h1 className="text-3xl sm:text-4xl font-black text-gray-900 tracking-tight mb-2">Report a Pothole</h1>
-                    <p className="text-gray-500 text-lg font-medium">Help us keep Sri Lanka's roads safe by reporting hazardous surface damage.</p>
+        <div className="space-y-8 pb-12">
+            <section className="relative overflow-hidden rounded-[3rem] bg-slate-900 px-8 py-20 sm:px-16 sm:py-28 text-white shadow-2xl shadow-slate-900/30">
+                {/* Visual Eye Candy */}
+                <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-gradient-to-br from-accent/40 to-blue-600/20 blur-[120px] -mr-64 -mt-64 animate-pulse opacity-50" />
+                <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-indigo-600/10 blur-[100px] -ml-48 -mb-48" />
+
+                <div className="relative z-10 max-w-3xl">
+                    <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-xl border border-white/10 rounded-full mb-8 animate-fade-in-up">
+                        <span className="w-2 h-2 bg-accent rounded-full animate-pulse shadow-[0_0_10px_rgba(255,165,0,0.8)]" />
+                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-accent-light">Citizen Empowerment Portal</span>
+                    </div>
+
+                    <h1 className="text-4xl sm:text-7xl font-black mb-8 leading-[1.1] tracking-tight animate-fade-in-up delay-75">
+                        Let's Fix Our <br />
+                        <span className="bg-gradient-to-r from-white via-accent-light to-white bg-clip-text text-transparent italic">Roads Together.</span>
+                    </h1>
+
+                    <p className="text-slate-400 text-lg sm:text-xl font-bold leading-relaxed mb-12 max-w-xl animate-fade-in-up delay-150">
+                        Join thousands of citizens using RoadPulse to report hazards. Our AI validates reports in real-time, accelerating repairs by up to 60%.
+                    </p>
+
+                    <div className="flex flex-wrap gap-6 animate-fade-in-up delay-300">
+                        <a href="#report-form" className="btn-premium group bg-white text-slate-900 border-none px-8 py-5 text-lg hover:scale-105 active:scale-95 shadow-[0_20px_40px_-10px_rgba(255,255,255,0.2)]">
+                            Start Reporting
+                            <PlusCircle size={22} className="group-hover:rotate-90 transition-transform duration-500" />
+                        </a>
+                        <a href="#history" className="flex items-center gap-2 text-sm font-black uppercase tracking-widest text-white/60 hover:text-white transition-colors group">
+                            Check My Submissions
+                            <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                        </a>
+                    </div>
                 </div>
 
-                <div className="bg-white rounded-3xl shadow-sm border border-gray-200 overflow-hidden">
-                    <form onSubmit={handleSubmit} className="p-6 sm:p-10 space-y-8">
+                {/* Glass Stats Overlay (Optional/Subtle) */}
+                <div className="absolute bottom-12 right-12 hidden lg:flex gap-8 animate-fade-in-up delay-500">
+                    <div className="glass-premium p-6 rounded-3xl border-white/5 bg-white/5">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Total Fixed</p>
+                        <p className="text-3xl font-black">1.2k+</p>
+                    </div>
+                    <div className="glass-premium p-6 rounded-3xl border-white/5 bg-white/5">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Avg Resolution</p>
+                        <p className="text-3xl font-black">48h</p>
+                    </div>
+                </div>
+            </section>
+
+            <div id="report-form" className="max-w-4xl mx-auto space-y-8 scroll-mt-24">
+                <div className="text-center sm:text-left">
+                    <h2 className="section-heading mb-2">Submit Evidence</h2>
+                    <p className="text-slate-500 font-medium">Please provide a clear photo and location of the pothole.</p>
+                </div>
+
+                <div className="card-premium overflow-hidden">
+                    <form onSubmit={handleSubmit} className="p-6 sm:p-10 space-y-10">
+
                         {formError && (
                             <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl flex items-start gap-3">
                                 <AlertTriangle className="shrink-0 mt-0.5" size={18} />
@@ -397,10 +421,10 @@ const CitizenPortal = () => {
                         <div className="pt-6">
                             <button
                                 type="submit"
-                                className="w-full flex items-center justify-center gap-3 bg-primary text-white py-5 rounded-2xl font-black text-lg shadow-lg shadow-primary/30 hover:bg-opacity-90 hover:-translate-y-1 active:translate-y-0 transition-all"
+                                className="w-full btn-premium bg-slate-900 text-white py-5 rounded-2xl text-lg shadow-xl shadow-slate-900/20 hover:scale-[1.01] active:scale-[0.98]"
                             >
-                                Submit Pothole Report
-                                <ArrowRight size={20} />
+                                Submit Report
+                                <ArrowRight size={22} />
                             </button>
                         </div>
                     </form>
@@ -408,37 +432,38 @@ const CitizenPortal = () => {
 
                 {/* Submissions History */}
                 {mySubmissions.length > 0 && (
-                    <div className="mt-16">
-                        <h2 className="text-2xl font-black text-gray-900 mb-6 px-2">My Recent Submissions</h2>
-                        <div className="space-y-4">
+                    <div id="history" className="mt-16 scroll-mt-24">
+                        <div className="flex items-center justify-between mb-8 px-2">
+                            <h2 className="section-heading">Submission History</h2>
+                            <span className="text-xs font-black text-slate-400 uppercase tracking-widest">{mySubmissions.length} Reports</span>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             {mySubmissions.map(report => (
-                                <div key={report.id} className="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm flex flex-col md:flex-row md:items-center gap-5">
-                                    <div className="w-20 h-20 bg-gray-100 rounded-xl shrink-0 overflow-hidden border border-gray-200">
+                                <div key={report.id} className="card-premium p-4 flex gap-4 items-start hover:border-slate-300">
+                                    <div className="w-20 h-20 bg-slate-100 rounded-xl shrink-0 overflow-hidden border border-slate-100 shadow-inner">
                                         <img src={report.imageUrl} alt="" className="w-full h-full object-cover" />
                                     </div>
-                                    <div className="flex-1">
-                                        <div className="flex items-center gap-2 font-mono text-xs font-bold text-gray-400 mb-1">
-                                            <span>{report.id}</span>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2 font-mono text-[10px] font-black text-slate-400 mb-1">
+                                            <span className="truncate">#{report.id.split('-')[0]}</span>
                                             <span>•</span>
                                             <span>{formatDistanceToNow(new Date(report.createdAt), { addSuffix: true })}</span>
                                         </div>
-                                        <p className="text-gray-900 font-semibold mb-2 line-clamp-1">
-                                            {report.description || `Pothole reported at ${report.lat.toFixed(4)}, ${report.lon.toFixed(4)}`}
+                                        <p className="text-slate-900 font-bold mb-3 line-clamp-1 text-sm">
+                                            {report.description || `Reported at ${report.lat.toFixed(2)}, ${report.lon.toFixed(2)}`}
                                         </p>
-                                        <div className="flex gap-2">
-                                            {report.aiStatus === 'ACCEPTED' && <span className="px-2 py-1 bg-green-100 text-green-700 text-[10px] font-black uppercase tracking-wider rounded">Accepted</span>}
-                                            {report.aiStatus === 'REJECTED' && <span className="px-2 py-1 bg-red-100 text-red-700 text-[10px] font-black uppercase tracking-wider rounded">Rejected</span>}
-                                            {report.aiStatus === 'PENDING' && <span className="px-2 py-1 bg-blue-100 text-blue-700 text-[10px] font-black uppercase tracking-wider rounded">Reviewing</span>}
+                                        <div className="flex items-center justify-between gap-2">
+                                            <StatusPill status={report.aiStatus as any} />
+                                            {report.aiStatus === 'ACCEPTED' && report.linkedPotholeId && (
+                                                <Link
+                                                    to={`/potholes/${report.linkedPotholeId}`}
+                                                    className="p-2 bg-slate-50 rounded-lg text-slate-400 hover:text-slate-900 hover:bg-slate-100 transition-all"
+                                                >
+                                                    <Navigation size={18} />
+                                                </Link>
+                                            )}
                                         </div>
                                     </div>
-                                    {report.aiStatus === 'ACCEPTED' && report.linkedPotholeId && (
-                                        <Link
-                                            to={`/potholes/${report.linkedPotholeId}`}
-                                            className="w-full md:w-auto text-center px-4 py-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-sm font-bold text-gray-700 rounded-lg transition-colors"
-                                        >
-                                            View Map
-                                        </Link>
-                                    )}
                                 </div>
                             ))}
                         </div>

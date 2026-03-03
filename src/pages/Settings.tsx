@@ -21,22 +21,22 @@ const Settings = () => {
     };
 
     return (
-        <div className="space-y-6 max-w-4xl mx-auto">
+        <div className="space-y-8 max-w-4xl mx-auto pb-12 px-4 md:px-0">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-black text-gray-900 tracking-tight">System Settings</h1>
-                    <p className="text-gray-500 font-medium">Configure global platform parameters and ML thresholds.</p>
+                    <h1 className="section-heading mb-1">Platform Protocols</h1>
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Global configuration parameters and neural thresholds</p>
                 </div>
             </div>
 
-            <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
-                <div className="p-6 border-b border-gray-100 flex items-center gap-3">
-                    <div className="p-2 bg-primary/10 text-primary rounded-lg">
-                        <Bot size={20} />
+            <div className="card-premium overflow-hidden border-none shadow-2xl shadow-slate-900/5">
+                <div className="p-8 border-b border-slate-50 flex items-center gap-4 bg-slate-50/30">
+                    <div className="p-2.5 bg-slate-900 text-white rounded-xl shadow-lg shadow-slate-900/10">
+                        <Bot size={18} />
                     </div>
                     <div>
-                        <h2 className="text-lg font-bold text-gray-900">AI Validation Engine</h2>
-                        <p className="text-sm text-gray-500">Tune the automated citizen report validation.</p>
+                        <h2 className="text-xs font-black text-slate-900 uppercase tracking-widest leading-none mb-1">Neural Core Validation</h2>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Tuning the intelligence layer for citizen telemetry</p>
                     </div>
                 </div>
 
@@ -73,13 +73,13 @@ const Settings = () => {
                     </div>
                 </div>
 
-                <div className="p-6 bg-gray-50 border-t border-gray-100 flex items-center justify-end">
+                <div className="p-8 bg-slate-50/50 border-t border-slate-50 flex items-center justify-end">
                     <button
                         onClick={handleSave}
-                        className="flex items-center gap-2 bg-primary text-white px-6 py-2.5 rounded-xl font-bold hover:bg-gray-900 transition-colors shadow-lg shadow-primary/20"
+                        className="btn-premium px-10 py-4 bg-slate-900 text-white shadow-2xl shadow-slate-900/20"
                     >
-                        <Save size={18} />
-                        {isSaved ? "Settings Saved" : "Save Changes"}
+                        <Save size={16} />
+                        {isSaved ? "Protocols Updated" : "Save Changes"}
                     </button>
                 </div>
             </div>

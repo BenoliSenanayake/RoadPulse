@@ -7,12 +7,17 @@ export default {
     theme: {
         extend: {
             colors: {
-                primary: "#2563EB",
-                accent: "#14B8A6",
-                border: "#E5E7EB",
-                background: "#F7F8FA",
-                text: "#111827",
+                primary: "var(--primary)",
+                accent: "var(--accent)",
+                border: "var(--border)",
+                bg: "var(--bg)",
+                text: "var(--text)",
+                muted: "var(--muted)",
+                'accent-light': "rgba(59, 130, 246, 0.2)",
             },
+            boxShadow: {
+                'premium': "0 20px 25px -5px rgb(0 0 0 / 0.05), 0 8px 10px -6px rgb(0 0 0 / 0.05)",
+            }
         },
     },
     plugins: [],

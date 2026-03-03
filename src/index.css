@@ -3,38 +3,130 @@
 @tailwind utilities;
 
 :root {
-  --background: #F7F8FA;
-  --text: #111827;
+  /* Colors - Premium Navy & Slate Palette */
+  --bg: #F8FAFC;
+  --card: #FFFFFF;
+  --border: #E2E8F0;
+  --text: #0F172A;
+  --muted: #64748B;
+
+  --primary: #0F172A;
+  /* Deep Navy */
+  --primary-light: #1E293B;
+  --accent: #3B82F6;
+  /* Action Blue */
+
+  --success: #10B981;
+  --warning: #F59E0B;
+  --danger: #EF4444;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-premium: 0 20px 25px -5px rgb(0 0 0 / 0.05), 0 8px 10px -6px rgb(0 0 0 / 0.05);
 }
 
 body {
-  background-color: var(--background);
+  background-color: var(--bg);
   color: var(--text);
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+*:focus-visible {
+  @apply outline-none ring-2 ring-accent ring-offset-2 ring-offset-white;
 }
 
 @layer components {
-  .btn-primary {
-    @apply bg-primary text-white px-4 py-2 rounded-md hover:bg-opacity-90 transition-colors font-medium;
+  .card-premium {
+    @apply bg-white border border-border rounded-2xl shadow-premium transition-all duration-300;
   }
 
-  .card {
-    @apply bg-white border border-border rounded-lg shadow-sm overflow-hidden;
+  .glass-effect {
+    @apply bg-white/70 backdrop-blur-lg border border-white/20 shadow-lg;
   }
 
-  .status-badge {
-    @apply px-2 py-1 rounded-full text-xs font-bold uppercase;
+  .section-heading {
+    @apply text-2xl font-black tracking-tight text-slate-900;
+  }
+
+  .btn-premium {
+    @apply px-5 py-2.5 rounded-xl font-bold transition-all active:scale-[0.98] flex items-center justify-center gap-2;
+  }
+
+  .badge {
+    @apply px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider;
+  }
+
+  .hover-lift {
+    @apply transition-all duration-300 hover:-translate-y-1 hover:shadow-xl active:scale-[0.98];
+  }
+
+  .status-pill {
+    @apply px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 border;
+  }
+
+  /* Semantic Status Colors */
+  .status-new {
+    @apply bg-blue-50 text-blue-600 border-blue-100;
+  }
+
+  .status-confirmed {
+    @apply bg-amber-50 text-amber-600 border-amber-100;
+  }
+
+  .status-scheduled {
+    @apply bg-purple-50 text-purple-600 border-purple-100;
+  }
+
+  .status-fixed {
+    @apply bg-emerald-50 text-emerald-600 border-emerald-100;
+  }
+
+  .status-rejected {
+    @apply bg-rose-50 text-rose-600 border-rose-100;
+  }
+
+  .skeleton {
+    @apply bg-slate-200 animate-pulse rounded-md;
   }
 }
 
-/* Leaflet map styles */
+/* Custom Utilities */
+.text-balance {
+  text-wrap: balance;
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.5s ease-out forwards;
+}
+
+.bg-hero-gradient {
+  background: radial-gradient(circle at top right, #EEF2FF 0%, #F8FAFC 100%);
+}
+
 .leaflet-container {
   width: 100%;
   height: 100%;
+  border-radius: 1rem;
 }
 
 .custom-scrollbar::-webkit-scrollbar {
-  width: 4px;
+  width: 5px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
@@ -42,10 +134,10 @@ body {
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: #E5E7EB;
+  background: #CBD5E1;
   border-radius: 10px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #D1D5DB;
+  background: #94A3B8;
 }

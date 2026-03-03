@@ -1,29 +1,42 @@
 import { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { Layout } from './components/Layout';
+import { CitizenLayout } from './components/CitizenLayout';
 
-// Lazy load pages for performance
+// Lazy load pages
 const Login = lazy(() => import('./pages/Login'));
 const Overview = lazy(() => import('./pages/Overview'));
 const LiveMap = lazy(() => import('./pages/LiveMap'));
 const PotholesTable = lazy(() => import('./pages/PotholesTable'));
 const PotholeDetail = lazy(() => import('./pages/PotholeDetail'));
 const Repairs = lazy(() => import('./pages/Repairs'));
-const CitizenPortal = lazy(() => import('./pages/CitizenPortal'));
 const ReviewQueue = lazy(() => import('./pages/ReviewQueue'));
 const Admin = lazy(() => import('./pages/Admin'));
 const Settings = lazy(() => import('./pages/Settings'));
 
+// Citizen Pages
+const ReportWizard = lazy(() => import('./pages/citizen/ReportWizard'));
+const MyReports = lazy(() => import('./pages/citizen/MyReports'));
+const ReportStatus = lazy(() => import('./pages/citizen/ReportStatus'));
+const Offline = lazy(() => import('./pages/Offline'));
+
 const Loading = () => (
-  <div className="min-h-screen flex items-center justify-center">
+  <div className="min-h-screen flex items-center justify-center bg-slate-50">
     <div className="flex flex-col items-center gap-4">
-      <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
-      <p className="text-sm font-medium text-gray-500 animate-pulse">Initializing RoadPulse...</p>
+      <div className="w-12 h-12 border-4 border-slate-900/10 border-t-slate-900 rounded-full animate-spin" />
+      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest animate-pulse">Initializing System...</p>
     </div>
   </div>
 );
+
+// Helper for dynamic landing page based on role
+const RootRedirect = () => {
+  const { user } = useAuth();
+  if (user?.role === 'CITIZEN') return <Navigate to="/citizen" replace />;
+  return <Navigate to="/overview" replace />;
+};
 
 function App() {
   return (
@@ -33,17 +46,26 @@ function App() {
           <Routes>
             <Route path="/login" element={<Login />} />
 
-            {/* Protected Dashboard Routes */}
-            <Route path="/" element={
-              <ProtectedRoute>
-                <Layout>
-                  <Navigate to="/overview" replace />
-                </Layout>
+            {/* Public/Citizen Routes */}
+            <Route path="/citizen" element={
+              <ProtectedRoute allowedRoles={['CITIZEN']}>
+                <CitizenLayout><ReportWizard /></CitizenLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/citizen/my-reports" element={
+              <ProtectedRoute allowedRoles={['CITIZEN']}>
+                <CitizenLayout><MyReports /></CitizenLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/citizen/status/:id" element={
+              <ProtectedRoute allowedRoles={['CITIZEN']}>
+                <CitizenLayout><ReportStatus /></CitizenLayout>
               </ProtectedRoute>
             } />
 
+            {/* Admin Dashboard Routes */}
             <Route path="/overview" element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={['ADMIN', 'MAINTENANCE_OFFICER']}>
                 <Layout><Overview /></Layout>
               </ProtectedRoute>
             } />
@@ -61,7 +83,7 @@ function App() {
             } />
 
             <Route path="/potholes/:id" element={
-              <ProtectedRoute allowedRoles={['ADMIN', 'MAINTENANCE_OFFICER', 'CITIZEN']}>
+              <ProtectedRoute allowedRoles={['ADMIN', 'MAINTENANCE_OFFICER']}>
                 <Layout><PotholeDetail /></Layout>
               </ProtectedRoute>
             } />
@@ -69,12 +91,6 @@ function App() {
             <Route path="/repairs" element={
               <ProtectedRoute allowedRoles={['ADMIN', 'MAINTENANCE_OFFICER']}>
                 <Layout><Repairs /></Layout>
-              </ProtectedRoute>
-            } />
-
-            <Route path="/report" element={
-              <ProtectedRoute allowedRoles={['CITIZEN']}>
-                <CitizenPortal />
               </ProtectedRoute>
             } />
 
@@ -96,8 +112,17 @@ function App() {
               </ProtectedRoute>
             } />
 
+            {/* Root Redirect Logic */}
+            <Route path="/" element={
+              <ProtectedRoute>
+                <RootRedirect />
+              </ProtectedRoute>
+            } />
+
+            <Route path="/offline" element={<Offline />} />
+
             {/* fallback */}
-            <Route path="*" element={<Navigate to="/overview" replace />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Suspense>
       </BrowserRouter>

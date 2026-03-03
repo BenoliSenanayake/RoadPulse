@@ -21,7 +21,8 @@ import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import * as L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { listPotholes, listCitizenReports } from '../lib/api';
-import { cn } from '../lib/utils';
+import { StatusPill } from '../components/StatusPill';
+import { Skeleton } from '../components/Skeleton';
 
 // Fix leaflet icon issue
 import icon from 'leaflet/dist/images/marker-icon.png';
@@ -36,30 +37,46 @@ let DefaultIcon = L.icon({
 
 L.Marker.prototype.options.icon = DefaultIcon;
 
-const StatCard = ({ title, value, icon: Icon, color, trend }: any) => (
-    <div className="card p-6 flex items-start justify-between">
-        <div>
-            <p className="text-sm font-medium text-gray-500 mb-1">{title}</p>
-            <h3 className="text-2xl font-bold text-text">{value}</h3>
-            {trend && (
-                <div className="flex items-center gap-1 mt-2 text-xs font-medium text-green-600">
-                    <TrendingUp size={14} />
-                    <span>{trend}</span>
-                </div>
-            )}
-        </div>
-        <div className={`p-3 rounded-lg bg-${color}/10 text-${color}`}>
-            <Icon size={24} />
-        </div>
-    </div>
-);
-
 const STATUS_COLORS = {
     New: '#2563EB',
     Confirmed: '#F59E0B',
     Scheduled: '#A855F7',
     Fixed: '#16A34A',
     Rejected: '#EF4444',
+};
+
+const StatCard = ({ title, value, icon: Icon, trend, loading }: any) => {
+    if (loading) return (
+        <div className="card-premium p-6 flex items-start justify-between">
+            <div className="flex-1">
+                <Skeleton variant="text" className="w-20 mb-3" />
+                <Skeleton variant="text" className="w-12 h-8 mb-4" />
+                <Skeleton variant="text" className="w-24 h-4" />
+            </div>
+            <Skeleton variant="circle" className="w-12 h-12" />
+        </div>
+    );
+
+    return (
+        <div className="card-premium p-6 flex items-start justify-between hover-lift">
+            <div>
+                <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">{title}</p>
+                <h3 className="text-3xl font-black text-slate-900 tracking-tight">{value}</h3>
+                {trend && (
+                    <div className="flex items-center gap-1 mt-3">
+                        <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-black uppercase tracking-wider">
+                            <TrendingUp size={12} />
+                            <span>{trend.split(' ')[0]}</span>
+                        </div>
+                        <span className="text-[10px] font-bold text-slate-400">{trend.split(' ').slice(1).join(' ')}</span>
+                    </div>
+                )}
+            </div>
+            <div className={`p-3 rounded-2xl bg-slate-900 text-white shadow-lg shadow-slate-900/10 group-hover:scale-110 transition-transform`}>
+                <Icon size={20} />
+            </div>
+        </div>
+    );
 };
 
 const Overview = () => {
@@ -74,10 +91,10 @@ const Overview = () => {
         const acceptedReports = allReports.filter(r => r.aiStatus === 'ACCEPTED').length;
 
         return [
-            { title: 'Total Potholes', value: total, icon: AlertTriangle, color: '[#2563EB]', trend: '+12% from last week' },
-            { title: 'Pending Reports', value: pendingReports, icon: Clock, color: '[#ec4899]', trend: 'Requires Review' },
-            { title: 'Accepted Reports', value: acceptedReports, icon: TrendingUp, color: '[#F59E0B]', trend: 'Confirmed cases' },
-            { title: 'Fixed Count', value: fixed, icon: CheckCircle2, color: '[#16A34A]', trend: '+8% this month' },
+            { title: 'Total Potholes', value: total, icon: AlertTriangle, trend: '+12% from last week' },
+            { title: 'Pending Reports', value: pendingReports, icon: Clock, trend: 'Requires Review' },
+            { title: 'Accepted Reports', value: acceptedReports, icon: TrendingUp, trend: 'Confirmed cases' },
+            { title: 'Fixed Count', value: fixed, icon: CheckCircle2, trend: '+8% this month' },
         ];
     }, [potholes]);
 
@@ -100,10 +117,17 @@ const Overview = () => {
     ];
 
     return (
-        <div className="space-y-6">
-            <div className="flex items-center justify-between">
-                <h1 className="text-2xl font-bold text-text">Operations Overview</h1>
-                <div className="text-sm text-gray-500">Last updated: {new Date().toLocaleTimeString()}</div>
+        <div className="space-y-8 animate-fade-in-up">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                    <h1 className="section-heading">Command Center</h1>
+                    <p className="text-slate-500 font-medium font-bold text-sm">Monitoring Sri Lanka's road infrastructure in real-time.</p>
+                </div>
+                <div className="flex items-center gap-3 px-4 py-2 bg-white rounded-xl border border-slate-200 shadow-sm">
+                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    <span className="text-xs font-black text-slate-900 uppercase tracking-widest">Live Status</span>
+                    <span className="text-xs font-bold text-slate-400 border-l border-slate-200 pl-3">{new Date().toLocaleTimeString()}</span>
+                </div>
             </div>
 
             {/* KPI Grid */}
@@ -113,27 +137,52 @@ const Overview = () => {
                 ))}
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Main Chart */}
-                <div className="lg:col-span-2 card p-6">
-                    <h4 className="text-base font-semibold mb-6">Weekly Detection Trends</h4>
-                    <div className="h-[300px]">
+                <div className="lg:col-span-2 card-premium p-8">
+                    <div className="flex items-center justify-between mb-8">
+                        <div>
+                            <h4 className="text-lg font-black text-slate-900 tracking-tight uppercase">Detection Trends</h4>
+                            <p className="text-xs font-bold text-slate-400">Weekly accumulation of reported surface defects</p>
+                        </div>
+                        <select className="text-xs font-black uppercase tracking-widest bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 outline-none focus:ring-4 ring-slate-900/5 transition-all">
+                            <option>Last 7 Days</option>
+                            <option>Last 30 Days</option>
+                        </select>
+                    </div>
+                    <div className="h-[320px]">
                         <ResponsiveContainer width="100%" height="100%">
                             <LineChart data={detectionsOverTime}>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-                                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6B7280' }} dy={10} />
-                                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6B7280' }} />
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
+                                <XAxis
+                                    dataKey="name"
+                                    axisLine={false}
+                                    tickLine={false}
+                                    tick={{ fontSize: 10, fill: '#94A3B8', fontWeight: 700 }}
+                                    dy={10}
+                                />
+                                <YAxis
+                                    axisLine={false}
+                                    tickLine={false}
+                                    tick={{ fontSize: 10, fill: '#94A3B8', fontWeight: 700 }}
+                                />
                                 <Tooltip
-                                    contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #E5E7EB' }}
-                                    itemStyle={{ fontSize: '12px', fontWeight: 600 }}
+                                    contentStyle={{
+                                        backgroundColor: '#0F172A',
+                                        borderRadius: '12px',
+                                        border: 'none',
+                                        color: '#fff',
+                                        boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)'
+                                    }}
+                                    itemStyle={{ fontSize: '10px', fontWeight: 900, color: '#fff', textTransform: 'uppercase' }}
                                 />
                                 <Line
                                     type="monotone"
                                     dataKey="count"
-                                    stroke="#2563EB"
-                                    strokeWidth={3}
-                                    dot={{ r: 4, fill: '#2563EB', strokeWidth: 2, stroke: '#fff' }}
-                                    activeDot={{ r: 6, strokeWidth: 0 }}
+                                    stroke="#0F172A"
+                                    strokeWidth={4}
+                                    dot={{ r: 0 }}
+                                    activeDot={{ r: 6, fill: '#3B82F6', strokeWidth: 4, stroke: '#fff' }}
                                 />
                             </LineChart>
                         </ResponsiveContainer>
@@ -141,9 +190,10 @@ const Overview = () => {
                 </div>
 
                 {/* Status Breakdown */}
-                <div className="card p-6">
-                    <h4 className="text-base font-semibold mb-6">Status Distribution</h4>
-                    <div className="h-[300px]">
+                <div className="card-premium p-8">
+                    <h4 className="text-lg font-black text-slate-900 tracking-tight mb-2 uppercase">Status Intel</h4>
+                    <p className="text-xs font-bold text-slate-400 mb-8">Fleet allocation & defect distribution</p>
+                    <div className="h-[240px]">
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
                                 <Pie
@@ -152,25 +202,38 @@ const Overview = () => {
                                     cy="50%"
                                     innerRadius={60}
                                     outerRadius={80}
-                                    paddingAngle={5}
+                                    paddingAngle={8}
                                     dataKey="value"
+                                    stroke="none"
                                 >
                                     {statusData.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={STATUS_COLORS[entry.name as keyof typeof STATUS_COLORS]} />
+                                        <Cell
+                                            key={`cell-${index}`}
+                                            fill={STATUS_COLORS[entry.name as keyof typeof STATUS_COLORS]}
+                                            className="hover:opacity-80 transition-opacity outline-none"
+                                        />
                                     ))}
                                 </Pie>
-                                <Tooltip />
+                                <Tooltip
+                                    contentStyle={{
+                                        backgroundColor: '#0F172A',
+                                        borderRadius: '12px',
+                                        border: 'none',
+                                        boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)'
+                                    }}
+                                    itemStyle={{ fontSize: '10px', fontWeight: 900, color: '#fff', textTransform: 'uppercase' }}
+                                />
                             </PieChart>
                         </ResponsiveContainer>
                     </div>
-                    <div className="mt-4 space-y-2">
+                    <div className="mt-8 space-y-3">
                         {statusData.map((s) => (
-                            <div key={s.name} className="flex items-center justify-between text-xs">
-                                <div className="flex items-center gap-2">
-                                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: STATUS_COLORS[s.name as keyof typeof STATUS_COLORS] }} />
-                                    <span className="font-medium text-gray-600">{s.name}</span>
+                            <div key={s.name} className="flex items-center justify-between group">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-2.5 h-2.5 rounded-full ring-4 ring-white shadow-sm" style={{ backgroundColor: STATUS_COLORS[s.name as keyof typeof STATUS_COLORS] }} />
+                                    <span className="text-[11px] font-black text-slate-500 uppercase tracking-widest">{s.name}</span>
                                 </div>
-                                <span className="font-bold">{s.value}</span>
+                                <span className="text-xs font-black text-slate-900 bg-slate-50 px-2 py-1 rounded-lg min-w-[32px] text-center font-bold tracking-tight">{s.value}</span>
                             </div>
                         ))}
                     </div>
@@ -179,10 +242,10 @@ const Overview = () => {
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Mini Map */}
-                <div className="card h-[400px]">
-                    <div className="p-4 border-b border-border flex items-center justify-between">
-                        <h4 className="text-base font-semibold">Active Hotspots</h4>
-                        <button className="text-primary text-xs font-semibold hover:underline">View Full Map</button>
+                <div className="card-premium h-[400px] overflow-hidden">
+                    <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                        <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest">Active Hotspots</h4>
+                        <button className="text-accent text-[10px] font-black uppercase tracking-widest hover:underline transition-all">Telemetry Link</button>
                     </div>
                     <div className="h-[344px] relative z-0">
                         <MapContainer center={[6.9271, 79.8612]} zoom={10} style={{ height: '100%', width: '100%' }}>
@@ -190,9 +253,9 @@ const Overview = () => {
                             {potholes.slice(0, 10).map((p) => (
                                 <Marker key={p.id} position={[p.lat, p.lon]}>
                                     <Popup>
-                                        <div className="text-xs">
-                                            <p className="font-bold">{p.id}</p>
-                                            <p>{p.roadName}</p>
+                                        <div className="p-1">
+                                            <p className="text-[10px] font-black text-slate-900 uppercase mb-1">#{p.id.split('-')[0]}</p>
+                                            <p className="text-[11px] font-bold text-slate-500">{p.roadName}</p>
                                         </div>
                                     </Popup>
                                 </Marker>
@@ -202,41 +265,29 @@ const Overview = () => {
                 </div>
 
                 {/* Recent Activity Table */}
-                <div className="card">
-                    <div className="p-4 border-b border-border flex items-center justify-between">
-                        <h4 className="text-base font-semibold">Recent Detections</h4>
-                        <button className="text-primary text-xs font-semibold hover:underline">View All</button>
+                <div className="card-premium overflow-hidden">
+                    <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                        <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest">Recent Detections</h4>
+                        <button className="text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-slate-900 transition-colors">Archive Access</button>
                     </div>
                     <div className="overflow-x-auto">
                         <table className="w-full text-left">
-                            <thead>
-                                <tr className="bg-gray-50 border-b border-border">
-                                    <th className="px-4 py-3 text-[10px] uppercase tracking-wider font-bold text-gray-500">ID</th>
-                                    <th className="px-4 py-3 text-[10px] uppercase tracking-wider font-bold text-gray-500">Road</th>
-                                    <th className="px-4 py-3 text-[10px] uppercase tracking-wider font-bold text-gray-500">Severity</th>
-                                    <th className="px-4 py-3 text-[10px] uppercase tracking-wider font-bold text-gray-500">Status</th>
+                            <thead className="bg-white">
+                                <tr>
+                                    <th className="px-6 py-4 text-[10px] uppercase tracking-widest font-black text-slate-400">Pothole id</th>
+                                    <th className="px-6 py-4 text-[10px] uppercase tracking-widest font-black text-slate-400">Road name</th>
+                                    <th className="px-6 py-4 text-[10px] uppercase tracking-widest font-black text-slate-400">Status</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-border">
+                            <tbody className="divide-y divide-slate-100">
                                 {potholes.slice(0, 6).map((p) => (
-                                    <tr key={p.id} className="hover:bg-gray-50 transition-colors">
-                                        <td className="px-4 py-3 text-sm font-medium text-primary">{p.id}</td>
-                                        <td className="px-4 py-3 text-sm text-gray-600 truncate max-w-[150px]">{p.roadName}</td>
-                                        <td className="px-4 py-3">
-                                            <span className={cn(
-                                                "px-2 py-0.5 rounded text-[10px] font-bold",
-                                                p.severity === 'High' ? "bg-red-100 text-red-700" :
-                                                    p.severity === 'Medium' ? "bg-yellow-100 text-yellow-700" :
-                                                        "bg-green-100 text-green-700"
-                                            )}>
-                                                {p.severity}
-                                            </span>
+                                    <tr key={p.id} className="hover:bg-slate-50/50 transition-colors group cursor-pointer">
+                                        <td className="px-6 py-4">
+                                            <span className="text-xs font-black text-slate-900 group-hover:text-accent transition-colors">#{p.id.split('-')[0]}</span>
                                         </td>
-                                        <td className="px-4 py-3">
-                                            <div className="flex items-center gap-2">
-                                                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: STATUS_COLORS[p.status as keyof typeof STATUS_COLORS] }} />
-                                                <span className="text-sm font-medium">{p.status}</span>
-                                            </div>
+                                        <td className="px-6 py-4 text-xs font-bold text-slate-600 truncate max-w-[150px]">{p.roadName}</td>
+                                        <td className="px-6 py-4">
+                                            <StatusPill status={p.status as any} />
                                         </td>
                                     </tr>
                                 ))}

@@ -69,72 +69,72 @@ const PotholeDetail = () => {
     const canUpdate = hasRole(['ADMIN', 'MAINTENANCE_OFFICER']);
 
     return (
-        <div className="max-w-6xl mx-auto space-y-6 pb-12">
+        <div className="max-w-7xl mx-auto space-y-8 pb-20 px-4 md:px-6">
             <button
                 onClick={() => navigate(-1)}
-                className="flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-primary transition-colors"
+                className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-all hover:-translate-x-1 group leading-none"
             >
-                <ArrowLeft size={16} />
-                Back to List
+                <ArrowLeft size={14} className="group-hover:scale-125 transition-transform" />
+                Back to Operations
             </button>
 
-            <div className="flex flex-col lg:flex-row gap-6">
+            <div className="flex flex-col lg:flex-row gap-8">
                 {/* Left Column: Info & Map */}
-                <div className="flex-1 space-y-6">
-                    <div className="card overflow-hidden">
-                        <div className="p-6 border-b border-border bg-gray-50/50 flex items-center justify-between">
+                <div className="flex-1 space-y-8">
+                    <div className="card-premium overflow-hidden border-none shadow-2xl shadow-slate-900/5">
+                        <div className="p-8 border-b border-slate-50 flex flex-col md:flex-row md:items-center justify-between gap-4">
                             <div>
-                                <h1 className="text-2xl font-bold text-text">{pothole.id}</h1>
-                                <p className="text-sm text-gray-500">{pothole.roadName}, {pothole.district}</p>
+                                <h1 className="text-3xl font-black text-slate-900 tracking-tight mb-1">{pothole.id}</h1>
+                                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{pothole.roadName}, {pothole.district}</p>
                             </div>
-                            <div className={cn(
-                                "px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider text-white",
-                                pothole.status === 'New' ? 'bg-blue-600' :
-                                    pothole.status === 'Confirmed' ? 'bg-amber-500' :
-                                        pothole.status === 'Scheduled' ? 'bg-purple-500' :
-                                            pothole.status === 'Fixed' ? 'bg-emerald-600' : 'bg-red-500'
+                            <span className={cn(
+                                "badge px-6 py-2 border-none shadow-sm",
+                                pothole.status === 'New' ? 'bg-blue-50 text-blue-700' :
+                                    pothole.status === 'Confirmed' ? 'bg-amber-50 text-amber-700' :
+                                        pothole.status === 'Scheduled' ? 'bg-purple-50 text-purple-700' :
+                                            pothole.status === 'Fixed' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'
                             )}>
                                 {pothole.status}
-                            </div>
+                            </span>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-px bg-border">
-                            <div className="bg-white p-6 space-y-4">
-                                <div className="flex items-center gap-3">
-                                    <div className="p-2 rounded-lg bg-gray-100 text-gray-400"><Calendar size={18} /></div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-px bg-slate-50 uppercase">
+                            <div className="bg-white p-8 space-y-6">
+                                <div className="flex items-center gap-4">
+                                    <div className="p-2.5 rounded-xl bg-slate-50 text-slate-400 group-hover:text-slate-900 transition-colors"><Calendar size={14} /></div>
                                     <div>
-                                        <p className="text-[10px] text-gray-400 font-bold uppercase">Detected On</p>
-                                        <p className="text-sm font-semibold">{new Date(pothole.timestamp).toLocaleString()}</p>
+                                        <p className="text-[10px] text-slate-300 font-black tracking-widest leading-none mb-1.5">Detected On</p>
+                                        <p className="text-[11px] font-black text-slate-900 tracking-tight">{new Date(pothole.timestamp).toLocaleString()}</p>
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-3">
-                                    <div className="p-2 rounded-lg bg-gray-100 text-gray-400"><MapPin size={18} /></div>
+                                <div className="flex items-center gap-4">
+                                    <div className="p-2.5 rounded-xl bg-slate-50 text-slate-400 group-hover:text-slate-900 transition-colors"><MapPin size={14} /></div>
                                     <div>
-                                        <p className="text-[10px] text-gray-400 font-bold uppercase">Coordinates</p>
-                                        <p className="text-sm font-semibold">{pothole.lat.toFixed(6)}, {pothole.lon.toFixed(6)}</p>
+                                        <p className="text-[10px] text-slate-300 font-black tracking-widest leading-none mb-1.5">Precision Geo</p>
+                                        <p className="text-[11px] font-black text-slate-900 tracking-tight">{pothole.lat.toFixed(6)}, {pothole.lon.toFixed(6)}</p>
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-3">
-                                    <div className="p-2 rounded-lg bg-gray-100 text-gray-400"><BarChart size={18} /></div>
+                                <div className="flex items-center gap-4">
+                                    <div className="p-2.5 rounded-xl bg-slate-50 text-slate-400 group-hover:text-slate-900 transition-colors"><BarChart size={14} /></div>
                                     <div>
-                                        <p className="text-[10px] text-gray-400 font-bold uppercase">Source Data</p>
-                                        <p className="text-sm font-semibold">Report ID: {pothole.reportId}</p>
+                                        <p className="text-[10px] text-slate-300 font-black tracking-widest leading-none mb-1.5">Source Telemetry</p>
+                                        <p className="text-[11px] font-black text-slate-900 tracking-tight">#{pothole.reportId}</p>
                                     </div>
                                 </div>
                             </div>
 
                             {/* Citizen Report Info inserted above the map if available */}
                             {report && (
-                                <div className="bg-white p-6 md:col-span-2 border-t border-border">
-                                    <h3 className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-2">Citizen Report Details</h3>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <p className="text-[10px] font-bold text-gray-400 uppercase">Reporter</p>
-                                            <p className="text-sm font-semibold">{report.submittedBy || 'Anonymous'}</p>
+                                <div className="bg-white p-8 md:col-span-2 border-t border-slate-50">
+                                    <h3 className="text-[10px] text-slate-300 font-black uppercase tracking-widest mb-6">Citizen Intelligence Summary</h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                        <div className="p-4 bg-slate-50/50 rounded-2xl border border-slate-50">
+                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 leading-none">Primary Reporter</p>
+                                            <p className="text-xs font-black text-slate-900">{report.submittedBy || 'Anonymous User'}</p>
                                         </div>
-                                        <div>
-                                            <p className="text-[10px] font-bold text-gray-400 uppercase">Citizen Description</p>
-                                            <p className="text-sm italic text-gray-600">"{report.description || 'No description provided.'}"</p>
+                                        <div className="p-4 bg-slate-50/50 rounded-2xl border border-slate-50">
+                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 leading-none">Evidence description</p>
+                                            <p className="text-xs font-bold text-slate-600 italic">"{report.description || 'No description provided.'}"</p>
                                         </div>
                                     </div>
                                 </div>
@@ -178,31 +178,31 @@ const PotholeDetail = () => {
                 {/* Right Column: Workflow & Audit */}
                 <div className="w-full lg:w-96 space-y-6">
                     {/* Status Update Card */}
-                    <div className="card p-6">
-                        <div className="flex items-center gap-2 mb-4 font-semibold text-text border-b border-border pb-2">
-                            <ShieldCheck size={18} className="text-primary" />
-                            Workflow Management
+                    <div className="card-premium p-8 border-none shadow-2xl shadow-slate-900/5">
+                        <div className="flex items-center gap-3 mb-8 pb-4 border-b border-slate-50">
+                            <ShieldCheck size={16} className="text-slate-900" />
+                            <span className="text-xs font-black text-slate-900 uppercase tracking-[0.2em] leading-none">Operations Workflow</span>
                         </div>
 
                         {!canUpdate ? (
-                            <div className="text-xs text-amber-600 bg-amber-50 p-3 rounded-lg flex gap-2">
-                                <span className="font-bold">Note:</span>
-                                You don't have permission to modify this record.
+                            <div className="text-[10px] font-black uppercase tracking-widest text-amber-700 bg-amber-50 p-6 rounded-2xl border border-amber-100 leading-relaxed">
+                                <span className="block mb-2 text-amber-500 opacity-60">Security Notice</span>
+                                Restricted access. Elevated privileges required to modify deployment status.
                             </div>
                         ) : (
-                            <div className="space-y-4">
+                            <div className="space-y-8">
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Update Status</label>
+                                    <label className="block text-[10px] font-black text-slate-300 uppercase tracking-widest mb-4">Transition Status</label>
                                     <div className="grid grid-cols-2 gap-2">
                                         {STATUS_OPTS.map(opt => (
                                             <button
                                                 key={opt}
                                                 onClick={() => setNewStatus(opt)}
                                                 className={cn(
-                                                    "px-3 py-2 text-xs font-medium border rounded-lg transition-all",
+                                                    "px-3 py-3 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all border",
                                                     newStatus === opt
-                                                        ? "border-primary bg-primary/5 text-primary ring-1 ring-primary"
-                                                        : "border-border text-gray-600 hover:border-gray-400"
+                                                        ? "border-slate-900 bg-slate-900 text-white shadow-xl shadow-slate-900/10"
+                                                        : "border-slate-100 text-slate-400 hover:border-slate-300"
                                                 )}
                                             >
                                                 {opt}
@@ -211,11 +211,11 @@ const PotholeDetail = () => {
                                     </div>
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Internal Note</label>
+                                    <label className="block text-[10px] font-black text-slate-300 uppercase tracking-widest mb-4">Command Log Note</label>
                                     <textarea
-                                        className="w-full px-3 py-2 text-sm bg-gray-50 border border-border rounded-lg focus:outline-none"
-                                        rows={3}
-                                        placeholder="Add repair notes or scheduling info..."
+                                        className="w-full px-5 py-4 text-xs font-bold bg-slate-50 border-none rounded-2xl focus:outline-none focus:ring-4 focus:ring-slate-900/5 transition-all text-slate-900 placeholder:text-slate-300"
+                                        rows={4}
+                                        placeholder="Enter operational deployment details..."
                                         value={note}
                                         onChange={(e) => setNote(e.target.value)}
                                     />
@@ -223,9 +223,9 @@ const PotholeDetail = () => {
                                 <button
                                     onClick={handleStatusUpdate}
                                     disabled={isUpdating || newStatus === pothole.status && !note}
-                                    className="w-full btn-primary disabled:opacity-50"
+                                    className="btn-premium w-full py-5 bg-slate-900 text-white shadow-2xl shadow-slate-900/20"
                                 >
-                                    {isUpdating ? 'Saving...' : 'Confirm Update'}
+                                    {isUpdating ? 'Executing...' : 'Confirm Deployment'}
                                 </button>
                             </div>
                         )}
