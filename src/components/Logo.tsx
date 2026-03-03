@@ -1,4 +1,4 @@
-import { Activity } from 'lucide-react';
+import logo from '../assets/logo.png';
 import { cn } from '../lib/utils';
 
 interface LogoProps {
@@ -9,8 +9,12 @@ interface LogoProps {
 export const Logo = ({ className, iconOnly = false }: LogoProps) => {
     return (
         <div className={cn("flex items-center gap-2.5", className)}>
-            <div className="w-9 h-9 bg-slate-900 rounded-xl flex items-center justify-center shadow-lg shadow-slate-900/20 group">
-                <Activity size={20} className="text-accent animate-pulse group-hover:scale-110 transition-transform" />
+            <div className="w-10 h-10 flex items-center justify-center group">
+                <img
+                    src={logo}
+                    alt="RoadPulse"
+                    className="w-full h-full object-contain group-hover:scale-110 transition-all duration-500 drop-shadow-sm"
+                />
             </div>
             {!iconOnly && (
                 <div className="flex flex-col">
