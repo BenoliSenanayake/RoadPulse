@@ -2,7 +2,6 @@ import type { PotholeEvent, User, CitizenReport, RepairUpdate, AuditLog } from '
 import { subDays } from 'date-fns';
 
 const statuses: PotholeEvent['status'][] = ['New', 'Confirmed', 'Scheduled', 'Fixed', 'Rejected'];
-const severities: PotholeEvent['severity'][] = ['Low', 'Medium', 'High'];
 
 const SRI_LANKA_REGIONS = [
     { name: 'Colombo', lat: 6.9271, lon: 79.8612 },
@@ -16,7 +15,6 @@ const generatePotholes = (count: number): PotholeEvent[] => {
         const lat = region.lat + (Math.random() - 0.5) * 0.1;
         const lon = region.lon + (Math.random() - 0.5) * 0.1;
         const status = statuses[Math.floor(Math.random() * statuses.length)];
-        const severity = severities[Math.floor(Math.random() * severities.length)];
         const confidence = 0.6 + Math.random() * 0.38;
         const timestamp = subDays(new Date(), Math.floor(Math.random() * 30)).toISOString();
 
@@ -26,7 +24,6 @@ const generatePotholes = (count: number): PotholeEvent[] => {
             lon,
             timestamp,
             confidence,
-            severity,
             status,
             roadName: `${region.name} Main Road ${i + 1}`,
             district: region.name,
@@ -155,7 +152,6 @@ export const submitReport = async (report: Omit<CitizenReport, 'id' | 'aiStatus'
                     lon: newReport.lon,
                     timestamp: new Date().toISOString(),
                     confidence: confidence,
-                    severity: 'Medium',
                     status: 'New',
                     imageUrl: newReport.imageUrl,
                     source: 'CITIZEN_REPORT',
@@ -234,7 +230,6 @@ export const processReport = (id: string, action: 'accept' | 'reject', reason?: 
                     lon: reports[index].lon,
                     timestamp: new Date().toISOString(),
                     confidence: reports[index].aiConfidence!,
-                    severity: 'Medium',
                     status: 'New',
                     imageUrl: reports[index].imageUrl,
                     source: 'CITIZEN_REPORT',

@@ -4,19 +4,17 @@ import {
     Minimize2,
     RefreshCw,
     BarChart,
-    AlertCircle,
     Clock,
     Crosshair,
     Camera
 } from 'lucide-react';
 import { cn } from '../lib/utils';
-import type { Severity, PotholeStatus } from '../types';
+import type { PotholeStatus } from '../types';
 
 interface EvidenceViewerProps {
     imageUrl?: string;
     badges: {
         confidence: number;
-        severity: Severity;
         status: PotholeStatus;
     };
     metadata: {
@@ -173,21 +171,6 @@ export const EvidenceViewer: React.FC<EvidenceViewerProps> = ({
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
-                        <div className="bg-black/40 backdrop-blur-xl border border-white/10 px-4 py-2 rounded-2xl flex items-center gap-3">
-                            <div className={cn(
-                                "p-1.5 rounded-lg text-white",
-                                badges.severity === 'High' ? 'bg-red-500' :
-                                    badges.severity === 'Medium' ? 'bg-amber-500' : 'bg-emerald-500'
-                            )}>
-                                <AlertCircle size={16} />
-                            </div>
-                            <div>
-                                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">Severity</p>
-                                <p className="text-lg font-black text-white leading-none uppercase">{badges.severity}</p>
-                            </div>
-                        </div>
-                    </div>
 
                     <div className="flex items-center gap-2">
                         <div className="bg-black/40 backdrop-blur-xl border border-white/10 px-4 py-2 rounded-2xl flex items-center gap-3">

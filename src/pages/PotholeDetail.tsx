@@ -156,7 +156,6 @@ const PotholeDetail = () => {
                         imageUrl={pothole.imageUrl}
                         badges={{
                             confidence: pothole.confidence,
-                            severity: pothole.severity,
                             status: pothole.status
                         }}
                         metadata={{

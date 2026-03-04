@@ -21,7 +21,6 @@ const PotholesTable = () => {
     const navigate = useNavigate();
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState<string>('All');
-    const [severityFilter, setSeverityFilter] = useState<string>('All');
 
     const potholes = useMemo(() => listPotholes(), []);
 
@@ -31,11 +30,9 @@ const PotholesTable = () => {
                 p.roadName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 p.district?.toLowerCase().includes(searchTerm.toLowerCase());
             const matchesStatus = statusFilter === 'All' || p.status === statusFilter;
-            const matchesSeverity = severityFilter === 'All' || p.severity === severityFilter;
-
-            return matchesSearch && matchesStatus && matchesSeverity;
+            return matchesSearch && matchesStatus;
         });
-    }, [potholes, searchTerm, statusFilter, severityFilter]);
+    }, [potholes, searchTerm, statusFilter]);
 
     const handleExport = () => {
         const csvData = filteredPotholes.map((p: PotholeEvent) => ({
@@ -45,7 +42,6 @@ const PotholesTable = () => {
             Timestamp: p.timestamp,
             RoadName: p.roadName,
             District: p.district,
-            Severity: p.severity,
             Status: p.status,
             Source: p.source || 'CITIZEN_REPORT',
             ReportID: p.reportId || 'N/A',
@@ -125,14 +121,6 @@ const PotholesTable = () => {
                         <span className="text-xs font-bold leading-none">{p.roadName}</span>
                     </div>
                 </div>
-                <div className={cn(
-                    "badge",
-                    p.severity === 'High' ? "bg-rose-50 text-rose-700 border border-rose-100" :
-                        p.severity === 'Medium' ? "bg-amber-50 text-amber-700 border border-amber-100" :
-                            "bg-emerald-50 text-emerald-700 border border-emerald-100"
-                )}>
-                    {p.severity}
-                </div>
             </div>
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -191,16 +179,6 @@ const PotholesTable = () => {
                                 <option value="Rejected">Rejected</option>
                             </select>
                         </div>
-                        <select
-                            className="px-6 py-3 bg-white border border-slate-200 rounded-2xl text-[11px] font-black uppercase tracking-widest text-slate-700 shadow-sm outline-none focus:border-slate-400 transition-all cursor-pointer"
-                            value={severityFilter}
-                            onChange={(e) => setSeverityFilter(e.target.value)}
-                        >
-                            <option value="All">All Priority Levels</option>
-                            <option value="High">Priority: High</option>
-                            <option value="Medium">Priority: Medium</option>
-                            <option value="Low">Priority: Low</option>
-                        </select>
                     </div>
                 </div>
 

@@ -1,5 +1,4 @@
 export type PotholeStatus = 'New' | 'Confirmed' | 'Scheduled' | 'Fixed' | 'Rejected';
-export type Severity = 'Low' | 'Medium' | 'High';
 export type UserRole = 'MAINTENANCE_OFFICER' | 'CITIZEN' | 'ADMIN';
 
 export interface User {
@@ -15,7 +14,6 @@ export interface PotholeEvent {
     lon: number;
     timestamp: string;
     confidence: number;
-    severity: Severity;
     status: PotholeStatus;
     roadName?: string;
     district?: string;
