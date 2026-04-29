@@ -33,7 +33,7 @@ export const listCitizenReports = (filters?: ReportFilters): CitizenReport[] => 
     throw new Error('API not implemented');
 };
 
-export const reviewCitizenReport = (id: string, action: 'accept' | 'reject', reason?: string): void => {
+export const reviewCitizenReport = (id: string, action: 'accept' | 'reject' | 'request_info', reason?: string): void => {
     if (USE_MOCK) return processReport(id, action, reason);
     throw new Error('API not implemented');
 };

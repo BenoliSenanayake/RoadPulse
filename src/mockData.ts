@@ -157,7 +157,7 @@ export const submitReport = async (report: Omit<CitizenReport, 'id' | 'status' |
     return newReport;
 };
 
-export const processReport = (id: string, action: 'accept' | 'reject', reason?: string, actorName: string = 'Maintenance Officer') => {
+export const processReport = (id: string, action: 'accept' | 'reject' | 'request_info', reason?: string, actorName: string = 'Maintenance Officer') => {
     const reports = getReports();
     const index = reports.findIndex(r => r.id === id);
     if (index !== -1) {
@@ -207,6 +207,18 @@ export const processReport = (id: string, action: 'accept' | 'reject', reason?: 
                 localStorage.setItem('rp_potholes_v2', JSON.stringify([newPothole, ...potholes]));
                 reports[index].linkedPotholeId = newPothole.id;
             }
+        } else if (action === 'request_info') {
+            reports[index].status = 'New';
+            reports[index].aiReason = reason ? `Info Requested: ${reason}` : 'Additional information requested by Maintenance Officer.';
+            
+            addAuditLog({
+                entityId: id,
+                entityType: 'REPORT',
+                action: 'STATUS_CHANGED',
+                actor: 'MAINTENANCE_OFFICER',
+                actorName,
+                details: `Requested more info. Reason: ${reason}`
+            });
         } else {
             reports[index].aiStatus = 'REJECTED';
             reports[index].aiReason = reason;

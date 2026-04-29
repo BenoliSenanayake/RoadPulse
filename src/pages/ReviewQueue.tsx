@@ -11,6 +11,7 @@ import { ResponsiveDataList } from '../components/ResponsiveDataList';
 import { cn } from '../lib/utils';
 import { StatusPill } from '../components/StatusPill';
 import { EmptyState } from '../components/EmptyState';
+import { EvidenceViewer } from '../components/EvidenceViewer';
 
 // Fix Leaflet's default icon path issues
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -33,10 +34,8 @@ const ReviewQueue = () => {
     const [selectedReport, setSelectedReport] = useState<CitizenReport | null>(null);
     const [rejectionReason, setRejectionReason] = useState('');
 
-    // Filters
-    const [filterStatus, setFilterStatus] = useState<'ALL' | 'PENDING' | 'ACCEPTED' | 'REJECTED'>('PENDING');
-    const [filterDate, setFilterDate] = useState<'ALL' | '24H' | '7D'>('ALL');
-    const [filterConfidence, _setFilterConfidence] = useState<'ALL' | 'HIGH' | 'LOW'>('ALL');
+    // Tabs
+    const [activeTab, setActiveTab] = useState<'PENDING_CITIZEN' | 'LOW_CONFIDENCE' | 'REJECTED'>('PENDING_CITIZEN');
 
     useEffect(() => {
         setReports(listCitizenReports().sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
@@ -44,28 +43,20 @@ const ReviewQueue = () => {
 
     const filteredReports = useMemo(() => {
         return reports.filter(r => {
-            // Status filter
-            if (filterStatus !== 'ALL' && r.aiStatus !== filterStatus) return false;
-
-            // Date filter
-            if (filterDate === '24H' && !isAfter(new Date(r.createdAt), subHours(new Date(), 24))) return false;
-            if (filterDate === '7D' && !isAfter(new Date(r.createdAt), subDays(new Date(), 7))) return false;
-
-            // Confidence filter
-            if (filterConfidence === 'HIGH' && (r.aiConfidence || 0) < 0.8) return false;
-            if (filterConfidence === 'LOW' && (r.aiConfidence || 0) >= 0.8) return false;
-
-            return true;
+            if (activeTab === 'PENDING_CITIZEN') return r.aiStatus === 'PENDING' && !r.aiConfidence;
+            if (activeTab === 'LOW_CONFIDENCE') return r.aiStatus === 'PENDING' && r.aiConfidence !== undefined;
+            if (activeTab === 'REJECTED') return r.aiStatus === 'REJECTED';
+            return false;
         });
-    }, [reports, filterStatus, filterDate, filterConfidence]);
+    }, [reports, activeTab]);
 
-    const handleAction = (id: string, action: 'accept' | 'reject') => {
-        if (action === 'reject' && !rejectionReason.trim()) {
-            alert("Please provide a rejection reason.");
+    const handleAction = (id: string, action: 'accept' | 'reject' | 'request_info') => {
+        if ((action === 'reject' || action === 'request_info') && !rejectionReason.trim()) {
+            alert(`Please provide a note to ${action === 'reject' ? 'reject' : 'request info'}.`);
             return;
         }
         if (window.confirm(`Are you sure you want to manually ${action} this report?`)) {
-            reviewCitizenReport(id, action, action === 'reject' ? rejectionReason : undefined);
+            reviewCitizenReport(id, action, (action === 'reject' || action === 'request_info') ? rejectionReason : undefined);
             const fresh = listCitizenReports().sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
             setReports(fresh);
             setSelectedReport(fresh.find(r => r.id === id) || null);
@@ -166,45 +157,32 @@ const ReviewQueue = () => {
 
     return (
         <div className="h-[calc(100vh-8rem)] flex flex-col space-y-6 animate-fade-in-up">
-            {/* Header & Filters */}
+            {/* Header & Tabs */}
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 shrink-0 px-2">
                 <div>
                     <h1 className="section-heading mb-1">Audit Operations</h1>
                     <p className="text-slate-500 font-bold text-sm">Strategic validation of citizen intelligence reports.</p>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-3 bg-white p-2 rounded-2xl shadow-premium border border-slate-100">
-                    <div className="flex items-center gap-2 pl-3 border-r border-slate-100 pr-4">
-                        <Filter size={14} className="text-slate-400" />
-                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Tactical Filters</span>
-                    </div>
-
-                    <select
-                        value={filterStatus}
-                        onChange={e => {
-                            setFilterStatus(e.target.value as any);
-                            setSelectedReport(null);
-                        }}
-                        className="text-[11px] font-black uppercase tracking-widest bg-slate-50 border-none rounded-xl focus:ring-4 ring-slate-900/5 cursor-pointer text-slate-700 px-4 py-2 outline-none transition-all hover:bg-slate-100"
+                <div className="flex bg-slate-100 p-1.5 rounded-2xl shadow-inner">
+                    <button
+                        onClick={() => { setActiveTab('PENDING_CITIZEN'); setSelectedReport(null); }}
+                        className={cn("px-4 py-2 text-[11px] font-black uppercase tracking-widest rounded-xl transition-all", activeTab === 'PENDING_CITIZEN' ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700")}
                     >
-                        <option value="ALL">Status: All</option>
-                        <option value="PENDING">Status: Pending</option>
-                        <option value="ACCEPTED">Status: Accepted</option>
-                        <option value="REJECTED">Status: Rejected</option>
-                    </select>
-
-                    <select
-                        value={filterDate}
-                        onChange={e => {
-                            setFilterDate(e.target.value as any);
-                            setSelectedReport(null);
-                        }}
-                        className="text-[11px] font-black uppercase tracking-widest bg-slate-50 border-none rounded-xl focus:ring-4 ring-slate-900/5 cursor-pointer text-slate-700 px-4 py-2 outline-none transition-all hover:bg-slate-100"
+                        Pending Citizen
+                    </button>
+                    <button
+                        onClick={() => { setActiveTab('LOW_CONFIDENCE'); setSelectedReport(null); }}
+                        className={cn("px-4 py-2 text-[11px] font-black uppercase tracking-widest rounded-xl transition-all", activeTab === 'LOW_CONFIDENCE' ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700")}
                     >
-                        <option value="ALL">Time: All History</option>
-                        <option value="24H">Time: Last 24H</option>
-                        <option value="7D">Time: Last 7D</option>
-                    </select>
+                        Low Confidence AI
+                    </button>
+                    <button
+                        onClick={() => { setActiveTab('REJECTED'); setSelectedReport(null); }}
+                        className={cn("px-4 py-2 text-[11px] font-black uppercase tracking-widest rounded-xl transition-all", activeTab === 'REJECTED' ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700")}
+                    >
+                        Rejected
+                    </button>
                 </div>
             </div>
 
@@ -245,29 +223,23 @@ const ReviewQueue = () => {
 
                         <div className="overflow-y-auto flex-1 custom-scroll">
                             {/* Hero Image Container */}
-                            <div className="relative h-80 bg-slate-900 flex items-center justify-center group overflow-hidden">
-                                <img
-                                    src={selectedReport.imageUrl}
-                                    alt="Pothole"
-                                    className="max-w-full max-h-full object-contain transition-transform duration-1000 group-hover:scale-105"
+                            <div className="relative border-b border-slate-100">
+                                <EvidenceViewer 
+                                    imageUrl={selectedReport.imageUrl}
+                                    badges={{
+                                        confidence: selectedReport.aiConfidence || 0,
+                                        status: selectedReport.aiStatus as any
+                                    }}
+                                    metadata={{
+                                        timestamp: selectedReport.createdAt,
+                                        lat: selectedReport.lat,
+                                        lon: selectedReport.lon,
+                                        modelName: selectedReport.modelName,
+                                        modelVersion: selectedReport.modelVersion,
+                                        inferenceTimeMs: selectedReport.inferenceTimeMs,
+                                        bbox: selectedReport.bbox
+                                    }}
                                 />
-
-                                {/* BBox Overlay if available */}
-                                {selectedReport.aiStatus === 'ACCEPTED' && selectedReport.bbox && (
-                                    <div
-                                        className="absolute border-2 border-emerald-400 shadow-[0_0_40px_rgba(52,211,153,0.6)] pointer-events-none z-10 rounded-sm animate-pulse"
-                                        style={{
-                                            left: `${selectedReport.bbox[0] * 100}%`,
-                                            top: `${selectedReport.bbox[1] * 100}%`,
-                                            width: `${selectedReport.bbox[2] * 100}%`,
-                                            height: `${selectedReport.bbox[3] * 100}%`
-                                        }}
-                                    >
-                                        <div className="absolute -top-7 left-[-2px] bg-emerald-400 text-slate-900 text-[9px] font-black px-3 py-1 rounded-t-sm uppercase tracking-widest shadow-xl whitespace-nowrap">
-                                            {selectedReport.modelName || 'POTHOLE_V2'} {(selectedReport.aiConfidence! * 100).toFixed(1)}%
-                                        </div>
-                                    </div>
-                                )}
                             </div>
 
                             <div className="p-10 space-y-12">
@@ -365,7 +337,7 @@ const ReviewQueue = () => {
                                         value={rejectionReason}
                                         onChange={e => setRejectionReason(e.target.value)}
                                     />
-                                    <div className="flex gap-4">
+                                    <div className="flex flex-wrap gap-4">
                                         <button
                                             onClick={() => handleAction(selectedReport.id, 'reject')}
                                             className="flex-1 py-4 bg-white text-rose-600 border border-rose-100 hover:bg-rose-50 font-black text-[10px] uppercase tracking-widest rounded-2xl transition-all shadow-sm active:scale-95 hover:border-rose-200"
@@ -373,8 +345,14 @@ const ReviewQueue = () => {
                                             Decline Case
                                         </button>
                                         <button
+                                            onClick={() => handleAction(selectedReport.id, 'request_info')}
+                                            className="flex-1 py-4 bg-white text-amber-600 border border-amber-100 hover:bg-amber-50 font-black text-[10px] uppercase tracking-widest rounded-2xl transition-all shadow-sm active:scale-95 hover:border-amber-200"
+                                        >
+                                            Request Info
+                                        </button>
+                                        <button
                                             onClick={() => handleAction(selectedReport.id, 'accept')}
-                                            className="flex-[2] py-4 bg-slate-900 text-white hover:bg-black font-black text-[10px] uppercase tracking-widest rounded-2xl transition-all shadow-xl shadow-slate-900/20 active:scale-95 hover-lift"
+                                            className="flex-[2] min-w-full sm:min-w-0 py-4 bg-slate-900 text-white hover:bg-black font-black text-[10px] uppercase tracking-widest rounded-2xl transition-all shadow-xl shadow-slate-900/20 active:scale-95 hover-lift"
                                         >
                                             Validate & Confirm
                                         </button>
