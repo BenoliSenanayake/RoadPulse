@@ -41,7 +41,7 @@ function MapController({ center }: { center: [number, number] }) {
     return null;
 }
 
-type Step = 'PHOTO' | 'LOCATION' | 'DETAILS' | 'SUBMITTING' | 'RESULT';
+type Step = 'PHOTO' | 'LOCATION' | 'DETAILS' | 'REVIEW' | 'SUBMITTING';
 
 const compressImage = (file: File): Promise<string> => {
     return new Promise((resolve) => {
@@ -92,13 +92,25 @@ const ReportWizard = () => {
 
     // UI State
     const [error, setError] = useState('');
-    const [result, setResult] = useState<any>(null);
     const [isMapModalOpen, setIsMapModalOpen] = useState(false);
 
     const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         setError('');
         if (e.target.files?.[0]) {
             const file = e.target.files[0];
+            
+            // Validate file type
+            if (!file.type.startsWith('image/')) {
+                setError('Please upload a valid image file.');
+                return;
+            }
+            
+            // Validate file size (e.g., 10MB max)
+            if (file.size > 10 * 1024 * 1024) {
+                setError('Image is too large. Maximum size is 10MB.');
+                return;
+            }
+
             const compressed = await compressImage(file);
             setPreviewUrl(compressed);
             setStep('LOCATION');
@@ -114,8 +126,14 @@ const ReportWizard = () => {
                     setLon(pos.coords.longitude);
                     setIsMapModalOpen(true);
                 },
-                () => setError('Please enable location access or select manually on the map.')
+                (err) => {
+                    console.error("Geolocation error:", err);
+                    setError('Please enable location access or select manually on the map.');
+                },
+                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
             );
+        } else {
+            setError('Geolocation is not supported by your browser.');
         }
     };
 
@@ -130,18 +148,18 @@ const ReportWizard = () => {
                 description: `${roadName ? `[${roadName}] ` : ''}${description}`.trim(),
                 imageUrl: previewUrl
             });
-            setResult(report);
-            setStep('RESULT');
+            navigate(`/citizen/status/${report.id}`);
         } catch (err) {
             setError('System transmission failed. Please verify connection and retry.');
-            setStep('DETAILS');
+            setStep('REVIEW');
         }
     };
 
     const steps = [
         { id: 'PHOTO', label: 'Photo' },
         { id: 'LOCATION', label: 'Map' },
-        { id: 'DETAILS', label: 'Details' }
+        { id: 'DETAILS', label: 'Details' },
+        { id: 'REVIEW', label: 'Review' }
     ];
 
     if (step === 'SUBMITTING') {
@@ -156,63 +174,6 @@ const ReportWizard = () => {
         );
     }
 
-    if (step === 'RESULT' && result) {
-        const isAccepted = result.aiStatus === 'ACCEPTED';
-        return (
-            <div className="max-w-xl mx-auto p-6 animate-in fade-in slide-in-from-bottom-8 duration-700">
-                <div className="bg-white rounded-[3rem] p-10 border border-slate-100 shadow-2xl text-center space-y-8 relative overflow-hidden">
-                    <div className={cn("absolute top-0 left-0 w-full h-2", isAccepted ? "bg-emerald-500" : "bg-rose-500")} />
-
-                    <div className={cn(
-                        "w-24 h-24 rounded-full flex items-center justify-center mx-auto shadow-inner",
-                        isAccepted ? "bg-emerald-50 border-4 border-emerald-100" : "bg-rose-50 border-4 border-rose-100"
-                    )}>
-                        {isAccepted ? <CheckCircle2 size={48} className="text-emerald-600" /> : <XCircle size={48} className="text-rose-600" />}
-                    </div>
-
-                    <div className="space-y-3">
-                        <h2 className="text-4xl font-black text-slate-900 tracking-tighter">
-                            {isAccepted ? "Authenticated" : "Dismissed"}
-                        </h2>
-                        <div className="inline-flex items-center gap-2 px-3 py-1 bg-slate-50 rounded-full">
-                            <Shield size={12} className={isAccepted ? "text-emerald-600" : "text-rose-600"} />
-                            <p className={cn(
-                                "text-[10px] font-black uppercase tracking-[0.2em]",
-                                isAccepted ? "text-emerald-600" : "text-rose-600"
-                            )}>
-                                Confidence: {(result.aiConfidence * 100).toFixed(1)}%
-                            </p>
-                        </div>
-                    </div>
-
-                    <p className="text-slate-500 font-medium leading-relaxed">
-                        {isAccepted
-                            ? "Telemetry confirmed. Maintenance units have been notified and prioritized this sector."
-                            : result.aiReason}
-                    </p>
-
-                    <div className="pt-4 flex flex-col gap-4">
-                        <button
-                            onClick={() => navigate('/citizen/my-reports')}
-                            className="w-full py-5 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl shadow-slate-900/20 active:scale-95 transition-all"
-                        >
-                            View My History
-                        </button>
-                        <button
-                            onClick={() => {
-                                setStep('PHOTO');
-                                setPreviewUrl('');
-                                setResult(null);
-                            }}
-                            className="w-full py-5 bg-slate-50 text-slate-600 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-slate-100 transition-all border border-slate-100"
-                        >
-                            Log New Defect
-                        </button>
-                    </div>
-                </div>
-            </div>
-        );
-    }
 
     return (
         <div className="max-w-2xl mx-auto px-4 py-8 sm:py-12 pb-40">
@@ -491,6 +452,67 @@ const ReportWizard = () => {
                     <div className="flex gap-4">
                         <button
                             onClick={() => setStep('LOCATION')}
+                            className="p-6 bg-slate-50 text-slate-400 rounded-[1.5rem] hover:text-slate-900 hover:bg-slate-100 transition-all border border-slate-100"
+                        >
+                            <ArrowLeft size={24} />
+                        </button>
+                        <button
+                            onClick={() => {
+                                if (!description.trim() && !roadName.trim()) {
+                                    setError('Please provide at least a landmark or description.');
+                                    return;
+                                }
+                                setError('');
+                                setStep('REVIEW');
+                            }}
+                            className="flex-1 bg-slate-900 text-white rounded-[1.5rem] font-black uppercase tracking-widest text-xs shadow-2xl shadow-slate-900/20 active:scale-95 transition-all flex items-center justify-center gap-4"
+                        >
+                            Review Report
+                            <ArrowRight size={20} className="text-white" />
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Step 4: Review */}
+            {step === 'REVIEW' && (
+                <div className="space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-500">
+                    <div className="text-center space-y-2 mb-10">
+                        <h2 className="text-4xl font-black text-slate-900 tracking-tighter uppercase">Confirm Intel</h2>
+                        <p className="text-slate-400 font-bold uppercase tracking-widest text-[10px]">Review mission parameters before transmission</p>
+                    </div>
+
+                    <div className="bg-white border border-slate-100 rounded-[3.5rem] p-10 space-y-10 shadow-2xl shadow-slate-200/50">
+                        <div className="flex flex-col sm:flex-row gap-8 items-center border-b border-slate-50 pb-10">
+                            <div className="w-40 h-40 rounded-3xl overflow-hidden border border-slate-100 shadow-2xl shadow-slate-900/10 shrink-0">
+                                <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />
+                            </div>
+                            <div className="flex-1 w-full space-y-4">
+                                <div>
+                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Coordinates</p>
+                                    <p className="text-sm font-bold text-slate-900 font-mono tracking-tighter">{lat.toFixed(6)}, {lon.toFixed(6)}</p>
+                                </div>
+                                <div>
+                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Landmark</p>
+                                    <p className="text-sm font-bold text-slate-900">{roadName || 'Not specified'}</p>
+                                </div>
+                                <div>
+                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Briefing</p>
+                                    <p className="text-sm font-bold text-slate-900">{description || 'Not specified'}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {error && (
+                        <div className="bg-rose-50 border border-rose-100 p-5 rounded-3xl flex items-center justify-center gap-3 text-rose-600 text-[10px] font-black uppercase tracking-widest text-center">
+                            <AlertCircle size={16} /> {error}
+                        </div>
+                    )}
+
+                    <div className="flex gap-4">
+                        <button
+                            onClick={() => setStep('DETAILS')}
                             className="p-6 bg-slate-50 text-slate-400 rounded-[1.5rem] hover:text-slate-900 hover:bg-slate-100 transition-all border border-slate-100"
                         >
                             <ArrowLeft size={24} />
