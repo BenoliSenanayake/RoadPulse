@@ -23,11 +23,15 @@ const apiClient = {
         return response.json();
     },
     async post(endpoint: string, data: any) {
-        const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        const isFormData = data instanceof FormData;
+        const options: RequestInit = {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data),
-        });
+            body: isFormData ? data : JSON.stringify(data),
+        };
+        if (!isFormData) {
+            options.headers = { 'Content-Type': 'application/json' };
+        }
+        const response = await fetch(`${API_BASE_URL}${endpoint}`, options);
         if (!response.ok) throw new Error(`API Error: ${response.statusText}`);
         return response.json();
     },
@@ -89,12 +93,24 @@ export const reportsApi = {
         const query = new URLSearchParams(filters as any).toString();
         return apiClient.get(`/reports?${query}`);
     },
-    submit: async (formData: { citizenId: string; imageUrl: string; lat: number; lon: number; description?: string }): Promise<CitizenReport> => {
+    submit: async (data: any): Promise<CitizenReport> => {
         if (USE_MOCK) {
             await new Promise(r => setTimeout(r, 600));
-            return mockSubmitReport(formData);
+            let payload = data;
+            if (data instanceof FormData) {
+                // Keep mock working with FormData
+                payload = {
+                    citizenId: data.get('citizenId') as string,
+                    lat: parseFloat(data.get('lat') as string),
+                    lon: parseFloat(data.get('lon') as string),
+                    description: data.get('description') as string,
+                    imageUrl: data.get('image') instanceof File ? URL.createObjectURL(data.get('image') as File) : 'https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?auto=format&fit=crop&q=80',
+                    aiStatus: 'PENDING'
+                };
+            }
+            return mockSubmitReport(payload);
         }
-        return apiClient.post('/reports', formData);
+        return apiClient.post('/reports', data);
     },
     review: async (id: string, action: 'accept' | 'reject' | 'request_info', reason?: string): Promise<void> => {
         if (USE_MOCK) {

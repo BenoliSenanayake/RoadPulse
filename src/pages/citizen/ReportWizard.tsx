@@ -12,7 +12,7 @@ import 'leaflet/dist/leaflet.css';
 // Fix for default marker icons in Leaflet + Vite
 import icon from 'leaflet/dist/images/marker-icon.png';
 import iconShadow from 'leaflet/dist/images/marker-shadow.png';
-import { submitCitizenReport } from '../../lib/api';
+import { reportsApi } from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
 import { cn } from '../../lib/utils';
 import { EvidenceViewer } from '../../components/EvidenceViewer';
@@ -86,6 +86,7 @@ const ReportWizard = () => {
     const [step, setStep] = useState<Step>('PHOTO');
 
     // Form State
+    const [imageFile, setImageFile] = useState<File | null>(null);
     const [previewUrl, setPreviewUrl] = useState<string>('');
     const [lat, setLat] = useState(6.9271);
     const [lon, setLon] = useState(79.8612);
@@ -115,6 +116,7 @@ const ReportWizard = () => {
                 return;
             }
 
+            setImageFile(file);
             const compressed = await compressImage(file);
             setPreviewUrl(compressed);
             setStep('LOCATION');
@@ -151,21 +153,19 @@ const ReportWizard = () => {
     const handleSubmit = async () => {
         setStep('SUBMITTING');
         try {
-            const report = await submitCitizenReport({
-                citizenId: user?.id || 'anonymous',
-                submittedBy: user?.name || 'Citizen',
-                lat,
-                lon,
-                description: `${roadName ? `[${roadName}] ` : ''}${description}`.trim(),
-                imageUrl: previewUrl,
-                aiStatus: detectionResult?.aiStatus || 'PENDING',
-                aiConfidence: detectionResult?.confidence,
-                aiReason: detectionResult?.message,
-                modelName: detectionResult?.modelName,
-                modelVersion: detectionResult?.modelVersion,
-                inferenceTimeMs: detectionResult?.inferenceTimeMs,
-                bbox: detectionResult?.bbox
-            } as any);
+            const formData = new FormData();
+            formData.append('citizenId', user?.id || 'anonymous');
+            formData.append('lat', lat.toString());
+            formData.append('lon', lon.toString());
+            
+            const fullDesc = `${roadName ? `[${roadName}] ` : ''}${description}`.trim();
+            if (fullDesc) formData.append('description', fullDesc);
+            
+            if (imageFile) {
+                formData.append('image', imageFile);
+            }
+
+            const report = await reportsApi.submit(formData);
             navigate(`/citizen/status/${report.id}`);
         } catch (err) {
             setError('System transmission failed. Please verify connection and retry.');
