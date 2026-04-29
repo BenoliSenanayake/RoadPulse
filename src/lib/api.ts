@@ -8,7 +8,7 @@ import {
     MOCK_USERS
 } from '../mockData';
 import type { CitizenReport, PotholeEvent, PotholeStatus } from '../types';
-import type { DetectionResult } from './aiValidationService';
+import { simulateYoloDetection, type DetectionResult } from './aiValidationService';
 
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 export const USE_MOCK = true; // Toggle this to switch to real backend
@@ -171,17 +171,14 @@ export const auditLogsApi = {
 };
 
 export const aiApi = {
-    verifyImage: async (imageUrl: string): Promise<DetectionResult> => {
+    verifyImage: async (imageFile: File): Promise<DetectionResult> => {
         if (USE_MOCK) {
-            // Forward mock call handled in frontend currently, 
-            // but structured here for future backend connection.
-            return { 
-                aiStatus: 'PENDING', 
-                confidence: 0.5, 
-                message: 'Mock verification' 
-            }; 
+            const objectUrl = URL.createObjectURL(imageFile);
+            return simulateYoloDetection(objectUrl);
         }
-        return apiClient.post('/ai/verify', { imageUrl });
+        const formData = new FormData();
+        formData.append('image', imageFile);
+        return apiClient.post('/api/ai/analyze', formData);
     }
 };
 

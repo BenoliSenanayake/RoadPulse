@@ -12,11 +12,11 @@ import 'leaflet/dist/leaflet.css';
 // Fix for default marker icons in Leaflet + Vite
 import icon from 'leaflet/dist/images/marker-icon.png';
 import iconShadow from 'leaflet/dist/images/marker-shadow.png';
-import { reportsApi } from '../../lib/api';
+import { reportsApi, aiApi } from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
 import { cn } from '../../lib/utils';
 import { EvidenceViewer } from '../../components/EvidenceViewer';
-import { simulateYoloDetection, type DetectionResult } from '../../lib/aiValidationService';
+import type { DetectionResult } from '../../lib/aiValidationService';
 
 // Fix Leaflet's default icon path issues
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -123,10 +123,10 @@ const ReportWizard = () => {
 
             // Start AI validation
             setIsAnalyzing(true);
-            simulateYoloDetection(compressed).then((result) => {
+            aiApi.verifyImage(file).then((result) => {
                 setDetectionResult(result);
                 setIsAnalyzing(false);
-            });
+            }).catch(console.error);
         }
     };
 
@@ -505,7 +505,7 @@ const ReportWizard = () => {
                              <div className="w-16 h-16 border-4 border-white/20 border-t-emerald-500 rounded-full animate-spin" />
                              <div>
                                  <p className="text-xl font-black tracking-tighter">AI Analysis in Progress</p>
-                                 <p className="text-[10px] uppercase tracking-widest text-slate-400 mt-2">Running YOLO inference</p>
+                                 <p className="text-[10px] uppercase tracking-widest text-slate-400 mt-2">Analyzing image with AI...</p>
                              </div>
                          </div>
                     ) : (
