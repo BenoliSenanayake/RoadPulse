@@ -10,8 +10,8 @@ import {
     XCircle,
     HardHat,
     Hammer,
-    Inbox
-} from 'lucide-react';
+    Inbox,
+    Database
 import {
     XAxis,
     YAxis,
@@ -30,7 +30,7 @@ import {
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import * as L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { potholesApi, reportsApi } from '../lib/api';
+import { potholesApi, reportsApi, checkBackendHealth } from '../lib/api';
 import { StatusPill } from '../components/StatusPill';
 import { Skeleton } from '../components/Skeleton';
 import { subDays, isAfter, format } from 'date-fns';
@@ -102,10 +102,18 @@ const Overview = () => {
     const [reports, setReports] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [currentTime, setCurrentTime] = useState(new Date());
+    const [isBackendHealthy, setIsBackendHealthy] = useState<boolean>(false);
 
     useEffect(() => {
         const timer = setInterval(() => setCurrentTime(new Date()), 1000);
         return () => clearInterval(timer);
+    }, []);
+
+    useEffect(() => {
+        const checkHealth = () => checkBackendHealth().then(setIsBackendHealthy);
+        checkHealth();
+        const healthTimer = setInterval(checkHealth, 30000);
+        return () => clearInterval(healthTimer);
     }, []);
 
     useEffect(() => {
@@ -189,10 +197,25 @@ const Overview = () => {
                     <h1 className="section-heading mb-1">Municipality Overview</h1>
                     <p className="text-slate-500 font-bold text-sm">Real-time telemetry and infrastructure tracking dashboard.</p>
                 </div>
-                <div className="flex items-center gap-3 px-4 py-2 bg-white rounded-xl border border-slate-200 shadow-sm">
-                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                    <span className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Live Sync Active</span>
-                    <span className="text-[10px] font-bold text-slate-400 border-l border-slate-200 pl-3">{currentTime.toLocaleTimeString()}</span>
+                <div className="flex flex-col sm:flex-row items-end sm:items-center gap-3">
+                    <div className={cn(
+                        "flex items-center gap-2 px-3 py-2 rounded-xl border shadow-sm transition-colors",
+                        isBackendHealthy ? "bg-emerald-50 border-emerald-100" : "bg-rose-50 border-rose-100"
+                    )}>
+                        <Database size={14} className={isBackendHealthy ? "text-emerald-500" : "text-rose-500"} />
+                        <span className={cn(
+                            "text-[9px] font-black uppercase tracking-widest",
+                            isBackendHealthy ? "text-emerald-700" : "text-rose-700"
+                        )}>
+                            {isBackendHealthy ? "Backend Connected" : "Backend Unavailable (Mock Data)"}
+                        </span>
+                    </div>
+
+                    <div className="flex items-center gap-3 px-4 py-2 bg-white rounded-xl border border-slate-200 shadow-sm">
+                        <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                        <span className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Live Sync Active</span>
+                        <span className="text-[10px] font-bold text-slate-400 border-l border-slate-200 pl-3">{currentTime.toLocaleTimeString()}</span>
+                    </div>
                 </div>
             </div>
 

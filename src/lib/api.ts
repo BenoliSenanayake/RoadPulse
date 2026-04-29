@@ -13,6 +13,15 @@ import { simulateYoloDetection, type DetectionResult } from './aiValidationServi
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 export const USE_MOCK = true; // Toggle this to switch to real backend
 
+export const checkBackendHealth = async (): Promise<boolean> => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/health`, { method: 'GET' });
+        return response.ok;
+    } catch {
+        return false;
+    }
+};
+
 // ==========================================
 // BASE API CLIENT
 // ==========================================

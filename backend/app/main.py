@@ -31,3 +31,7 @@ app.include_router(ai.router)
 @app.get("/")
 def root():
     return {"message": "Welcome to RoadPulse API"}
+
+@app.get("/api/health")
+def health_check():
+    return {"status": "ok", "backend": "connected"}
