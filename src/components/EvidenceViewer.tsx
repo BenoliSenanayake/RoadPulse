@@ -105,7 +105,7 @@ export const EvidenceViewer: React.FC<EvidenceViewerProps> = ({
                     <Camera size={48} strokeWidth={1.5} />
                 </div>
                 <h3 className="text-lg font-bold text-gray-700">No evidence uploaded yet</h3>
-                <p className="text-sm text-gray-500">Waiting for next vehicle sync...</p>
+                <p className="text-sm text-gray-500">Waiting for image upload...</p>
             </div>
         );
     }

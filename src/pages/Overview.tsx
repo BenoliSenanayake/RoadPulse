@@ -192,7 +192,7 @@ const Overview = () => {
                 {/* Status Breakdown */}
                 <div className="card-premium p-8">
                     <h4 className="text-lg font-black text-slate-900 tracking-tight mb-2 uppercase">Status Intel</h4>
-                    <p className="text-xs font-bold text-slate-400 mb-8">Fleet allocation & defect distribution</p>
+                    <p className="text-xs font-bold text-slate-400 mb-8">Report sources & defect distribution</p>
                     <div className="h-[240px]">
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>

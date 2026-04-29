@@ -124,7 +124,7 @@ const ReportStatus = () => {
                                     <span className="text-[10px] font-black uppercase tracking-widest">Narrative</span>
                                 </div>
                                 <p className="text-sm font-bold text-slate-600 leading-relaxed italic">
-                                    "{report.description || "No narrative provided by operator."}"
+                                    "{report.description || "No narrative provided by reporter."}"
                                 </p>
                             </div>
                         </div>

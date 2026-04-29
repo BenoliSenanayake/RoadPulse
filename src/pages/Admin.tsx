@@ -34,7 +34,7 @@ const AdminPage = () => {
 
     const userColumns = [
         {
-            header: 'Operator',
+            header: 'Personnel',
             render: (user: any) => <span className="font-black text-slate-900 tracking-tight">{user.name}</span>
         },
         {
