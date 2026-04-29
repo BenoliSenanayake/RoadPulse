@@ -89,17 +89,15 @@ export const getReports = (): CitizenReport[] => {
     return MOCK_REPORTS;
 };
 
-export const submitReport = async (report: Omit<CitizenReport, 'id' | 'aiStatus' | 'status' | 'createdAt'>): Promise<CitizenReport> => {
+export const submitReport = async (report: Omit<CitizenReport, 'id' | 'status' | 'createdAt'>): Promise<CitizenReport> => {
     const reports = getReports();
     const newReport: CitizenReport = {
         ...report,
         id: `CR-${Date.now()}`,
-        aiStatus: 'PENDING',
-        status: 'New',
+        status: report.aiStatus === 'REJECTED' ? 'Discarded' : 'New',
         createdAt: new Date().toISOString()
     };
 
-    // Save initial pending state
     localStorage.setItem('rp_reports', JSON.stringify([newReport, ...reports]));
 
     addAuditLog({
@@ -111,84 +109,52 @@ export const submitReport = async (report: Omit<CitizenReport, 'id' | 'aiStatus'
         details: 'Citizen submitted a new report for validation.'
     });
 
-    // Simulate AI Processing Network Call
-    return new Promise((resolve) => {
-        const inferenceTime = 800 + Math.random() * 2400; // 800 - 3200ms
+    if (newReport.aiStatus === 'ACCEPTED') {
+        addAuditLog({
+            entityId: newReport.id,
+            entityType: 'REPORT',
+            action: 'AI_ACCEPTED',
+            actor: 'SYSTEM',
+            actorName: 'AI Validation Engine',
+            details: `Automatically generated bounding box. Confidence: ${(newReport.aiConfidence! * 100).toFixed(1)}%`
+        });
 
-        setTimeout(() => {
-            const settings = getSystemSettings();
-            const confidence = Math.random();
-            const accepted = confidence >= settings.acceptanceThreshold;
+        const potholes = getPotholes();
+        const newPothole: PotholeEvent = {
+            id: `PH-${Date.now()}`,
+            lat: newReport.lat,
+            lon: newReport.lon,
+            timestamp: new Date().toISOString(),
+            confidence: newReport.aiConfidence!,
+            status: 'New',
+            imageUrl: newReport.imageUrl,
+            source: 'CITIZEN_REPORT',
+            reportId: newReport.id,
+            bbox: newReport.bbox,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+        };
+        localStorage.setItem('rp_potholes_v2', JSON.stringify([newPothole, ...potholes]));
+        newReport.linkedPotholeId = newPothole.id;
 
-            newReport.aiConfidence = confidence;
-            newReport.modelName = "YOLOv8";
-            newReport.modelVersion = "v0.1";
-            newReport.inferenceTimeMs = Math.round(inferenceTime);
+        const updatedReports = getReports();
+        const index = updatedReports.findIndex(r => r.id === newReport.id);
+        if (index !== -1) {
+            updatedReports[index] = newReport;
+            localStorage.setItem('rp_reports', JSON.stringify(updatedReports));
+        }
+    } else if (newReport.aiStatus === 'REJECTED') {
+        addAuditLog({
+            entityId: newReport.id,
+            entityType: 'REPORT',
+            action: 'AI_REJECTED',
+            actor: 'SYSTEM',
+            actorName: 'AI Validation Engine',
+            details: `Validation failed with confidence: ${(newReport.aiConfidence! * 100).toFixed(1)}%. Reason: No features detected.`
+        });
+    }
 
-            if (accepted) {
-                newReport.aiStatus = 'ACCEPTED';
-
-                addAuditLog({
-                    entityId: newReport.id,
-                    entityType: 'REPORT',
-                    action: 'AI_ACCEPTED',
-                    actor: 'SYSTEM',
-                    actorName: 'AI Validation Engine',
-                    details: `Automatically generated bounding box. Confidence: ${(confidence * 100).toFixed(1)}%`
-                });
-
-                // Generate plausible bbox (center-lower area, realistic size)
-                const w = 0.15 + Math.random() * 0.2; // 15-35% width
-                const h = 0.15 + Math.random() * 0.2; // 15-35% height
-                const x = 0.35 + Math.random() * 0.3; // 35-65% X offset (centered)
-                const y = 0.5 + Math.random() * 0.3;  // 50-80% Y offset (lower half)
-                newReport.bbox = [x, y, w, h];
-
-                // Create linked pothole
-                const potholes = getPotholes();
-                const newPothole: PotholeEvent = {
-                    id: `PH-${Date.now()}`,
-                    lat: newReport.lat,
-                    lon: newReport.lon,
-                    timestamp: new Date().toISOString(),
-                    confidence: confidence,
-                    status: 'New',
-                    imageUrl: newReport.imageUrl,
-                    source: 'CITIZEN_REPORT',
-                    reportId: newReport.id,
-                    bbox: newReport.bbox,
-                    createdAt: new Date().toISOString(),
-                    updatedAt: new Date().toISOString(),
-                };
-                localStorage.setItem('rp_potholes_v2', JSON.stringify([newPothole, ...potholes]));
-                newReport.linkedPotholeId = newPothole.id;
-
-            } else {
-                newReport.aiStatus = 'REJECTED';
-                newReport.aiReason = "No pothole-like features detected in the submitted image.";
-                newReport.status = 'Discarded';
-
-                addAuditLog({
-                    entityId: newReport.id,
-                    entityType: 'REPORT',
-                    action: 'AI_REJECTED',
-                    actor: 'SYSTEM',
-                    actorName: 'AI Validation Engine',
-                    details: `Validation failed with confidence: ${(confidence * 100).toFixed(1)}%. Reason: No features detected.`
-                });
-            }
-
-            // Update report with AI results
-            const updatedReports = getReports();
-            const index = updatedReports.findIndex(r => r.id === newReport.id);
-            if (index !== -1) {
-                updatedReports[index] = newReport;
-                localStorage.setItem('rp_reports', JSON.stringify(updatedReports));
-            }
-
-            resolve(newReport);
-        }, 1500 + Math.random() * 1000); // 1.5 - 2.5s delay
-    });
+    return newReport;
 };
 
 export const processReport = (id: string, action: 'accept' | 'reject', reason?: string, actorName: string = 'Maintenance Officer') => {

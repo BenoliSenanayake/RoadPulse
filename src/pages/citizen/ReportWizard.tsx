@@ -15,6 +15,8 @@ import iconShadow from 'leaflet/dist/images/marker-shadow.png';
 import { submitCitizenReport } from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
 import { cn } from '../../lib/utils';
+import { EvidenceViewer } from '../../components/EvidenceViewer';
+import { simulateYoloDetection, type DetectionResult } from '../../lib/aiValidationService';
 
 // Fix Leaflet's default icon path issues
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -93,6 +95,8 @@ const ReportWizard = () => {
     // UI State
     const [error, setError] = useState('');
     const [isMapModalOpen, setIsMapModalOpen] = useState(false);
+    const [detectionResult, setDetectionResult] = useState<DetectionResult | null>(null);
+    const [isAnalyzing, setIsAnalyzing] = useState(false);
 
     const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         setError('');
@@ -114,6 +118,13 @@ const ReportWizard = () => {
             const compressed = await compressImage(file);
             setPreviewUrl(compressed);
             setStep('LOCATION');
+
+            // Start AI validation
+            setIsAnalyzing(true);
+            simulateYoloDetection(compressed).then((result) => {
+                setDetectionResult(result);
+                setIsAnalyzing(false);
+            });
         }
     };
 
@@ -146,8 +157,15 @@ const ReportWizard = () => {
                 lat,
                 lon,
                 description: `${roadName ? `[${roadName}] ` : ''}${description}`.trim(),
-                imageUrl: previewUrl
-            });
+                imageUrl: previewUrl,
+                aiStatus: detectionResult?.aiStatus || 'PENDING',
+                aiConfidence: detectionResult?.confidence,
+                aiReason: detectionResult?.message,
+                modelName: detectionResult?.modelName,
+                modelVersion: detectionResult?.modelVersion,
+                inferenceTimeMs: detectionResult?.inferenceTimeMs,
+                bbox: detectionResult?.bbox
+            } as any);
             navigate(`/citizen/status/${report.id}`);
         } catch (err) {
             setError('System transmission failed. Please verify connection and retry.');
@@ -482,27 +500,59 @@ const ReportWizard = () => {
                         <p className="text-slate-400 font-bold uppercase tracking-widest text-[10px]">Review mission parameters before transmission</p>
                     </div>
 
-                    <div className="bg-white border border-slate-100 rounded-[3.5rem] p-10 space-y-10 shadow-2xl shadow-slate-200/50">
-                        <div className="flex flex-col sm:flex-row gap-8 items-center border-b border-slate-50 pb-10">
-                            <div className="w-40 h-40 rounded-3xl overflow-hidden border border-slate-100 shadow-2xl shadow-slate-900/10 shrink-0">
-                                <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />
+                    {isAnalyzing ? (
+                         <div className="bg-slate-900 rounded-[3.5rem] p-16 text-center text-white shadow-2xl flex flex-col items-center justify-center space-y-6">
+                             <div className="w-16 h-16 border-4 border-white/20 border-t-emerald-500 rounded-full animate-spin" />
+                             <div>
+                                 <p className="text-xl font-black tracking-tighter">AI Analysis in Progress</p>
+                                 <p className="text-[10px] uppercase tracking-widest text-slate-400 mt-2">Running YOLO inference</p>
+                             </div>
+                         </div>
+                    ) : (
+                        <div className="bg-white border border-slate-100 rounded-[3.5rem] p-10 space-y-10 shadow-2xl shadow-slate-200/50">
+                            <div className="rounded-[2.5rem] overflow-hidden shadow-xl border border-slate-100">
+                                 <EvidenceViewer 
+                                    imageUrl={previewUrl}
+                                    badges={{
+                                        confidence: detectionResult?.confidence || 0,
+                                        status: detectionResult?.aiStatus === 'ACCEPTED' ? 'New' : 'Rejected'
+                                    }}
+                                    metadata={{
+                                        timestamp: new Date().toISOString(),
+                                        lat,
+                                        lon,
+                                        roadName,
+                                        modelName: detectionResult?.modelName,
+                                        modelVersion: detectionResult?.modelVersion,
+                                        inferenceTimeMs: detectionResult?.inferenceTimeMs,
+                                        bbox: detectionResult?.bbox
+                                    }}
+                                 />
                             </div>
-                            <div className="flex-1 w-full space-y-4">
-                                <div>
-                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Coordinates</p>
-                                    <p className="text-sm font-bold text-slate-900 font-mono tracking-tighter">{lat.toFixed(6)}, {lon.toFixed(6)}</p>
+                            
+                            <div className="flex flex-col gap-6">
+                                <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100">
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">AI Recommendation</p>
+                                    <p className={cn("text-sm font-bold", 
+                                        detectionResult?.aiStatus === 'ACCEPTED' ? "text-emerald-600" :
+                                        detectionResult?.aiStatus === 'PENDING' ? "text-amber-600" : "text-rose-600"
+                                    )}>
+                                        {detectionResult?.message || 'Awaiting analysis...'}
+                                    </p>
                                 </div>
-                                <div>
-                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Landmark</p>
-                                    <p className="text-sm font-bold text-slate-900">{roadName || 'Not specified'}</p>
-                                </div>
-                                <div>
-                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Briefing</p>
-                                    <p className="text-sm font-bold text-slate-900">{description || 'Not specified'}</p>
+                                <div className="space-y-4 px-2">
+                                    <div>
+                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Landmark</p>
+                                        <p className="text-sm font-bold text-slate-900">{roadName || 'Not specified'}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Briefing</p>
+                                        <p className="text-sm font-bold text-slate-900">{description || 'Not specified'}</p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    )}
 
                     {error && (
                         <div className="bg-rose-50 border border-rose-100 p-5 rounded-3xl flex items-center justify-center gap-3 text-rose-600 text-[10px] font-black uppercase tracking-widest text-center">
