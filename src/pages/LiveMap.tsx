@@ -9,10 +9,7 @@ import {
 } from 'react-leaflet';
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import * as L from 'leaflet';
-import {
-    listPotholes,
-    updatePotholeStatus
-} from '../lib/api';
+import { potholesApi } from '../lib/api';
 import {
     Search,
     Layers,
@@ -98,10 +95,24 @@ const LiveMap = () => {
     const [mapCenter, setMapCenter] = useState<[number, number] | null>(null);
     const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
 
-    // Refresh trigger
-    const [refreshTick, setRefreshTick] = useState(0);
+    const [rawPotholes, setRawPotholes] = useState<PotholeEvent[]>([]);
+    const [loading, setLoading] = useState(true);
 
-    const rawPotholes = useMemo(() => listPotholes(), [refreshTick]);
+    const fetchPotholes = async () => {
+        setLoading(true);
+        try {
+            const data = await potholesApi.list();
+            setRawPotholes(data);
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchPotholes();
+    }, []);
 
     const filtered = useMemo(() => {
         return rawPotholes.filter(p => {
@@ -137,11 +148,15 @@ const LiveMap = () => {
         setMapCenter([p.lat, p.lon]);
     };
 
-    const handleAction = (status: 'Confirmed' | 'Scheduled') => {
+    const handleAction = async (status: 'Confirmed' | 'Scheduled') => {
         if (!selectedPothole) return;
-        updatePotholeStatus(selectedPothole.id, status, `Manually marked as ${status} from Live Map`, 'Map Officer');
-        setRefreshTick(prev => prev + 1);
-        setSelectedPothole({ ...selectedPothole, status });
+        try {
+            await potholesApi.updateStatus(selectedPothole.id, status, `Manually marked as ${status} from Live Map`);
+            await fetchPotholes();
+            setSelectedPothole({ ...selectedPothole, status });
+        } catch (e) {
+            console.error(e);
+        }
     };
 
     return (

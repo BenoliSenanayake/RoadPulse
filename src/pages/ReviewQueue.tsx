@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { listCitizenReports, reviewCitizenReport } from '../lib/api';
+import { reportsApi } from '../lib/api';
 import type { CitizenReport } from '../types';
 import { formatDistanceToNow, isAfter, subHours, subDays } from 'date-fns';
 import { MapPin, AlertTriangle, Filter, ChevronRight, Inbox, XCircle } from 'lucide-react';
@@ -36,9 +36,22 @@ const ReviewQueue = () => {
 
     // Tabs
     const [activeTab, setActiveTab] = useState<'PENDING_CITIZEN' | 'LOW_CONFIDENCE' | 'REJECTED'>('PENDING_CITIZEN');
+    const [loading, setLoading] = useState(true);
+
+    const fetchReports = async () => {
+        setLoading(true);
+        try {
+            const data = await reportsApi.list();
+            setReports(data.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     useEffect(() => {
-        setReports(listCitizenReports().sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+        fetchReports();
     }, []);
 
     const filteredReports = useMemo(() => {
@@ -56,11 +69,17 @@ const ReviewQueue = () => {
             return;
         }
         if (window.confirm(`Are you sure you want to manually ${action} this report?`)) {
-            reviewCitizenReport(id, action, (action === 'reject' || action === 'request_info') ? rejectionReason : undefined);
-            const fresh = listCitizenReports().sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-            setReports(fresh);
-            setSelectedReport(fresh.find(r => r.id === id) || null);
-            setRejectionReason('');
+            setLoading(true);
+            reportsApi.review(id, action, (action === 'reject' || action === 'request_info') ? rejectionReason : undefined)
+                .then(() => reportsApi.list())
+                .then(fresh => {
+                    const sorted = fresh.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+                    setReports(sorted);
+                    setSelectedReport(sorted.find(r => r.id === id) || null);
+                    setRejectionReason('');
+                })
+                .catch(console.error)
+                .finally(() => setLoading(false));
         }
     };
 
@@ -200,13 +219,19 @@ const ReviewQueue = () => {
                         onRowClick={(r) => setSelectedReport(r)}
                         className="flex-1 overflow-y-auto custom-scroll"
                         emptyState={
-                            <div className="p-12">
-                                <EmptyState
-                                    title="Sector Nominal"
-                                    description="No intelligence reports match your active tactical filters. All submissions cleared."
-                                    icon={Inbox}
-                                />
-                            </div>
+                            loading ? (
+                                <div className="p-12 flex justify-center text-slate-400 font-bold text-xs uppercase tracking-widest animate-pulse">
+                                    Loading Intelligence Briefs...
+                                </div>
+                            ) : (
+                                <div className="p-12">
+                                    <EmptyState
+                                        title="Sector Nominal"
+                                        description="No intelligence reports match your active tactical filters. All submissions cleared."
+                                        icon={Inbox}
+                                    />
+                                </div>
+                            )
                         }
                     />
                 </div>

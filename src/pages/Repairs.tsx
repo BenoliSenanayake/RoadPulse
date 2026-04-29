@@ -1,5 +1,6 @@
-import { useMemo } from 'react';
-import { listPotholes } from '../lib/api';
+import { useMemo, useState, useEffect } from 'react';
+import { potholesApi } from '../lib/api';
+import type { PotholeEvent } from '../types';
 import {
     Wrench,
     Calendar,
@@ -11,7 +12,16 @@ import { StatusPill } from '../components/StatusPill';
 import { EmptyState } from '../components/EmptyState';
 
 const RepairsPage = () => {
-    const potholes = useMemo(() => listPotholes(), []);
+    const [potholes, setPotholes] = useState<PotholeEvent[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        setLoading(true);
+        potholesApi.list()
+            .then(setPotholes)
+            .catch(console.error)
+            .finally(() => setLoading(false));
+    }, []);
 
     // Filter for items that need repair or are being repaired
     const repairQueue = useMemo(() => {
@@ -38,7 +48,14 @@ const RepairsPage = () => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {repairQueue.length === 0 ? (
+                {loading ? (
+                    <div className="col-span-full py-20 flex justify-center">
+                        <div className="animate-pulse flex flex-col items-center gap-4">
+                            <Wrench className="text-slate-200" size={32} />
+                            <div className="h-4 w-32 bg-slate-200 rounded"></div>
+                        </div>
+                    </div>
+                ) : repairQueue.length === 0 ? (
                     <div className="col-span-full py-20">
                         <EmptyState
                             title="Queue Depleted"

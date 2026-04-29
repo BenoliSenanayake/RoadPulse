@@ -30,7 +30,7 @@ import {
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import * as L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { listPotholes, listCitizenReports } from '../lib/api';
+import { potholesApi, reportsApi } from '../lib/api';
 import { StatusPill } from '../components/StatusPill';
 import { Skeleton } from '../components/Skeleton';
 import { subDays, isAfter, format } from 'date-fns';
@@ -98,13 +98,29 @@ const StatCard = ({ title, value, icon: Icon, trend, colorClass = "text-slate-90
 };
 
 const Overview = () => {
-    const potholes = useMemo(() => listPotholes(), []);
-    const reports = useMemo(() => listCitizenReports(), []);
+    const [potholes, setPotholes] = useState<any[]>([]);
+    const [reports, setReports] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
     const [currentTime, setCurrentTime] = useState(new Date());
 
     useEffect(() => {
         const timer = setInterval(() => setCurrentTime(new Date()), 1000);
         return () => clearInterval(timer);
+    }, []);
+
+    useEffect(() => {
+        setLoading(true);
+        Promise.all([
+            potholesApi.list(),
+            reportsApi.list()
+        ]).then(([pData, rData]) => {
+            setPotholes(pData);
+            setReports(rData);
+        }).catch(err => {
+            console.error("Failed to load overview data:", err);
+        }).finally(() => {
+            setLoading(false);
+        });
     }, []);
 
     const { stats, statusData, weeklyTrendData, repairProgressData } = useMemo(() => {
@@ -183,7 +199,7 @@ const Overview = () => {
             {/* KPI Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 {stats.map((stat, i) => (
-                    <StatCard key={i} {...stat} />
+                    <StatCard key={i} {...stat} loading={loading} />
                 ))}
             </div>
 
