@@ -1,8 +1,5 @@
-import { useMemo, useState } from 'react';
-import {
-    MOCK_USERS,
-    getAuditLogs
-} from '../mockData';
+import { useEffect, useState, useMemo } from 'react';
+import { authApi, auditLogsApi } from '../lib/api';
 import {
     Users,
     ShieldCheck,
@@ -18,19 +15,26 @@ import { ResponsiveDataList } from '../components/ResponsiveDataList';
 const AdminPage = () => {
     const [filterAction, setFilterAction] = useState<string>('ALL');
     const [filterType, setFilterType] = useState<string>('ALL');
+    const [logs, setLogs] = useState<any[]>([]);
+    const [users, setUsers] = useState<any[]>([]);
+
+    useEffect(() => {
+        authApi.listUsers().then(setUsers);
+        auditLogsApi.list().then(setLogs);
+    }, []);
 
     const filteredLogs = useMemo(() => {
-        let logs = getAuditLogs();
+        let currentLogs = [...logs];
 
         if (filterAction !== 'ALL') {
-            logs = logs.filter(l => l.action === filterAction);
+            currentLogs = currentLogs.filter(l => l.action === filterAction);
         }
         if (filterType !== 'ALL') {
-            logs = logs.filter(l => l.entityType === filterType);
+            currentLogs = currentLogs.filter(l => l.entityType === filterType);
         }
 
-        return logs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-    }, [filterAction, filterType]);
+        return currentLogs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    }, [filterAction, filterType, logs]);
 
     const userColumns = [
         {
@@ -211,7 +215,7 @@ const AdminPage = () => {
                             </button>
                         </div>
                         <ResponsiveDataList
-                            data={MOCK_USERS}
+                            data={users}
                             columns={userColumns}
                             renderCard={renderUserCard}
                             keyExtractor={(u) => u.id}

@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import type { User, UserRole } from '../types';
-import { MOCK_USERS } from '../mockData';
+import { authApi } from '../lib/api';
 
 export interface CitizenAccount extends User {
     passwordHash: string; // Simple hash/plain for prototype
@@ -47,7 +47,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const login = async (email: string, password?: string) => {
         // 1. Check Mock Staff Accounts (Admin/Officer)
-        const staffUser = MOCK_USERS.find(u => u.email === email && u.role !== 'CITIZEN');
+        const staffUser = await authApi.verifyStaff(email);
         if (staffUser) {
             // In a real app, we'd check staff passwords too
             setUser(staffUser);
@@ -78,7 +78,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const signup = async (data: Omit<CitizenAccount, 'id' | 'role' | 'createdAt'>) => {
         // Check if email taken
-        if (citizenAccounts.some(u => u.email === data.email) || MOCK_USERS.some(u => u.email === data.email)) {
+        const emailExists = await authApi.checkEmailExists(data.email);
+        if (citizenAccounts.some(u => u.email === data.email) || emailExists) {
             return { success: false, error: 'Identity already registered' };
         }
 

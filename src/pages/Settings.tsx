@@ -1,21 +1,22 @@
 import { useState, useEffect } from 'react';
-import { getSystemSettings } from '../mockData';
+import { settingsApi } from '../lib/api';
 import { Save, AlertCircle, Bot } from 'lucide-react';
 
 const Settings = () => {
     const [threshold, setThreshold] = useState<number>(0.6);
     const [isSaved, setIsSaved] = useState(false);
+    const [loading, setLoading] = useState(false);
 
     useEffect(() => {
-        const settings = getSystemSettings();
-        setThreshold(settings.acceptanceThreshold);
+        settingsApi.get().then(settings => {
+            setThreshold(settings.acceptanceThreshold);
+        });
     }, []);
 
-    const handleSave = () => {
-        const settings = getSystemSettings();
-        settings.acceptanceThreshold = threshold;
-        localStorage.setItem('rp_settings', JSON.stringify(settings));
-
+    const handleSave = async () => {
+        setLoading(true);
+        await settingsApi.update({ acceptanceThreshold: threshold });
+        setLoading(false);
         setIsSaved(true);
         setTimeout(() => setIsSaved(false), 3000);
     };
@@ -76,10 +77,11 @@ const Settings = () => {
                 <div className="p-8 bg-slate-50/50 border-t border-slate-50 flex items-center justify-end">
                     <button
                         onClick={handleSave}
-                        className="btn-premium px-10 py-4 bg-slate-900 text-white shadow-2xl shadow-slate-900/20"
+                        disabled={loading}
+                        className="btn-premium px-10 py-4 bg-slate-900 text-white shadow-2xl shadow-slate-900/20 disabled:opacity-50"
                     >
                         <Save size={16} />
-                        {isSaved ? "Protocols Updated" : "Save Changes"}
+                        {isSaved ? "Protocols Updated" : loading ? "Saving..." : "Save Changes"}
                     </button>
                 </div>
             </div>

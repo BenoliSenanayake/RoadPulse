@@ -1,62 +1,211 @@
 import {
-    submitReport,
-    getReports,
-    processReport,
-    getPotholes,
-    updatePotholeStatus as mockUpdatePotholeStatus
+    submitReport as mockSubmitReport,
+    getReports as mockGetReports,
+    processReport as mockProcessReport,
+    getPotholes as mockGetPotholes,
+    updatePotholeStatus as mockUpdatePotholeStatus,
+    getSystemSettings,
+    MOCK_USERS
 } from '../mockData';
 import type { CitizenReport, PotholeEvent, PotholeStatus } from '../types';
+import type { DetectionResult } from './aiValidationService';
 
-export const USE_MOCK = true;
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+export const USE_MOCK = true; // Toggle this to switch to real backend
 
-export interface ReportFilters {
-    citizenId?: string;
-    status?: 'PENDING' | 'ACCEPTED' | 'REJECTED';
-}
-
-export interface PotholeFilters {
-    status?: PotholeStatus;
-}
-
-export const submitCitizenReport = async (formData: Parameters<typeof submitReport>[0]): Promise<CitizenReport> => {
-    if (USE_MOCK) return submitReport(formData);
-    throw new Error('API not implemented');
-};
-
-export const listCitizenReports = (filters?: ReportFilters): CitizenReport[] => {
-    if (USE_MOCK) {
-        let reports = getReports();
-        if (filters?.status) reports = reports.filter(r => r.aiStatus === filters.status);
-        if (filters?.citizenId) reports = reports.filter(r => r.citizenId === filters.citizenId);
-        return reports;
+// ==========================================
+// BASE API CLIENT
+// ==========================================
+const apiClient = {
+    async get(endpoint: string) {
+        const response = await fetch(`${API_BASE_URL}${endpoint}`);
+        if (!response.ok) throw new Error(`API Error: ${response.statusText}`);
+        return response.json();
+    },
+    async post(endpoint: string, data: any) {
+        const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+        });
+        if (!response.ok) throw new Error(`API Error: ${response.statusText}`);
+        return response.json();
+    },
+    async patch(endpoint: string, data: any) {
+        const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+        });
+        if (!response.ok) throw new Error(`API Error: ${response.statusText}`);
+        return response.json();
     }
-    throw new Error('API not implemented');
 };
 
-export const reviewCitizenReport = (id: string, action: 'accept' | 'reject' | 'request_info', reason?: string): void => {
-    if (USE_MOCK) return processReport(id, action, reason);
-    throw new Error('API not implemented');
-};
+// ==========================================
+// API MODULES
+// ==========================================
 
-export const listPotholes = (filters?: PotholeFilters): PotholeEvent[] => {
-    if (USE_MOCK) {
-        let potholes = getPotholes();
-        if (filters?.status) potholes = potholes.filter(p => p.status === filters.status);
-        return potholes;
+export const authApi = {
+    login: async (email: string, password?: string) => {
+        if (USE_MOCK) {
+            return { token: 'mock-token', user: { id: 'u1', name: 'Admin', role: 'admin' } };
+        }
+        return apiClient.post('/auth/login', { email, password });
+    },
+    logout: async () => {
+        if (USE_MOCK) return { success: true };
+        return apiClient.post('/auth/logout', {});
+    },
+    // Mock helper to keep mockData out of components
+    verifyStaff: async (email: string) => {
+        if (USE_MOCK) {
+            return MOCK_USERS.find(u => u.email === email && u.role !== 'CITIZEN') || null;
+        }
+        return null;
+    },
+    checkEmailExists: async (email: string) => {
+        if (USE_MOCK) {
+            return MOCK_USERS.some(u => u.email === email);
+        }
+        return false;
+    },
+    listUsers: async () => {
+        if (USE_MOCK) return MOCK_USERS;
+        return apiClient.get('/users');
     }
-    throw new Error('API not implemented');
 };
 
-export const updatePotholeStatus = (id: string, status: PotholeStatus, note: string, updatedBy?: string): void => {
-    if (USE_MOCK) {
-        return mockUpdatePotholeStatus(id, status, note, updatedBy || 'System');
+export const reportsApi = {
+    list: async (filters?: { status?: string; citizenId?: string }): Promise<CitizenReport[]> => {
+        if (USE_MOCK) {
+            // Simulate network latency
+            await new Promise(r => setTimeout(r, 400));
+            let reports = mockGetReports();
+            if (filters?.status) reports = reports.filter(r => r.aiStatus === filters.status);
+            if (filters?.citizenId) reports = reports.filter(r => r.citizenId === filters.citizenId);
+            return reports;
+        }
+        const query = new URLSearchParams(filters as any).toString();
+        return apiClient.get(`/reports?${query}`);
+    },
+    submit: async (formData: { citizenId: string; imageUrl: string; lat: number; lon: number; description?: string }): Promise<CitizenReport> => {
+        if (USE_MOCK) {
+            await new Promise(r => setTimeout(r, 600));
+            return mockSubmitReport(formData);
+        }
+        return apiClient.post('/reports', formData);
+    },
+    review: async (id: string, action: 'accept' | 'reject' | 'request_info', reason?: string): Promise<void> => {
+        if (USE_MOCK) {
+            await new Promise(r => setTimeout(r, 300));
+            return mockProcessReport(id, action, reason);
+        }
+        return apiClient.post(`/reports/${id}/review`, { action, reason });
     }
-    throw new Error('API not implemented');
 };
 
-export const getPotholeById = (id: string): PotholeEvent | null => {
-    if (USE_MOCK) {
-        return getPotholes().find(p => p.id === id) || null;
+export const potholesApi = {
+    list: async (filters?: { status?: PotholeStatus }): Promise<PotholeEvent[]> => {
+        if (USE_MOCK) {
+            await new Promise(r => setTimeout(r, 400));
+            let potholes = mockGetPotholes();
+            if (filters?.status) potholes = potholes.filter(p => p.status === filters.status);
+            return potholes;
+        }
+        const query = new URLSearchParams(filters as any).toString();
+        return apiClient.get(`/potholes?${query}`);
+    },
+    getById: async (id: string): Promise<PotholeEvent | null> => {
+        if (USE_MOCK) {
+            await new Promise(r => setTimeout(r, 200));
+            return mockGetPotholes().find(p => p.id === id) || null;
+        }
+        return apiClient.get(`/potholes/${id}`);
+    },
+    updateStatus: async (id: string, status: PotholeStatus, note: string, updatedBy?: string): Promise<void> => {
+        if (USE_MOCK) {
+            await new Promise(r => setTimeout(r, 300));
+            return mockUpdatePotholeStatus(id, status, note, updatedBy || 'System');
+        }
+        return apiClient.patch(`/potholes/${id}/status`, { status, note, updatedBy });
     }
-    throw new Error('API not implemented');
 };
+
+export const repairsApi = {
+    schedule: async (potholeId: string, teamId: string, scheduledDate: string) => {
+        if (USE_MOCK) {
+            await new Promise(r => setTimeout(r, 300));
+            return mockUpdatePotholeStatus(potholeId, 'Scheduled', `Scheduled repair for team ${teamId}`, 'System');
+        }
+        return apiClient.post(`/repairs`, { potholeId, teamId, scheduledDate });
+    }
+};
+
+export const auditLogsApi = {
+    list: async (entityId?: string) => {
+        if (USE_MOCK) {
+            await new Promise(r => setTimeout(r, 200));
+            const logs = JSON.parse(localStorage.getItem('rp_audit_logs') || '[]');
+            if (entityId) return logs.filter((l: any) => l.entityId === entityId);
+            return logs;
+        }
+        return apiClient.get(`/audit-logs${entityId ? `?entityId=${entityId}` : ''}`);
+    }
+};
+
+export const aiApi = {
+    verifyImage: async (imageUrl: string): Promise<DetectionResult> => {
+        if (USE_MOCK) {
+            // Forward mock call handled in frontend currently, 
+            // but structured here for future backend connection.
+            return { 
+                aiStatus: 'PENDING', 
+                confidence: 0.5, 
+                message: 'Mock verification' 
+            }; 
+        }
+        return apiClient.post('/ai/verify', { imageUrl });
+    }
+};
+
+export const settingsApi = {
+    get: async () => {
+        if (USE_MOCK) {
+            await new Promise(r => setTimeout(r, 200));
+            return getSystemSettings();
+        }
+        return apiClient.get('/settings');
+    },
+    update: async (settings: any) => {
+        if (USE_MOCK) {
+            await new Promise(r => setTimeout(r, 200));
+            const current = getSystemSettings();
+            Object.assign(current, settings);
+            localStorage.setItem('rp_settings', JSON.stringify(current));
+            return current;
+        }
+        return apiClient.patch('/settings', settings);
+    }
+};
+
+// ==========================================
+// LEGACY COMPATIBILITY EXPORTS
+// To avoid breaking the entire app instantly, we temporarily export synchronous versions 
+// that bypass the new async flow. The pages will be incrementally updated.
+// ==========================================
+export const listCitizenReports = (filters?: { status?: string; citizenId?: string }) => {
+    let reports = mockGetReports();
+    if (filters?.status) reports = reports.filter(r => r.aiStatus === filters.status);
+    if (filters?.citizenId) reports = reports.filter(r => r.citizenId === filters.citizenId);
+    return reports;
+};
+export const submitCitizenReport = mockSubmitReport;
+export const reviewCitizenReport = mockProcessReport;
+export const listPotholes = (filters?: { status?: PotholeStatus }) => {
+    let potholes = mockGetPotholes();
+    if (filters?.status) potholes = potholes.filter(p => p.status === filters.status);
+    return potholes;
+};
+export const getPotholeById = (id: string) => mockGetPotholes().find(p => p.id === id) || null;
+export const updatePotholeStatus = (id: string, status: PotholeStatus, note: string, actor: string = 'System') => mockUpdatePotholeStatus(id, status, note, actor);

@@ -1,5 +1,6 @@
 import { formatDistanceToNow, parseISO } from 'date-fns';
-import { getAuditLogs } from '../mockData';
+import { useState, useEffect } from 'react';
+import { auditLogsApi } from '../lib/api';
 import type { AuditLogAction } from '../types';
 import {
     Send,
@@ -45,10 +46,31 @@ const getActorRoleStyle = (actor: string) => {
 }
 
 export const ActivityTimeline = ({ entityId }: ActivityTimelineProps) => {
-    // Fetch and sort logs securely by the provided entity ID
-    const sysLogs = getAuditLogs()
-        .filter(log => log.entityId === entityId)
-        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    const [sysLogs, setSysLogs] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchLogs = async () => {
+            setLoading(true);
+            try {
+                const logs = await auditLogsApi.list(entityId);
+                const sortedLogs = logs.sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+                setSysLogs(sortedLogs);
+            } catch (err) {
+                console.error("Failed to fetch logs", err);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchLogs();
+    }, [entityId]);
+
+    if (loading) return (
+        <div className="flex flex-col items-center justify-center p-8 text-center bg-gray-50 border border-dashed border-gray-300 rounded-xl">
+            <Activity className="text-gray-400 mb-2 animate-pulse" size={24} />
+            <p className="text-sm font-medium text-gray-500">Loading audit trail...</p>
+        </div>
+    );
 
     if (sysLogs.length === 0) return (
         <div className="flex flex-col items-center justify-center p-8 text-center bg-gray-50 border border-dashed border-gray-300 rounded-xl">
