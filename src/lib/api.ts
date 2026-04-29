@@ -11,7 +11,7 @@ import type { CitizenReport, PotholeEvent, PotholeStatus } from '../types';
 import { simulateYoloDetection, type DetectionResult } from './aiValidationService';
 
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-export const USE_MOCK = true; // Toggle this to switch to real backend
+export const USE_MOCK = false; // Changed to false to use backend
 
 export const checkBackendHealth = async (): Promise<boolean> => {
     try {
@@ -21,6 +21,17 @@ export const checkBackendHealth = async (): Promise<boolean> => {
         return false;
     }
 };
+
+// Helper for fallback
+async function withFallback<T>(apiCall: () => Promise<T>, mockFallback: () => Promise<T> | T): Promise<T> {
+    if (USE_MOCK) return mockFallback();
+    try {
+        return await apiCall();
+    } catch (e) {
+        console.warn('Backend call failed, falling back to mock data:', e);
+        return mockFallback();
+    }
+}
 
 // ==========================================
 // BASE API CLIENT
@@ -61,153 +72,188 @@ const apiClient = {
 
 export const authApi = {
     login: async (email: string, password?: string) => {
-        if (USE_MOCK) {
-            return { token: 'mock-token', user: { id: 'u1', name: 'Admin', role: 'admin' } };
-        }
-        return apiClient.post('/auth/login', { email, password });
+        return withFallback(
+            () => apiClient.post('/auth/login', { email, password }),
+            () => ({ token: 'mock-token', user: { id: 'u1', name: 'Admin', role: 'admin' } })
+        );
     },
     logout: async () => {
-        if (USE_MOCK) return { success: true };
-        return apiClient.post('/auth/logout', {});
+        return withFallback(
+            () => apiClient.post('/auth/logout', {}),
+            () => ({ success: true })
+        );
     },
-    // Mock helper to keep mockData out of components
     verifyStaff: async (email: string) => {
-        if (USE_MOCK) {
-            return MOCK_USERS.find(u => u.email === email && u.role !== 'CITIZEN') || null;
-        }
-        return null;
+        return withFallback(
+            async () => {
+                const users = await apiClient.get('/users');
+                return users.find((u: any) => u.email === email && u.role !== 'CITIZEN') || null;
+            },
+            () => MOCK_USERS.find(u => u.email === email && u.role !== 'CITIZEN') || null
+        );
     },
     checkEmailExists: async (email: string) => {
-        if (USE_MOCK) {
-            return MOCK_USERS.some(u => u.email === email);
-        }
-        return false;
+        return withFallback(
+            async () => {
+                const users = await apiClient.get('/users');
+                return users.some((u: any) => u.email === email);
+            },
+            () => MOCK_USERS.some(u => u.email === email)
+        );
     },
     listUsers: async () => {
-        if (USE_MOCK) return MOCK_USERS;
-        return apiClient.get('/users');
+        return withFallback(
+            () => apiClient.get('/users'),
+            () => MOCK_USERS
+        );
     }
 };
 
 export const reportsApi = {
     list: async (filters?: { status?: string; citizenId?: string }): Promise<CitizenReport[]> => {
-        if (USE_MOCK) {
-            // Simulate network latency
-            await new Promise(r => setTimeout(r, 400));
-            let reports = mockGetReports();
-            if (filters?.status) reports = reports.filter(r => r.aiStatus === filters.status);
-            if (filters?.citizenId) reports = reports.filter(r => r.citizenId === filters.citizenId);
-            return reports;
-        }
-        const query = new URLSearchParams(filters as any).toString();
-        return apiClient.get(`/reports?${query}`);
+        return withFallback(
+            () => {
+                const query = new URLSearchParams(filters as any).toString();
+                return apiClient.get(`/reports?${query}`);
+            },
+            async () => {
+                await new Promise(r => setTimeout(r, 400));
+                let reports = mockGetReports();
+                if (filters?.status) reports = reports.filter(r => r.aiStatus === filters.status);
+                if (filters?.citizenId) reports = reports.filter(r => r.citizenId === filters.citizenId);
+                return reports;
+            }
+        );
     },
     submit: async (data: any): Promise<CitizenReport> => {
-        if (USE_MOCK) {
-            await new Promise(r => setTimeout(r, 600));
-            let payload = data;
-            if (data instanceof FormData) {
-                // Keep mock working with FormData
-                payload = {
-                    citizenId: data.get('citizenId') as string,
-                    lat: parseFloat(data.get('lat') as string),
-                    lon: parseFloat(data.get('lon') as string),
-                    description: data.get('description') as string,
-                    imageUrl: data.get('image') instanceof File ? URL.createObjectURL(data.get('image') as File) : 'https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?auto=format&fit=crop&q=80',
-                    aiStatus: 'PENDING'
-                };
+        return withFallback(
+            () => apiClient.post('/reports', data),
+            async () => {
+                await new Promise(r => setTimeout(r, 600));
+                let payload = data;
+                if (data instanceof FormData) {
+                    payload = {
+                        citizenId: data.get('citizenId') as string,
+                        lat: parseFloat(data.get('lat') as string),
+                        lon: parseFloat(data.get('lon') as string),
+                        description: data.get('description') as string,
+                        imageUrl: data.get('image') instanceof File ? URL.createObjectURL(data.get('image') as File) : 'https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?auto=format&fit=crop&q=80',
+                        aiStatus: 'PENDING'
+                    };
+                }
+                return mockSubmitReport(payload);
             }
-            return mockSubmitReport(payload);
-        }
-        return apiClient.post('/reports', data);
+        );
     },
     review: async (id: string, action: 'accept' | 'reject' | 'request_info', reason?: string): Promise<void> => {
-        if (USE_MOCK) {
-            await new Promise(r => setTimeout(r, 300));
-            return mockProcessReport(id, action, reason);
-        }
-        return apiClient.post(`/reports/${id}/review`, { action, reason });
+        return withFallback(
+            () => apiClient.post(`/reports/${id}/review`, { action, reason }),
+            async () => {
+                await new Promise(r => setTimeout(r, 300));
+                return mockProcessReport(id, action, reason);
+            }
+        );
     }
 };
 
 export const potholesApi = {
     list: async (filters?: { status?: PotholeStatus }): Promise<PotholeEvent[]> => {
-        if (USE_MOCK) {
-            await new Promise(r => setTimeout(r, 400));
-            let potholes = mockGetPotholes();
-            if (filters?.status) potholes = potholes.filter(p => p.status === filters.status);
-            return potholes;
-        }
-        const query = new URLSearchParams(filters as any).toString();
-        return apiClient.get(`/potholes?${query}`);
+        return withFallback(
+            () => {
+                const query = new URLSearchParams(filters as any).toString();
+                return apiClient.get(`/potholes?${query}`);
+            },
+            async () => {
+                await new Promise(r => setTimeout(r, 400));
+                let potholes = mockGetPotholes();
+                if (filters?.status) potholes = potholes.filter(p => p.status === filters.status);
+                return potholes;
+            }
+        );
     },
     getById: async (id: string): Promise<PotholeEvent | null> => {
-        if (USE_MOCK) {
-            await new Promise(r => setTimeout(r, 200));
-            return mockGetPotholes().find(p => p.id === id) || null;
-        }
-        return apiClient.get(`/potholes/${id}`);
+        return withFallback(
+            () => apiClient.get(`/potholes/${id}`),
+            async () => {
+                await new Promise(r => setTimeout(r, 200));
+                return mockGetPotholes().find(p => p.id === id) || null;
+            }
+        );
     },
     updateStatus: async (id: string, status: PotholeStatus, note: string, updatedBy?: string): Promise<void> => {
-        if (USE_MOCK) {
-            await new Promise(r => setTimeout(r, 300));
-            return mockUpdatePotholeStatus(id, status, note, updatedBy || 'System');
-        }
-        return apiClient.patch(`/potholes/${id}/status`, { status, note, updatedBy });
+        return withFallback(
+            () => apiClient.patch(`/potholes/${id}/status`, { status, note, updatedBy }),
+            async () => {
+                await new Promise(r => setTimeout(r, 300));
+                return mockUpdatePotholeStatus(id, status, note, updatedBy || 'System');
+            }
+        );
     }
 };
 
 export const repairsApi = {
     schedule: async (potholeId: string, teamId: string, scheduledDate: string) => {
-        if (USE_MOCK) {
-            await new Promise(r => setTimeout(r, 300));
-            return mockUpdatePotholeStatus(potholeId, 'Scheduled', `Scheduled repair for team ${teamId}`, 'System');
-        }
-        return apiClient.post(`/repairs`, { potholeId, teamId, scheduledDate });
+        return withFallback(
+            () => apiClient.post(`/repairs`, { potholeId, teamId, scheduledDate }),
+            async () => {
+                await new Promise(r => setTimeout(r, 300));
+                return mockUpdatePotholeStatus(potholeId, 'Scheduled', `Scheduled repair for team ${teamId}`, 'System');
+            }
+        );
     }
 };
 
 export const auditLogsApi = {
     list: async (entityId?: string) => {
-        if (USE_MOCK) {
-            await new Promise(r => setTimeout(r, 200));
-            const logs = JSON.parse(localStorage.getItem('rp_audit_logs') || '[]');
-            if (entityId) return logs.filter((l: any) => l.entityId === entityId);
-            return logs;
-        }
-        return apiClient.get(`/audit-logs${entityId ? `?entityId=${entityId}` : ''}`);
+        return withFallback(
+            () => apiClient.get(`/audit-logs${entityId ? `?entityId=${entityId}` : ''}`),
+            async () => {
+                await new Promise(r => setTimeout(r, 200));
+                const logs = JSON.parse(localStorage.getItem('rp_audit_logs') || '[]');
+                if (entityId) return logs.filter((l: any) => l.entityId === entityId);
+                return logs;
+            }
+        );
     }
 };
 
 export const aiApi = {
     verifyImage: async (imageFile: File): Promise<DetectionResult> => {
-        if (USE_MOCK) {
-            const objectUrl = URL.createObjectURL(imageFile);
-            return simulateYoloDetection(objectUrl);
-        }
-        const formData = new FormData();
-        formData.append('image', imageFile);
-        return apiClient.post('/api/ai/analyze', formData);
+        return withFallback(
+            () => {
+                const formData = new FormData();
+                formData.append('image', imageFile);
+                return apiClient.post('/api/ai/analyze', formData);
+            },
+            () => {
+                const objectUrl = URL.createObjectURL(imageFile);
+                return simulateYoloDetection(objectUrl);
+            }
+        );
     }
 };
 
 export const settingsApi = {
     get: async () => {
-        if (USE_MOCK) {
-            await new Promise(r => setTimeout(r, 200));
-            return getSystemSettings();
-        }
-        return apiClient.get('/settings');
+        return withFallback(
+            () => apiClient.get('/settings'),
+            async () => {
+                await new Promise(r => setTimeout(r, 200));
+                return getSystemSettings();
+            }
+        );
     },
     update: async (settings: any) => {
-        if (USE_MOCK) {
-            await new Promise(r => setTimeout(r, 200));
-            const current = getSystemSettings();
-            Object.assign(current, settings);
-            localStorage.setItem('rp_settings', JSON.stringify(current));
-            return current;
-        }
-        return apiClient.patch('/settings', settings);
+        return withFallback(
+            () => apiClient.patch('/settings', settings),
+            async () => {
+                await new Promise(r => setTimeout(r, 200));
+                const current = getSystemSettings();
+                Object.assign(current, settings);
+                localStorage.setItem('rp_settings', JSON.stringify(current));
+                return current;
+            }
+        );
     }
 };
 
