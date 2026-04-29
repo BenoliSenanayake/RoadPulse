@@ -41,7 +41,9 @@ class ReportResponse(BaseModel):
         populate_by_name = True
 
 class DetectionResult(BaseModel):
+    detected: bool
     aiStatus: str
     confidence: float
     message: str
     bbox: Optional[List[float]] = None
+    modelVersion: str

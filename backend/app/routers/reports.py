@@ -6,7 +6,7 @@ import uuid
 import json
 from .. import schemas, models
 from ..database import get_db
-from ..services.ai_service import simulate_yolo_detection
+from ..services.ai_service import analyze_pothole_image
 from datetime import datetime
 
 router = APIRouter(prefix="/reports", tags=["reports"])
@@ -35,7 +35,7 @@ async def create_report(
     image_url = f"http://localhost:8000/static/{filename}"
     
     # 2. Call AI Service placeholder
-    detection = simulate_yolo_detection(file_path)
+    detection = analyze_pothole_image(file_path)
     
     # 3. Create Report record (Mock ID generation)
     report_id = f"rep-{uuid.uuid4().hex[:8]}"

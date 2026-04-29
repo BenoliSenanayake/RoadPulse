@@ -1,6 +1,6 @@
 from fastapi import APIRouter, UploadFile, File
 from ..schemas import DetectionResult
-from ..services.ai_service import simulate_yolo_detection
+from ..services.ai_service import analyze_pothole_image
 import os
 import uuid
 
@@ -21,7 +21,7 @@ async def analyze_image(image: UploadFile = File(...)):
         content = await image.read()
         f.write(content)
         
-    result = simulate_yolo_detection(file_path)
+    result = analyze_pothole_image(file_path)
     
     # Clean up temp file
     if os.path.exists(file_path):
