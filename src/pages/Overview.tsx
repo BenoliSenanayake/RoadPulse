@@ -12,6 +12,7 @@ import {
     Hammer,
     Inbox,
     Database
+} from 'lucide-react';
 import {
     XAxis,
     YAxis,
