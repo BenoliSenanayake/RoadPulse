@@ -9,7 +9,7 @@ import {
 } from 'react-leaflet';
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import * as L from 'leaflet';
-import { potholesApi } from '../lib/api';
+import { potholesApi, reportsApi } from '../lib/api';
 import {
     Search,
     Layers,
@@ -96,22 +96,30 @@ const LiveMap = () => {
     const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
 
     const [rawPotholes, setRawPotholes] = useState<PotholeEvent[]>([]);
+    const [rawReports, setRawReports] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
-    const fetchPotholes = async () => {
-        setLoading(true);
+    const fetchData = async (showLoading = true) => {
+        if (showLoading) setLoading(true);
+        setError(null);
         try {
-            const data = await potholesApi.list();
-            setRawPotholes(data);
+            const [pData, rData] = await Promise.all([
+                potholesApi.list(),
+                reportsApi.list()
+            ]);
+            setRawPotholes(pData);
+            setRawReports(rData);
         } catch (e) {
             console.error(e);
+            setError("Failed to load map data. Please try again later.");
         } finally {
-            setLoading(false);
+            if (showLoading) setLoading(false);
         }
     };
 
     useEffect(() => {
-        fetchPotholes();
+        fetchData();
     }, []);
 
     const filtered = useMemo(() => {
@@ -152,12 +160,51 @@ const LiveMap = () => {
         if (!selectedPothole) return;
         try {
             await potholesApi.updateStatus(selectedPothole.id, status, `Manually marked as ${status} from Live Map`);
-            await fetchPotholes();
+            await fetchData(false);
             setSelectedPothole({ ...selectedPothole, status });
         } catch (e) {
             console.error(e);
         }
     };
+
+    if (loading) {
+        return (
+            <div className="h-[calc(100vh-120px)] flex items-center justify-center -m-6 p-6 bg-slate-50">
+                <div className="flex flex-col items-center justify-center">
+                    <div className="w-12 h-12 border-4 border-slate-200 border-t-slate-900 rounded-full animate-spin mb-4" />
+                    <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">Loading Telemetry...</p>
+                </div>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="h-[calc(100vh-120px)] flex items-center justify-center -m-6 p-6 bg-slate-50">
+                <div className="flex flex-col items-center justify-center p-12 text-center bg-white rounded-3xl border border-slate-100 shadow-sm max-w-md w-full">
+                    <div className="w-16 h-16 bg-rose-50 rounded-full flex items-center justify-center mb-4">
+                        <AlertCircle className="text-rose-500 w-8 h-8" />
+                    </div>
+                    <h2 className="text-xl font-black text-slate-900 mb-2 tracking-tight uppercase">Failed to load data</h2>
+                    <p className="text-slate-500 font-bold">{error}</p>
+                </div>
+            </div>
+        );
+    }
+
+    if (!loading && rawPotholes.length === 0 && rawReports.length === 0) {
+        return (
+            <div className="h-[calc(100vh-120px)] flex items-center justify-center -m-6 p-6 bg-slate-50">
+                <div className="flex flex-col items-center justify-center p-12 text-center bg-white rounded-3xl border border-slate-100 shadow-sm max-w-md w-full">
+                    <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
+                        <MapPin className="text-slate-400 w-8 h-8" />
+                    </div>
+                    <h2 className="text-xl font-black text-slate-900 mb-2 tracking-tight uppercase">No Data Available</h2>
+                    <p className="text-slate-500 font-bold">There are currently no reports or potholes to display on the map.</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="h-[calc(100vh-120px)] flex flex-col md:flex-row gap-6 overflow-hidden -m-6 p-6 bg-slate-50 relative">
