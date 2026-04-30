@@ -101,6 +101,7 @@ const Overview = () => {
     const [potholes, setPotholes] = useState<any[]>([]);
     const [reports, setReports] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [currentTime, setCurrentTime] = useState(new Date());
     const [isBackendHealthy, setIsBackendHealthy] = useState<boolean>(false);
 
@@ -118,6 +119,7 @@ const Overview = () => {
 
     useEffect(() => {
         setLoading(true);
+        setError(null);
         Promise.all([
             potholesApi.list(),
             reportsApi.list()
@@ -126,6 +128,7 @@ const Overview = () => {
             setReports(rData);
         }).catch(err => {
             console.error("Failed to load overview data:", err);
+            setError("Failed to load overview data. Please try again later.");
         }).finally(() => {
             setLoading(false);
         });
@@ -189,6 +192,46 @@ const Overview = () => {
 
         return { stats: calculatedStats, statusData: statusCounts, weeklyTrendData: trendData, repairProgressData: repairData };
     }, [potholes, reports]);
+
+    if (error) {
+        return (
+            <div className="space-y-8 animate-fade-in-up pb-12">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                        <h1 className="section-heading mb-1">Municipality Overview</h1>
+                        <p className="text-slate-500 font-bold text-sm">Real-time telemetry and infrastructure tracking dashboard.</p>
+                    </div>
+                </div>
+                <div className="flex flex-col items-center justify-center py-20 text-center bg-white rounded-3xl border border-slate-100 shadow-sm">
+                    <div className="w-16 h-16 bg-rose-50 rounded-full flex items-center justify-center mb-4">
+                        <XCircle className="text-rose-500 w-8 h-8" />
+                    </div>
+                    <h2 className="text-xl font-black text-slate-900 mb-2 tracking-tight uppercase">Failed to load data</h2>
+                    <p className="text-slate-500 font-bold">{error}</p>
+                </div>
+            </div>
+        );
+    }
+
+    if (!loading && potholes.length === 0 && reports.length === 0) {
+        return (
+            <div className="space-y-8 animate-fade-in-up pb-12">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                        <h1 className="section-heading mb-1">Municipality Overview</h1>
+                        <p className="text-slate-500 font-bold text-sm">Real-time telemetry and infrastructure tracking dashboard.</p>
+                    </div>
+                </div>
+                <div className="flex flex-col items-center justify-center py-20 text-center bg-white rounded-3xl border border-slate-100 shadow-sm">
+                    <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
+                        <Inbox className="text-slate-400 w-8 h-8" />
+                    </div>
+                    <h2 className="text-xl font-black text-slate-900 mb-2 tracking-tight uppercase">No Data Available</h2>
+                    <p className="text-slate-500 font-bold">There are currently no reports or potholes in the system.</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-8 animate-fade-in-up pb-12">
