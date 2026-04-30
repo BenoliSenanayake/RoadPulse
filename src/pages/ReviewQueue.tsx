@@ -37,14 +37,17 @@ const ReviewQueue = () => {
     // Tabs
     const [activeTab, setActiveTab] = useState<'PENDING_CITIZEN' | 'LOW_CONFIDENCE' | 'REJECTED'>('PENDING_CITIZEN');
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
     const fetchReports = async () => {
         setLoading(true);
+        setError(null);
         try {
             const data = await reportsApi.list();
             setReports(data.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
         } catch (e) {
             console.error(e);
+            setError("Failed to load review queue. Please try again later.");
         } finally {
             setLoading(false);
         }
@@ -205,7 +208,30 @@ const ReviewQueue = () => {
                 </div>
             </div>
 
-            <div className="flex gap-6 overflow-hidden flex-1 pb-4">
+            </div>
+
+            {error ? (
+                <div className="flex-1 flex items-center justify-center pb-12">
+                    <div className="flex flex-col items-center justify-center p-12 text-center bg-white rounded-3xl border border-slate-100 shadow-sm max-w-md w-full">
+                        <div className="w-16 h-16 bg-rose-50 rounded-full flex items-center justify-center mb-4">
+                            <AlertTriangle className="text-rose-500 w-8 h-8" />
+                        </div>
+                        <h2 className="text-xl font-black text-slate-900 mb-2 tracking-tight uppercase">Failed to load data</h2>
+                        <p className="text-slate-500 font-bold">{error}</p>
+                    </div>
+                </div>
+            ) : !loading && reports.length === 0 ? (
+                <div className="flex-1 flex items-center justify-center pb-12">
+                    <div className="flex flex-col items-center justify-center p-12 text-center bg-white rounded-3xl border border-slate-100 shadow-sm max-w-md w-full">
+                        <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
+                            <Inbox className="text-slate-400 w-8 h-8" />
+                        </div>
+                        <h2 className="text-xl font-black text-slate-900 mb-2 tracking-tight uppercase">Queue Empty</h2>
+                        <p className="text-slate-500 font-bold">There are no reports in the system.</p>
+                    </div>
+                </div>
+            ) : (
+                <div className="flex gap-6 overflow-hidden flex-1 pb-4">
                 {/* List View */}
                 <div className={cn(
                     "card-premium flex-1 flex flex-col overflow-hidden transition-all duration-500 border-none shadow-premium",
@@ -388,6 +414,7 @@ const ReviewQueue = () => {
                     </div>
                 )}
             </div>
+            )}
         </div>
     );
 };
