@@ -5,7 +5,8 @@ import {
     Wrench,
     Calendar,
     Clock,
-    ArrowRight
+    ArrowRight,
+    AlertTriangle
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { StatusPill } from '../components/StatusPill';
@@ -14,12 +15,17 @@ import { EmptyState } from '../components/EmptyState';
 const RepairsPage = () => {
     const [potholes, setPotholes] = useState<PotholeEvent[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         setLoading(true);
+        setError(null);
         potholesApi.list()
             .then(setPotholes)
-            .catch(console.error)
+            .catch((err) => {
+                console.error(err);
+                setError("Failed to load repairs data. Please try again later.");
+            })
             .finally(() => setLoading(false));
     }, []);
 
@@ -47,7 +53,16 @@ const RepairsPage = () => {
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {error ? (
+                <div className="flex flex-col items-center justify-center p-12 text-center bg-white rounded-3xl border border-slate-100 shadow-sm mt-8">
+                    <div className="w-16 h-16 bg-rose-50 rounded-full flex items-center justify-center mb-4">
+                        <AlertTriangle className="text-rose-500 w-8 h-8" />
+                    </div>
+                    <h2 className="text-xl font-black text-slate-900 mb-2 tracking-tight uppercase">Failed to load data</h2>
+                    <p className="text-slate-500 font-bold">{error}</p>
+                </div>
+            ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mt-8">
                 {loading ? (
                     <div className="col-span-full py-20 flex justify-center">
                         <div className="animate-pulse flex flex-col items-center gap-4">
@@ -111,7 +126,8 @@ const RepairsPage = () => {
                         </div>
                     ))
                 )}
-            </div>
+                </div>
+            )}
         </div>
     );
 };
