@@ -19,6 +19,7 @@ const Admin = lazy(() => import('./pages/Admin'));
 const Settings = lazy(() => import('./pages/Settings'));
 
 // Citizen Pages
+const CitizenHome = lazy(() => import('./pages/citizen/CitizenHome'));
 const ReportWizard = lazy(() => import('./pages/citizen/ReportWizard'));
 const MyReports = lazy(() => import('./pages/citizen/MyReports'));
 const ReportStatus = lazy(() => import('./pages/citizen/ReportStatus'));
@@ -50,6 +51,11 @@ function App() {
 
             {/* Public/Citizen Routes (Staff allowed for inspection) */}
             <Route path="/citizen" element={
+              <ProtectedRoute allowedRoles={['CITIZEN', 'ADMIN', 'MAINTENANCE_OFFICER']}>
+                <CitizenLayout><CitizenHome /></CitizenLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/citizen/report" element={
               <ProtectedRoute allowedRoles={['CITIZEN', 'ADMIN', 'MAINTENANCE_OFFICER']}>
                 <CitizenLayout><ReportWizard /></CitizenLayout>
               </ProtectedRoute>

@@ -23,8 +23,9 @@ export const CitizenLayout = ({ children, hideFooter = false }: { children: Reac
     const unauthorized = location.state?.unauthorized;
 
     const navItems = [
-        { name: 'Report Pothole', path: '/citizen', icon: PlusCircle },
-        { name: 'My Submissions', path: '/citizen/my-reports', icon: Clock },
+        { name: 'Home', path: '/citizen', icon: Home },
+        { name: 'Report Pothole', path: '/citizen/report', icon: PlusCircle },
+        { name: 'My Reports', path: '/citizen/my-reports', icon: Clock },
     ];
 
     return (
@@ -185,7 +186,7 @@ export const CitizenLayout = ({ children, hideFooter = false }: { children: Reac
                     <span className="text-[9px] font-black uppercase tracking-widest">Home</span>
                 </Link>
                 <Link
-                    to="/citizen"
+                    to="/citizen/report"
                     aria-label="Report new pothole"
                     className="relative -top-10 bg-slate-900 text-white w-16 h-16 rounded-[2rem] flex items-center justify-center shadow-2xl shadow-slate-900/40 active:scale-95 transition-transform border-[6px] border-white"
                 >
