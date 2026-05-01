@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { Mail, Lock, User, MapPin, ArrowRight, CheckCircle2, Phone, Loader2, ChevronLeft } from 'lucide-react';
 import { Alert, type AlertType } from '../components/Alert';
 import { AuthInput } from '../components/AuthInput';
@@ -23,6 +23,11 @@ const Signup = () => {
     const [errors, setErrors] = useState<Record<string, string>>({});
     const { signup, getHomePath } = useAuth();
     const navigate = useNavigate();
+    const location = useLocation();
+    const fromLocation = location.state?.from as { pathname?: string; search?: string } | undefined;
+    const from = fromLocation?.pathname
+        ? `${fromLocation.pathname}${fromLocation.search ?? ''}`
+        : getHomePath('CITIZEN');
 
     const districts = ['Colombo', 'Kandy', 'Gampaha', 'Galle', 'Jaffna', 'Matara'];
 
@@ -91,7 +96,7 @@ const Signup = () => {
                 message: 'Identity Verified',
                 description: 'Welcome to the RoadPulse network, Citizen.'
             });
-            setTimeout(() => navigate(getHomePath()), 2000);
+            setTimeout(() => navigate(from, { replace: true }), 2000);
         } else {
             setFeedback({
                 type: 'error',
@@ -116,7 +121,7 @@ const Signup = () => {
             <div className="max-w-[400px] w-full relative z-10 flex flex-col gap-8">
                 {/* Brand Header */}
                 <div className="flex flex-col items-center">
-                    <Link to="/login" className="w-16 h-16 bg-white rounded-2xl shadow-premium border border-slate-100 flex items-center justify-center mb-4 group hover:scale-105 transition-all duration-500">
+                    <Link to="/login" state={{ from: location.state?.from }} className="w-16 h-16 bg-white rounded-2xl shadow-premium border border-slate-100 flex items-center justify-center mb-4 group hover:scale-105 transition-all duration-500">
                         <img src={logo} alt="RP" className="w-10 h-10 object-contain group-hover:-rotate-12 transition-transform duration-500" />
                     </Link>
                     <div className="text-center">
@@ -303,14 +308,12 @@ const Signup = () => {
 
                     <div className="mt-8 pt-6 border-t border-slate-50 text-center">
                         <p className="text-xs font-bold text-slate-400">
-                            Already registered? <Link to="/login" className="text-slate-900 font-black hover:underline underline-offset-4 uppercase tracking-widest ml-1">Sign In</Link>
+                            Already registered? <Link to="/login" state={{ from: location.state?.from }} className="text-slate-900 font-black hover:underline underline-offset-4 uppercase tracking-widest ml-1">Sign In</Link>
                         </p>
                     </div>
                 </div>
 
                 <div className="flex items-center justify-center gap-6">
-                    <Link to="/staff-login" className="text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-slate-900 transition-colors">Internal Staff Portal</Link>
-                    <div className="w-1.5 h-1.5 bg-slate-200 rounded-full" />
                     <button
                         onClick={() => setFeedback({ type: 'info', message: 'Recovery Protocol', description: 'Self-service recovery is coming soon. Contact support for key reset.' })}
                         className="text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-slate-900 transition-colors"

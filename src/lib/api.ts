@@ -141,6 +141,9 @@ export const reportsApi = {
                         aiStatus: 'PENDING'
                     };
                 }
+                if (!payload.citizenId) {
+                    throw new Error('Reports must be linked to a registered citizen.');
+                }
                 return mockSubmitReport(payload);
             }
         );

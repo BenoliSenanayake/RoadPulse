@@ -13,15 +13,11 @@ import { potholesApi, reportsApi } from '../lib/api';
 import {
     Search,
     Layers,
-    Maximize2,
     Activity,
     Flame,
-    MousePointer2,
     X,
     AlertCircle,
-    Hash,
     Filter,
-    Calendar,
     Target,
     Zap,
     MapPin,
@@ -32,7 +28,6 @@ import { Link } from 'react-router-dom';
 import { cn } from '../lib/utils';
 import type { PotholeEvent } from '../types';
 import { StatusPill } from '../components/StatusPill';
-import { EmptyState } from '../components/EmptyState';
 import { subDays, isAfter } from 'date-fns';
 
 // Standard Leaflet styles

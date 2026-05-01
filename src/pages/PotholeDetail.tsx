@@ -130,7 +130,7 @@ const PotholeDetail = () => {
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                         <div className="p-4 bg-slate-50/50 rounded-2xl border border-slate-50">
                                             <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 leading-none">Primary Reporter</p>
-                                            <p className="text-xs font-black text-slate-900">{report.submittedBy || 'Anonymous User'}</p>
+                                            <p className="text-xs font-black text-slate-900">{report.submittedBy || report.citizenId}</p>
                                         </div>
                                         <div className="p-4 bg-slate-50/50 rounded-2xl border border-slate-50">
                                             <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 leading-none">Evidence description</p>

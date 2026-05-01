@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Mail, Lock, LogIn, UserPlus, Fingerprint, ChevronRight, Loader2 } from 'lucide-react';
+import { Mail, Lock, LogIn, UserPlus, Loader2 } from 'lucide-react';
 import { Alert, type AlertType } from '../components/Alert';
 import { AuthInput } from '../components/AuthInput';
 import logo from '../assets/logo.png';
@@ -14,11 +14,15 @@ const LoginPage = () => {
     const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
     const [feedback, setFeedback] = useState<{ type: AlertType; message: string; description?: string } | null>(null);
 
-    const { login, isAuthenticated, continueAsGuest, getHomePath } = useAuth();
+    const { login, isAuthenticated, getHomePath } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
 
-    const from = location.state?.from?.pathname || '/citizen';
+    const fromLocation = location.state?.from as { pathname?: string; search?: string } | undefined;
+    const from = fromLocation?.pathname
+        ? `${fromLocation.pathname}${fromLocation.search ?? ''}`
+        : '/citizen';
+    const getRedirectTarget = () => from !== '/login' ? from : getHomePath();
 
     useEffect(() => {
         const savedEmail = localStorage.getItem('rp_remember_email');
@@ -28,17 +32,19 @@ const LoginPage = () => {
         }
     }, []);
 
-    if (isAuthenticated) {
-        navigate(from, { replace: true });
-    }
+    useEffect(() => {
+        if (isAuthenticated) {
+            navigate(getRedirectTarget(), { replace: true });
+        }
+    }, [isAuthenticated, navigate, from]);
 
     const validate = () => {
         const newErrors: { email?: string; password?: string } = {};
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-            newErrors.email = "Invalid email identity";
+            newErrors.email = "Enter a valid email address";
         }
         if (password.length < 1) {
-            newErrors.password = "Security key required";
+            newErrors.password = "Password required";
         }
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
@@ -61,28 +67,22 @@ const LoginPage = () => {
         setIsLoading(false);
 
         if (result.success) {
-            const target = from !== '/login' && from !== '/citizen' ? from : getHomePath();
-            navigate(target, { replace: true });
+            navigate(getRedirectTarget(), { replace: true });
         } else {
             setFeedback({
                 type: 'error',
-                message: 'Access Denied',
+                message: 'Sign in failed',
                 description: result.error || 'Invalid credentials provided.'
             });
-            setErrors({ password: 'Key mismatch' });
+            setErrors({ password: 'Check your password' });
         }
-    };
-
-    const handleGuest = () => {
-        continueAsGuest();
-        navigate('/citizen');
     };
 
     const handleForgot = () => {
         setFeedback({
             type: 'info',
-            message: 'Recovery Protocol Initiated',
-            description: 'Validation link has been sent to your registered identity (Mock).'
+            message: 'Password recovery',
+            description: 'A reset link has been sent to your email address.'
         });
     };
 
@@ -108,14 +108,14 @@ const LoginPage = () => {
                     </div>
                     <div className="text-center">
                         <h1 className="text-2xl font-black text-slate-900 tracking-tighter uppercase leading-none mb-1">RoadPulse</h1>
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] leading-none">Citizen Network</p>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] leading-none">Citizen Sign In</p>
                     </div>
                 </div>
 
                 <div className="card-premium p-8 sm:p-10 border-none shadow-2xl shadow-slate-900/10 relative overflow-hidden">
                     <form onSubmit={handleSubmit} className="space-y-5 relative z-10">
                         <AuthInput
-                            label="Your Identity"
+                            label="Email"
                             type="email"
                             placeholder="Email address"
                             icon={<Mail />}
@@ -130,7 +130,7 @@ const LoginPage = () => {
 
                         <div className="space-y-5">
                             <AuthInput
-                                label="Security Key"
+                                label="Password"
                                 type="password"
                                 placeholder="••••••••"
                                 icon={<Lock />}
@@ -183,33 +183,13 @@ const LoginPage = () => {
                         </button>
                     </form>
 
-                    <div className="mt-8 flex items-center gap-4">
-                        <div className="flex-1 h-px bg-slate-100" />
-                        <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest leading-none">OR</span>
-                        <div className="flex-1 h-px bg-slate-100" />
-                    </div>
-
-                    <button
-                        onClick={handleGuest}
-                        disabled={isLoading}
-                        className="w-full mt-6 py-4 bg-white text-slate-600 border border-slate-100 rounded-2xl font-black text-xs uppercase tracking-[0.2em] hover:bg-slate-50 active:scale-[0.98] transition-all flex items-center justify-center gap-3 shadow-sm disabled:opacity-50"
-                    >
-                        Guest Pass <Fingerprint size={16} className="text-slate-300" />
-                    </button>
-
                     <div className="mt-8 pt-6 border-t border-slate-50 text-center">
                         <p className="text-[11px] font-bold text-slate-400">
-                            New Citizen? <Link to="/signup" className="text-slate-900 font-black hover:underline underline-offset-4 flex items-center justify-center gap-1.5 mt-1 text-xs uppercase tracking-widest">
-                                <UserPlus size={14} /> Create Identity
+                            New Citizen? <Link to="/signup" state={{ from: location.state?.from }} className="text-slate-900 font-black hover:underline underline-offset-4 flex items-center justify-center gap-1.5 mt-1 text-xs uppercase tracking-widest">
+                                <UserPlus size={14} /> Create Account
                             </Link>
                         </p>
                     </div>
-                </div>
-
-                <div className="flex items-center justify-center gap-6">
-                    <Link to="/staff-login" className="text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-slate-900 transition-all flex items-center gap-1.5 group">
-                        Staff Command <ChevronRight size={12} className="group-hover:translate-x-1 transition-transform" />
-                    </Link>
                 </div>
             </div>
         </div>

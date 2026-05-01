@@ -1,8 +1,8 @@
 import { useState, useMemo, useEffect } from 'react';
 import { reportsApi } from '../lib/api';
 import type { CitizenReport } from '../types';
-import { formatDistanceToNow, isAfter, subHours, subDays } from 'date-fns';
-import { MapPin, AlertTriangle, Filter, ChevronRight, Inbox, XCircle } from 'lucide-react';
+import { formatDistanceToNow } from 'date-fns';
+import { MapPin, AlertTriangle, ChevronRight, Inbox, XCircle } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { Link } from 'react-router-dom';

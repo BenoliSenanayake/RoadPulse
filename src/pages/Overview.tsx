@@ -1,7 +1,6 @@
 import { useMemo, useState, useEffect } from 'react';
 import {
     AlertTriangle,
-    CheckCircle2,
     Clock,
     TrendingUp,
     FileText,
@@ -25,14 +24,12 @@ import {
     LineChart,
     Line,
     BarChart,
-    Bar,
-    Legend
+    Bar
 } from 'recharts';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import * as L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { potholesApi, reportsApi, checkBackendHealth } from '../lib/api';
-import { StatusPill } from '../components/StatusPill';
 import { Skeleton } from '../components/Skeleton';
 import { subDays, isAfter, format } from 'date-fns';
 import { cn } from '../lib/utils';

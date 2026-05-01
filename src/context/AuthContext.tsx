@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import type { User, UserRole } from '../types';
-import { authApi } from '../lib/api';
+import { MOCK_USERS } from '../mockData';
 
 export interface CitizenAccount extends User {
     passwordHash: string; // Simple hash/plain for prototype
@@ -15,7 +15,6 @@ interface AuthContextType {
     login: (email: string, password?: string) => Promise<{ success: boolean; error?: string }>;
     signup: (data: Omit<CitizenAccount, 'id' | 'role' | 'createdAt'>) => Promise<{ success: boolean; error?: string }>;
     logout: () => void;
-    continueAsGuest: () => void;
     isAuthenticated: boolean;
     hasRole: (roles: UserRole[]) => boolean;
     getHomePath: (role?: UserRole) => string;
@@ -31,7 +30,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // Current Session
     const [user, setUser] = useState<User | null>(() => {
         const saved = localStorage.getItem(USER_KEY);
-        return saved ? JSON.parse(saved) : null;
+        if (!saved) return null;
+
+        const parsed = JSON.parse(saved) as User;
+        if (parsed.id.startsWith('guest-') || parsed.email === 'guest@roadpulse.lk') {
+            localStorage.removeItem(USER_KEY);
+            return null;
+        }
+
+        return parsed;
     });
 
     // Persistent Accounts
@@ -46,19 +53,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }, [citizenAccounts]);
 
     const login = async (email: string, password?: string) => {
-        // 1. Check Mock Staff Accounts (Admin/Officer)
-        const staffUser = await authApi.verifyStaff(email);
-        if (staffUser) {
-            // In a real app, we'd check staff passwords too
-            setUser(staffUser);
-            localStorage.setItem(USER_KEY, JSON.stringify(staffUser));
-            return { success: true };
-        }
+        const normalizedEmail = email.trim().toLowerCase();
 
-        // 2. Check Citizen Accounts
-        const citizen = citizenAccounts.find(u => u.email === email);
+        const citizen = citizenAccounts.find(u => u.email.toLowerCase() === normalizedEmail);
         if (citizen) {
-            // Simple credential check
             if (citizen.passwordHash === password) {
                 const sessionUser: User = {
                     id: citizen.id,
@@ -73,13 +71,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             return { success: false, error: 'Invalid security key' };
         }
 
+        const mockUser = MOCK_USERS.find(u => u.email.toLowerCase() === normalizedEmail);
+        if (mockUser && password) {
+            setUser(mockUser);
+            localStorage.setItem(USER_KEY, JSON.stringify(mockUser));
+            return { success: true };
+        }
+
         return { success: false, error: 'Identity not found' };
     };
 
     const signup = async (data: Omit<CitizenAccount, 'id' | 'role' | 'createdAt'>) => {
-        // Check if email taken
-        const emailExists = await authApi.checkEmailExists(data.email);
-        if (citizenAccounts.some(u => u.email === data.email) || emailExists) {
+        const normalizedEmail = data.email.trim().toLowerCase();
+        const emailExists = MOCK_USERS.some(u => u.email.toLowerCase() === normalizedEmail);
+        if (citizenAccounts.some(u => u.email.toLowerCase() === normalizedEmail) || emailExists) {
             return { success: false, error: 'Identity already registered' };
         }
 
@@ -114,22 +119,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return user ? roles.includes(user.role) : false;
     };
 
-    const continueAsGuest = () => {
-        const guestUser: User = {
-            id: `guest-${Date.now()}`,
-            name: 'Guest Reporter',
-            email: 'guest@roadpulse.lk',
-            role: 'CITIZEN'
-        };
-        setUser(guestUser);
-        localStorage.setItem(USER_KEY, JSON.stringify(guestUser));
-    };
-
     const getHomePath = (forcedRole?: UserRole): string => {
         const role = forcedRole || user?.role;
         switch (role) {
-            case 'ADMIN': return '/admin';
-            case 'MAINTENANCE_OFFICER': return '/overview';
+            case 'ADMIN': return '/admin/overview';
+            case 'MAINTENANCE_OFFICER': return '/staff/overview';
             case 'CITIZEN': return '/citizen';
             default: return '/citizen';
         }
@@ -141,7 +135,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             login,
             signup,
             logout,
-            continueAsGuest,
             isAuthenticated: !!user,
             hasRole,
             getHomePath

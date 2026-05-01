@@ -90,6 +90,10 @@ export const getReports = (): CitizenReport[] => {
 };
 
 export const submitReport = async (report: Omit<CitizenReport, 'id' | 'status' | 'createdAt'>): Promise<CitizenReport> => {
+    if (!report.citizenId) {
+        throw new Error('Reports must be linked to a registered citizen.');
+    }
+
     const reports = getReports();
     const newReport: CitizenReport = {
         ...report,
@@ -105,7 +109,7 @@ export const submitReport = async (report: Omit<CitizenReport, 'id' | 'status' |
         entityType: 'REPORT',
         action: 'SUBMITTED',
         actor: 'CITIZEN',
-        actorName: newReport.submittedBy || 'Anonymous Citizen',
+        actorName: newReport.submittedBy || newReport.citizenId,
         details: 'Citizen submitted a new report for validation.'
     });
 

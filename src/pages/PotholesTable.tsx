@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import * as Papa from 'papaparse';
-import { cn } from '../lib/utils';
+
 import type { PotholeEvent } from '../types';
 import { ResponsiveDataList } from '../components/ResponsiveDataList';
 import { StatusPill } from '../components/StatusPill';

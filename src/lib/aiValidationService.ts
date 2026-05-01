@@ -19,7 +19,7 @@ export interface DetectionResult {
  * });
  * return await response.json();
  */
-export const simulateYoloDetection = async (imageUrl: string): Promise<DetectionResult> => {
+export const simulateYoloDetection = async (_imageUrl: string): Promise<DetectionResult> => {
     return new Promise((resolve) => {
         const inferenceTime = 800 + Math.random() * 2400; // Simulate 800 - 3200ms processing time
         

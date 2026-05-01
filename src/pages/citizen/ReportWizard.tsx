@@ -1,24 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
 import {
-    MapPin, CheckCircle2, XCircle, Loader2,
+    MapPin, CheckCircle2,
     Locate, Navigation, ArrowRight, ArrowLeft,
-    AlertCircle, Shield, PlusCircle, X
+    AlertCircle, PlusCircle, X, LogIn
 } from 'lucide-react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-
-// Fix for default marker icons in Leaflet + Vite
 import icon from 'leaflet/dist/images/marker-icon.png';
 import iconShadow from 'leaflet/dist/images/marker-shadow.png';
 import { reportsApi, aiApi } from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
 import { cn } from '../../lib/utils';
-import { EvidenceViewer } from '../../components/EvidenceViewer';
 import type { DetectionResult } from '../../lib/aiValidationService';
 
-// Fix Leaflet's default icon path issues
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
     iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
@@ -27,552 +23,418 @@ L.Icon.Default.mergeOptions({
 });
 
 function MapEvents({ onLocationSelect }: { onLocationSelect: (lat: number, lon: number) => void }) {
-    useMapEvents({
-        click(e) {
-            onLocationSelect(e.latlng.lat, e.latlng.lng);
-        },
-    });
+    useMapEvents({ click(e) { onLocationSelect(e.latlng.lat, e.latlng.lng); } });
     return null;
 }
 
 function MapController({ center }: { center: [number, number] }) {
     const map = useMap();
-    useEffect(() => {
-        map.flyTo(center, map.getZoom(), { animate: true, duration: 1.5 });
-    }, [center, map]);
+    useEffect(() => { map.flyTo(center, map.getZoom(), { animate: true, duration: 1.5 }); }, [center, map]);
     return null;
 }
 
-type Step = 'PHOTO' | 'LOCATION' | 'DETAILS' | 'REVIEW' | 'SUBMITTING';
+type Step = 'PHOTO' | 'LOCATION' | 'DETAILS' | 'REVIEW' | 'AUTH' | 'SUBMITTING';
 
-const compressImage = (file: File): Promise<string> => {
-    return new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = (event) => {
-            const img = new Image();
-            img.src = event.target?.result as string;
-            img.onload = () => {
-                const canvas = document.createElement('canvas');
-                const MAX_WIDTH = 1200;
-                const MAX_HEIGHT = 1200;
-                let width = img.width;
-                let height = img.height;
-
-                if (width > height) {
-                    if (width > MAX_WIDTH) {
-                        height *= MAX_WIDTH / width;
-                        width = MAX_WIDTH;
-                    }
-                } else {
-                    if (height > MAX_HEIGHT) {
-                        width *= MAX_HEIGHT / height;
-                        height = MAX_HEIGHT;
-                    }
-                }
-                canvas.width = width;
-                canvas.height = height;
-                const ctx = canvas.getContext('2d');
-                ctx?.drawImage(img, 0, 0, width, height);
-                resolve(canvas.toDataURL('image/jpeg', 0.7));
-            };
+const compressImage = (file: File): Promise<string> => new Promise(resolve => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = e => {
+        const img = new Image();
+        img.src = e.target?.result as string;
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const MAX = 1200;
+            let { width, height } = img;
+            if (width > height) { if (width > MAX) { height *= MAX / width; width = MAX; } }
+            else { if (height > MAX) { width *= MAX / height; height = MAX; } }
+            canvas.width = width; canvas.height = height;
+            canvas.getContext('2d')?.drawImage(img, 0, 0, width, height);
+            resolve(canvas.toDataURL('image/jpeg', 0.7));
         };
-    });
-};
+    };
+});
+
+const STEPS_INFO = [
+    { id: 'PHOTO', label: 'Photo' },
+    { id: 'LOCATION', label: 'Location' },
+    { id: 'DETAILS', label: 'Details' },
+    { id: 'REVIEW', label: 'Review' },
+];
 
 const ReportWizard = () => {
     const { user } = useAuth();
     const navigate = useNavigate();
     const [step, setStep] = useState<Step>('PHOTO');
 
-    // Form State
     const [imageFile, setImageFile] = useState<File | null>(null);
-    const [previewUrl, setPreviewUrl] = useState<string>('');
+    const [previewUrl, setPreviewUrl] = useState('');
     const [lat, setLat] = useState(6.9271);
     const [lon, setLon] = useState(79.8612);
     const [roadName, setRoadName] = useState('');
     const [description, setDescription] = useState('');
 
-    // UI State
     const [error, setError] = useState('');
     const [isMapModalOpen, setIsMapModalOpen] = useState(false);
+    // AI runs silently in background — result used for backend only, never shown
     const [detectionResult, setDetectionResult] = useState<DetectionResult | null>(null);
-    const [isAnalyzing, setIsAnalyzing] = useState(false);
 
     const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         setError('');
-        if (e.target.files?.[0]) {
-            const file = e.target.files[0];
-            
-            // Validate file type
-            if (!file.type.startsWith('image/')) {
-                setError('Please upload a valid image file.');
-                return;
-            }
-            
-            // Validate file size (e.g., 10MB max)
-            if (file.size > 10 * 1024 * 1024) {
-                setError('Image is too large. Maximum size is 10MB.');
-                return;
-            }
-
-            setImageFile(file);
-            const compressed = await compressImage(file);
-            setPreviewUrl(compressed);
-            setStep('LOCATION');
-
-            // Start AI validation
-            setIsAnalyzing(true);
-            aiApi.verifyImage(file).then((result) => {
-                setDetectionResult(result);
-                setIsAnalyzing(false);
-            }).catch(console.error);
-        }
+        if (!e.target.files?.[0]) return;
+        const file = e.target.files[0];
+        if (!file.type.startsWith('image/')) { setError('Please upload a valid image file.'); return; }
+        if (file.size > 10 * 1024 * 1024) { setError('Image is too large. Maximum size is 10MB.'); return; }
+        setImageFile(file);
+        const compressed = await compressImage(file);
+        setPreviewUrl(compressed);
+        setStep('LOCATION');
+        // Silently kick off AI analysis — never expose result to user
+        aiApi.verifyImage(file).then(setDetectionResult).catch(() => null);
     };
 
     const handleGetLocation = () => {
         setError('');
-        if ('geolocation' in navigator) {
-            navigator.geolocation.getCurrentPosition(
-                (pos) => {
-                    setLat(pos.coords.latitude);
-                    setLon(pos.coords.longitude);
-                    setIsMapModalOpen(true);
-                },
-                (err) => {
-                    console.error("Geolocation error:", err);
-                    setError('Please enable location access or select manually on the map.');
-                },
-                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-            );
-        } else {
-            setError('Geolocation is not supported by your browser.');
-        }
+        if (!('geolocation' in navigator)) { setError('Geolocation is not supported by your browser.'); return; }
+        navigator.geolocation.getCurrentPosition(
+            pos => { setLat(pos.coords.latitude); setLon(pos.coords.longitude); setIsMapModalOpen(true); },
+            () => setError('Please enable location access or pin your location on the map.'),
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        );
     };
 
     const handleSubmit = async () => {
+        if (!user) {
+            navigate('/login', { state: { from: { pathname: '/citizen/report' } }, replace: true });
+            return;
+        }
+
         setStep('SUBMITTING');
         try {
             const formData = new FormData();
-            formData.append('citizenId', user?.id || 'anonymous');
+            formData.append('citizenId', user.id);
             formData.append('lat', lat.toString());
             formData.append('lon', lon.toString());
-            
             const fullDesc = `${roadName ? `[${roadName}] ` : ''}${description}`.trim();
             if (fullDesc) formData.append('description', fullDesc);
-            
-            if (imageFile) {
-                formData.append('image', imageFile);
+            if (imageFile) formData.append('image', imageFile);
+            // Silently attach AI result if available
+            if (detectionResult) {
+                formData.append('aiStatus', detectionResult.aiStatus);
+                formData.append('aiConfidence', String(detectionResult.confidence));
             }
-
             const report = await reportsApi.submit(formData);
             navigate(`/citizen/status/${report.id}`);
-        } catch (err) {
-            setError('System transmission failed. Please verify connection and retry.');
+        } catch {
+            setError('Submission failed. Please check your connection and try again.');
             setStep('REVIEW');
         }
     };
 
-    const steps = [
-        { id: 'PHOTO', label: 'Photo' },
-        { id: 'LOCATION', label: 'Map' },
-        { id: 'DETAILS', label: 'Details' },
-        { id: 'REVIEW', label: 'Review' }
-    ];
+    const stepIndex = STEPS_INFO.findIndex(s => s.id === step);
 
-    if (step === 'SUBMITTING') {
-        return (
-            <div className="min-h-[60vh] flex flex-col items-center justify-center text-center p-8 animate-in fade-in zoom-in duration-500">
-                <div className="w-24 h-24 bg-slate-900 rounded-[2.5rem] flex items-center justify-center mb-8 shadow-2xl animate-pulse">
-                    <Loader2 size={40} className="text-white animate-spin" />
+    // ── Submitting overlay ──
+    if (step === 'SUBMITTING') return (
+        <div className="min-h-[60vh] flex flex-col items-center justify-center text-center p-8">
+            <div className="w-16 h-16 border-4 border-slate-200 border-t-slate-900 rounded-full animate-spin mb-6" />
+            <h2 className="text-xl font-bold text-slate-900 mb-1">Submitting your report…</h2>
+            <p className="text-sm text-slate-400">This will only take a moment.</p>
+        </div>
+    );
+
+    // ── Auth gate ──
+    if (step === 'AUTH') return (
+        <div className="max-w-md mx-auto px-4 py-16 text-center">
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-8 space-y-5">
+                <div className="w-14 h-14 bg-slate-50 rounded-xl flex items-center justify-center mx-auto border border-slate-100">
+                    <LogIn size={24} className="text-slate-500" />
                 </div>
-                <h2 className="text-3xl font-black text-slate-900 mb-2">Neural Analysis</h2>
-                <p className="text-slate-500 font-bold uppercase tracking-widest text-[10px]">Validating road surface telemetry</p>
+                <div>
+                    <h2 className="text-xl font-bold text-slate-900 mb-2">Sign in to submit</h2>
+                    <p className="text-sm text-slate-500 leading-relaxed">
+                        You need an account to submit a report so we can keep you updated on its progress.
+                    </p>
+                </div>
+                <div className="flex flex-col gap-3">
+                    <Link
+                        to="/login"
+                        state={{ from: { pathname: '/citizen/report' } }}
+                        className="flex items-center justify-center gap-2 w-full py-3 bg-slate-900 text-white rounded-xl font-semibold text-sm hover:bg-slate-800 transition-colors"
+                    >
+                        <LogIn size={16} /> Sign In
+                    </Link>
+                    <Link
+                        to="/signup"
+                        state={{ from: { pathname: '/citizen/report' } }}
+                        className="flex items-center justify-center gap-2 w-full py-3 bg-white text-slate-700 border border-slate-200 rounded-xl font-semibold text-sm hover:bg-slate-50 transition-colors"
+                    >
+                        Create a free account
+                    </Link>
+                    <button
+                        onClick={() => setStep('REVIEW')}
+                        className="text-sm text-slate-400 hover:text-slate-600 transition-colors"
+                    >
+                        ← Go back to review
+                    </button>
+                </div>
             </div>
-        );
-    }
-
+        </div>
+    );
 
     return (
-        <div className="max-w-2xl mx-auto px-4 py-8 sm:py-12 pb-40">
-            {step === 'PHOTO' && (
-                <div className="mb-20 animate-fade-in-up">
-                    <section className="relative overflow-hidden rounded-[3rem] bg-slate-900 px-8 py-16 sm:px-12 sm:py-20 text-white shadow-2xl shadow-slate-900/40 mb-12">
-                        {/* Visual Eye Candy */}
-                        <div className="absolute top-0 right-0 w-96 h-96 bg-accent/20 blur-[100px] -mr-32 -mt-32 animate-pulse" />
-                        <div className="absolute bottom-0 left-0 w-64 h-64 bg-blue-600/10 blur-[80px] -ml-32 -mb-32" />
+        <div className="max-w-lg mx-auto px-4 py-8 sm:py-10 pb-24">
 
-                        <div className="relative z-10">
-                            <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 backdrop-blur-xl border border-white/10 rounded-full mb-6">
-                                <span className="w-1.5 h-1.5 bg-accent rounded-full animate-pulse" />
-                                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-accent-light">National Road Surface Integrity</span>
-                            </div>
-
-                            <h1 className="text-4xl sm:text-6xl font-black mb-6 leading-[1.1] tracking-tighter">
-                                Fix your <span className="bg-gradient-to-r from-white via-accent-light to-white bg-clip-text text-transparent italic">streets.</span>
-                            </h1>
-
-                            <p className="text-slate-400 text-base sm:text-lg font-bold leading-relaxed max-w-md">
-                                Use our AI-powered portal to report road damage instantly. Real-time validation, faster repairs.
-                            </p>
-                        </div>
-                    </section>
-
-                    <div className="flex items-center justify-center gap-6 px-4">
-                        <div className="flex -space-x-3">
-                            {[1, 2, 3].map(i => (
-                                <div key={i} className="w-10 h-10 rounded-full border-4 border-white bg-slate-100 flex items-center justify-center overflow-hidden">
-                                    <img src={`https://i.pravatar.cc/100?img=${i + 10}`} alt="User" />
-                                </div>
-                            ))}
-                        </div>
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                            Joined by <span className="text-slate-900">4.2k citizens</span> today
-                        </p>
-                    </div>
-                </div>
-            )}
-
-            {/* Progress Indicator */}
+            {/* ── Progress bar (non-PHOTO steps) ── */}
             {step !== 'PHOTO' && (
-                <div className="flex items-center justify-between mb-16 bg-white p-3 rounded-full border border-slate-100 shadow-xl shadow-slate-200/20">
-                    {steps.map((s, i) => (
-                        <div key={s.id} className="flex-1 flex items-center justify-center gap-2">
+                <div className="flex items-center justify-between mb-10 bg-white p-2 rounded-full border border-slate-100 shadow-sm">
+                    {STEPS_INFO.map((s, i) => (
+                        <div key={s.id} className="flex-1 flex items-center justify-center">
                             <div className={cn(
-                                "w-10 h-10 rounded-full flex items-center justify-center text-xs font-black transition-all duration-500",
-                                step === s.id ? "bg-slate-900 text-white scale-110 shadow-xl shadow-slate-900/30" :
-                                    steps.findIndex(x => x.id === step) > i ? "bg-emerald-500 text-white" : "bg-slate-50 text-slate-200"
+                                "w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold transition-all",
+                                step === s.id ? "bg-slate-900 text-white scale-110 shadow-md" :
+                                    stepIndex > i ? "bg-emerald-500 text-white" : "bg-slate-50 text-slate-300"
                             )}>
-                                {steps.findIndex(x => x.id === step) > i ? <CheckCircle2 size={20} /> : i + 1}
+                                {stepIndex > i ? <CheckCircle2 size={17} /> : i + 1}
                             </div>
                         </div>
                     ))}
                 </div>
             )}
 
-            {/* Step 1: Photo */}
+            {/* ── Step 1: Photo ── */}
             {step === 'PHOTO' && (
-                <div className="animate-in fade-in slide-in-from-bottom-8 duration-500">
+                <div className="space-y-8">
+                    <div className="text-center space-y-2 mb-6">
+                        <h1 className="text-2xl font-bold text-slate-900">Report a Pothole</h1>
+                        <p className="text-sm text-slate-500">Start by uploading a clear photo of the road damage.</p>
+                    </div>
                     <label className="cursor-pointer group block">
-                        <div className="bg-white border-2 border-dashed border-slate-200 rounded-[4rem] p-16 text-center space-y-8 transition-all hover:bg-slate-50 hover:border-slate-300 active:scale-95 shadow-2xl shadow-slate-200/50">
-                            <div className="w-28 h-28 bg-slate-900 rounded-[2.5rem] flex items-center justify-center mx-auto text-white shadow-[0_20px_40px_rgba(0,0,0,0.3)] group-hover:scale-110 transition-transform duration-500">
-                                <PlusCircle size={40} />
+                        <div className="bg-white border-2 border-dashed border-slate-200 rounded-2xl p-12 text-center space-y-4 transition-all hover:border-slate-400 hover:bg-slate-50 active:scale-[0.98] shadow-sm">
+                            <div className="w-16 h-16 bg-slate-900 rounded-2xl flex items-center justify-center mx-auto text-white shadow-xl group-hover:scale-110 transition-transform duration-300">
+                                <PlusCircle size={30} />
                             </div>
-                            <div className="space-y-2">
-                                <h3 className="text-3xl font-black text-slate-900 tracking-tighter uppercase group-hover:text-accent transition-colors">Capture Defect</h3>
-                                <p className="text-slate-400 font-black uppercase tracking-[0.3em] text-[9px]">Environment Scan Engine v1.0</p>
+                            <div>
+                                <h3 className="text-base font-bold text-slate-900 mb-1">Upload a photo</h3>
+                                <p className="text-xs text-slate-400">Tap to take or choose a photo from your device</p>
                             </div>
-                            <input
-                                type="file"
-                                accept="image/*"
-                                capture="environment"
-                                className="hidden"
-                                onChange={handleImageChange}
-                            />
+                            <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handleImageChange} />
                         </div>
                     </label>
+                    {error && (
+                        <div className="flex items-center gap-2 text-rose-600 text-xs font-medium bg-rose-50 border border-rose-100 rounded-lg p-3">
+                            <AlertCircle size={14} /> {error}
+                        </div>
+                    )}
                 </div>
             )}
 
-            {/* Step 2: Location */}
+            {/* ── Step 2: Location ── */}
             {step === 'LOCATION' && (
-                <div className="space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-500">
-                    <div className="text-center space-y-2 mb-10">
-                        <h2 className="text-4xl font-black text-slate-900 tracking-tighter uppercase">Defect Location</h2>
-                        <p className="text-slate-400 font-bold uppercase tracking-widest text-[10px]">Geospatial synchronization required</p>
+                <div className="space-y-6">
+                    <div className="text-center space-y-1 mb-2">
+                        <h2 className="text-xl font-bold text-slate-900">Where is the pothole?</h2>
+                        <p className="text-sm text-slate-400">Use GPS or tap the map to pin the exact location.</p>
                     </div>
 
-                    <div className="bg-white border border-slate-100 rounded-[3rem] p-10 shadow-2xl shadow-slate-200/50 space-y-8">
+                    <div className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm space-y-4">
                         <button
                             onClick={handleGetLocation}
-                            className="w-full py-6 bg-slate-900 text-white rounded-[2rem] font-black uppercase tracking-widest text-[11px] shadow-2xl shadow-slate-900/40 active:scale-95 transition-all flex items-center justify-center gap-4"
+                            className="w-full py-3.5 bg-slate-900 text-white rounded-xl font-semibold text-sm shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-3"
                         >
-                            <Locate size={20} className="animate-pulse" />
-                            Use Current GPS Location
+                            <Locate size={18} className="animate-pulse" /> Use My Current Location
                         </button>
 
-                        <div className="relative">
-                            <div className="absolute inset-0 flex items-center" aria-hidden="true">
-                                <div className="w-full border-t border-slate-50" />
-                            </div>
-                            <div className="relative flex justify-center text-[9px] font-black uppercase tracking-[0.4em] text-slate-200">
-                                <span className="bg-white px-4 italic">or manual override</span>
-                            </div>
+                        <div className="flex items-center gap-3 text-slate-200 text-xs font-medium">
+                            <div className="flex-1 h-px bg-slate-100" /> or <div className="flex-1 h-px bg-slate-100" />
                         </div>
 
                         <button
                             onClick={() => setIsMapModalOpen(true)}
-                            className="w-full py-5 border border-slate-100 bg-slate-50 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-2xl font-black uppercase tracking-widest text-[9px] transition-all flex items-center justify-center gap-3"
+                            className="w-full py-3 border border-slate-200 bg-slate-50 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-2"
                         >
-                            <MapPin size={16} /> Open Interactive Map
+                            <MapPin size={15} /> Pin on Map
                         </button>
 
                         {lat !== 6.9271 && (
-                            <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-100 flex items-center justify-between">
+                            <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-100 flex items-center justify-between">
                                 <div>
-                                    <p className="text-[8px] font-black text-emerald-400 uppercase tracking-widest leading-none mb-1">Status</p>
-                                    <p className="text-[10px] font-black text-emerald-700 uppercase">Coordinates Locked</p>
+                                    <p className="text-[10px] font-semibold text-emerald-600 uppercase tracking-wider mb-0.5">Location confirmed</p>
+                                    <p className="text-xs font-mono text-emerald-700">{lat.toFixed(5)}, {lon.toFixed(5)}</p>
                                 </div>
-                                <CheckCircle2 className="text-emerald-500" size={16} />
+                                <CheckCircle2 size={18} className="text-emerald-500" />
                             </div>
                         )}
                     </div>
 
                     {/* Map Modal */}
                     {isMapModalOpen && (
-                        <div className="fixed inset-0 z-[100] bg-white flex flex-col animate-in slide-in-from-bottom-full duration-500 overflow-hidden">
-                            <div className="p-4 flex items-center justify-between border-b border-slate-50 bg-white/80 backdrop-blur-md z-1">
-                                <div className="space-y-0.5">
-                                    <h3 className="text-sm font-black text-slate-900 uppercase tracking-tighter">Tactical Map</h3>
-                                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none">Sector Alignment Active</p>
+                        <div className="fixed inset-0 z-[100] bg-white flex flex-col">
+                            <div className="p-4 flex items-center justify-between border-b border-slate-100 bg-white/90 backdrop-blur-md">
+                                <div>
+                                    <h3 className="text-sm font-bold text-slate-900">Pin Location</h3>
+                                    <p className="text-xs text-slate-400">Tap the map to drop a pin</p>
                                 </div>
-                                <button
-                                    onClick={() => setIsMapModalOpen(false)}
-                                    className="w-10 h-10 flex items-center justify-center bg-slate-50 text-slate-900 rounded-full active:scale-90 transition-all"
-                                >
-                                    <X size={20} />
+                                <button onClick={() => setIsMapModalOpen(false)} className="w-9 h-9 flex items-center justify-center bg-slate-50 rounded-full text-slate-600 border border-slate-100">
+                                    <X size={18} />
                                 </button>
                             </div>
                             <div className="flex-1 relative z-0">
-                                <MapContainer
-                                    center={[lat, lon]}
-                                    zoom={16}
-                                    style={{ height: '100%', width: '100%' }}
-                                    zoomControl={false}
-                                >
+                                <MapContainer center={[lat, lon]} zoom={16} style={{ height: '100%', width: '100%' }} zoomControl={false}>
                                     <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" />
                                     <MapController center={[lat, lon]} />
-                                    <MapEvents onLocationSelect={(newLat, newLon) => {
-                                        setLat(newLat);
-                                        setLon(newLon);
-                                    }} />
-                                    <Marker
-                                        position={[lat, lon]}
-                                        icon={L.icon({
-                                            iconUrl: icon,
-                                            shadowUrl: iconShadow,
-                                            iconSize: [40, 66],
-                                            iconAnchor: [20, 66],
-                                        })}
-                                    />
+                                    <MapEvents onLocationSelect={(la, lo) => { setLat(la); setLon(lo); }} />
+                                    <Marker position={[lat, lon]} icon={L.icon({ iconUrl: icon, shadowUrl: iconShadow, iconSize: [38, 60], iconAnchor: [19, 60] })} />
                                 </MapContainer>
-
-                                {/* GPS HUD Overlay */}
-                                <div className="absolute top-4 left-4 z-[1000] bg-slate-900/90 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/10 shadow-xl">
-                                    <div className="flex flex-col">
-                                        <span className="text-[7px] font-black text-slate-500 uppercase tracking-widest mb-0.5">Vector Location</span>
-                                        <span className="text-[10px] font-bold text-white font-mono">{lat.toFixed(5)}, {lon.toFixed(5)}</span>
-                                    </div>
-                                </div>
-
-                                {/* Floating Action Bar */}
-                                <div className="absolute bottom-0 left-0 right-0 z-[1000] p-6 bg-gradient-to-t from-white via-white/80 to-transparent">
+                                <div className="absolute bottom-0 left-0 right-0 z-[1000] p-5 bg-gradient-to-t from-white via-white/80 to-transparent">
                                     <button
                                         onClick={() => setIsMapModalOpen(false)}
-                                        className="w-full py-5 bg-slate-900 text-white rounded-[2rem] font-black uppercase tracking-widest text-[11px] shadow-[0_20px_50px_rgba(0,0,0,0.3)] hover:bg-slate-800 transition-all active:scale-[0.98]"
+                                        className="w-full py-3.5 bg-slate-900 text-white rounded-xl font-semibold text-sm shadow-xl active:scale-[0.98] transition-all"
                                     >
-                                        Establish Fix
+                                        Confirm Location
                                     </button>
                                 </div>
                             </div>
                         </div>
                     )}
 
-                    <div className="flex gap-4">
-                        <button
-                            onClick={() => { setStep('PHOTO'); setPreviewUrl(''); }}
-                            className="p-6 bg-slate-50 text-slate-400 rounded-[1.5rem] hover:text-slate-900 hover:bg-slate-100 transition-all border border-slate-100 active:scale-95"
-                        >
-                            <ArrowLeft size={24} />
+                    {error && <div className="flex items-center gap-2 text-rose-600 text-xs font-medium bg-rose-50 border border-rose-100 rounded-lg p-3"><AlertCircle size={14} /> {error}</div>}
+
+                    <div className="flex gap-3">
+                        <button onClick={() => { setStep('PHOTO'); setPreviewUrl(''); }} className="p-3.5 bg-white border border-slate-200 text-slate-500 rounded-xl hover:bg-slate-50 transition-all">
+                            <ArrowLeft size={20} />
                         </button>
                         <button
                             onClick={() => {
-                                if (lat === 6.9271) {
-                                    setError('Please synchronize coordinates before proceeding.');
-                                } else {
-                                    setStep('DETAILS');
-                                }
+                                if (lat === 6.9271) { setError('Please pin your location before continuing.'); return; }
+                                setError(''); setStep('DETAILS');
                             }}
-                            className="flex-1 bg-slate-900 text-white rounded-[1.5rem] font-black uppercase tracking-widest text-xs shadow-2xl shadow-slate-900/20 active:scale-95 transition-all flex items-center justify-center gap-4"
+                            className="flex-1 bg-slate-900 text-white rounded-xl font-semibold text-sm shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-3"
                         >
-                            Continue Signal
-                            <ArrowRight size={20} />
+                            Continue <ArrowRight size={18} />
                         </button>
                     </div>
-
-                    {error && (
-                        <div className="bg-rose-50 border border-rose-100 p-5 rounded-3xl flex items-center justify-center gap-3 text-rose-600 text-[10px] font-black uppercase tracking-widest text-center animate-shake">
-                            <AlertCircle size={16} /> {error}
-                        </div>
-                    )}
                 </div>
             )}
 
-            {/* Step 3: Details */}
+            {/* ── Step 3: Details ── */}
             {step === 'DETAILS' && (
-                <div className="space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-500">
-                    <div className="text-center space-y-2 mb-10">
-                        <h2 className="text-4xl font-black text-slate-900 tracking-tighter uppercase">Final Intel</h2>
-                        <p className="text-slate-400 font-bold uppercase tracking-widest text-[10px]">Provide mission context</p>
+                <div className="space-y-6">
+                    <div className="text-center space-y-1 mb-2">
+                        <h2 className="text-xl font-bold text-slate-900">Add details</h2>
+                        <p className="text-sm text-slate-400">Help our team find and fix the problem faster.</p>
                     </div>
 
-                    <div className="bg-white border border-slate-100 rounded-[3.5rem] p-10 space-y-10 shadow-2xl shadow-slate-200/50">
-                        <div className="flex gap-8 items-center border-b border-slate-50 pb-10">
-                            <div className="relative group">
-                                <div className="w-28 h-28 rounded-3xl overflow-hidden border border-slate-100 shadow-2xl shadow-slate-900/10 shrink-0">
-                                    <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />
-                                </div>
+                    <div className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm space-y-6">
+                        {/* Preview */}
+                        <div className="flex gap-4 items-center pb-5 border-b border-slate-50">
+                            <div className="w-20 h-20 rounded-xl overflow-hidden border border-slate-100 shrink-0 relative">
+                                <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />
                                 <button
                                     onClick={() => { setStep('PHOTO'); setPreviewUrl(''); }}
-                                    className="absolute -top-3 -right-3 w-8 h-8 bg-rose-500 text-white rounded-full flex items-center justify-center shadow-lg active:scale-90 transition-transform"
+                                    className="absolute -top-2 -right-2 w-6 h-6 bg-rose-500 text-white rounded-full flex items-center justify-center shadow-md"
                                 >
-                                    <XCircle size={16} />
+                                    <X size={12} />
                                 </button>
                             </div>
-                            <div className="flex-1 min-w-0">
-                                <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest mb-2">Target Telemetry</p>
-                                <div className="space-y-1">
-                                    <p className="text-xs font-black text-slate-900 uppercase">Sector {lat.toFixed(2)}E</p>
-                                    <p className="text-[10px] font-bold text-slate-400 font-mono tracking-tighter truncate">{lat.toFixed(6)}, {lon.toFixed(6)}</p>
-                                </div>
+                            <div>
+                                <p className="text-xs text-slate-400 mb-0.5">Photo uploaded ✓</p>
+                                <p className="text-xs font-mono text-slate-600">{lat.toFixed(4)}, {lon.toFixed(4)}</p>
                             </div>
                         </div>
 
-                        <div className="space-y-8">
-                            <div>
-                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Tactical Landmark</label>
-                                <input
-                                    type="text"
-                                    placeholder="e.g. Near Colombo 7 junction..."
-                                    className="w-full px-8 py-5 bg-slate-50/50 border border-slate-100 rounded-3xl focus:outline-none focus:ring-4 focus:ring-slate-900/5 transition-all font-bold text-sm text-slate-900 tracking-tight"
-                                    value={roadName}
-                                    onChange={(e) => setRoadName(e.target.value)}
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Intel Brief</label>
-                                <textarea
-                                    placeholder="Describe defect severity or depth..."
-                                    className="w-full px-8 py-5 bg-slate-50/50 border border-slate-100 rounded-3xl focus:outline-none focus:ring-4 focus:ring-slate-900/5 transition-all font-bold text-sm text-slate-900 h-40 resize-none tracking-tight leading-relaxed"
-                                    value={description}
-                                    onChange={(e) => setDescription(e.target.value)}
-                                />
-                            </div>
+                        <div>
+                            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Nearest landmark or road name</label>
+                            <input
+                                type="text"
+                                placeholder="e.g. Near Colombo 7 junction..."
+                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-300 transition-all text-sm text-slate-900"
+                                value={roadName}
+                                onChange={e => setRoadName(e.target.value)}
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Description (optional)</label>
+                            <textarea
+                                placeholder="Describe the pothole — size, depth, how long it's been there..."
+                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-300 transition-all text-sm text-slate-900 h-28 resize-none leading-relaxed"
+                                value={description}
+                                onChange={e => setDescription(e.target.value)}
+                            />
                         </div>
                     </div>
 
-                    {error && (
-                        <div className="bg-rose-50 border border-rose-100 p-5 rounded-3xl flex items-center justify-center gap-3 text-rose-600 text-[10px] font-black uppercase tracking-widest text-center">
-                            <AlertCircle size={16} /> {error}
-                        </div>
-                    )}
+                    {error && <div className="flex items-center gap-2 text-rose-600 text-xs font-medium bg-rose-50 border border-rose-100 rounded-lg p-3"><AlertCircle size={14} /> {error}</div>}
 
-                    <div className="flex gap-4">
-                        <button
-                            onClick={() => setStep('LOCATION')}
-                            className="p-6 bg-slate-50 text-slate-400 rounded-[1.5rem] hover:text-slate-900 hover:bg-slate-100 transition-all border border-slate-100"
-                        >
-                            <ArrowLeft size={24} />
+                    <div className="flex gap-3">
+                        <button onClick={() => setStep('LOCATION')} className="p-3.5 bg-white border border-slate-200 text-slate-500 rounded-xl hover:bg-slate-50 transition-all">
+                            <ArrowLeft size={20} />
                         </button>
                         <button
                             onClick={() => {
-                                if (!description.trim() && !roadName.trim()) {
-                                    setError('Please provide at least a landmark or description.');
-                                    return;
-                                }
-                                setError('');
-                                setStep('REVIEW');
+                                if (!description.trim() && !roadName.trim()) { setError('Please add at least a landmark or short description.'); return; }
+                                setError(''); setStep('REVIEW');
                             }}
-                            className="flex-1 bg-slate-900 text-white rounded-[1.5rem] font-black uppercase tracking-widest text-xs shadow-2xl shadow-slate-900/20 active:scale-95 transition-all flex items-center justify-center gap-4"
+                            className="flex-1 bg-slate-900 text-white rounded-xl font-semibold text-sm shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-3"
                         >
-                            Review Report
-                            <ArrowRight size={20} className="text-white" />
+                            Review Report <ArrowRight size={18} />
                         </button>
                     </div>
                 </div>
             )}
 
-            {/* Step 4: Review */}
+            {/* ── Step 4: Review ── */}
             {step === 'REVIEW' && (
-                <div className="space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-500">
-                    <div className="text-center space-y-2 mb-10">
-                        <h2 className="text-4xl font-black text-slate-900 tracking-tighter uppercase">Confirm Intel</h2>
-                        <p className="text-slate-400 font-bold uppercase tracking-widest text-[10px]">Review mission parameters before transmission</p>
+                <div className="space-y-6">
+                    <div className="text-center space-y-1 mb-2">
+                        <h2 className="text-xl font-bold text-slate-900">Review & Submit</h2>
+                        <p className="text-sm text-slate-400">Check your report before sending it to our team.</p>
                     </div>
 
-                    {isAnalyzing ? (
-                         <div className="bg-slate-900 rounded-[3.5rem] p-16 text-center text-white shadow-2xl flex flex-col items-center justify-center space-y-6">
-                             <div className="w-16 h-16 border-4 border-white/20 border-t-emerald-500 rounded-full animate-spin" />
-                             <div>
-                                 <p className="text-xl font-black tracking-tighter">AI Analysis in Progress</p>
-                                 <p className="text-[10px] uppercase tracking-widest text-slate-400 mt-2">Analyzing image with AI...</p>
-                             </div>
-                         </div>
-                    ) : (
-                        <div className="bg-white border border-slate-100 rounded-[3.5rem] p-10 space-y-10 shadow-2xl shadow-slate-200/50">
-                            <div className="rounded-[2.5rem] overflow-hidden shadow-xl border border-slate-100">
-                                 <EvidenceViewer 
-                                    imageUrl={previewUrl}
-                                    badges={{
-                                        confidence: detectionResult?.confidence || 0,
-                                        status: detectionResult?.aiStatus === 'ACCEPTED' ? 'New' : 'Rejected'
-                                    }}
-                                    metadata={{
-                                        timestamp: new Date().toISOString(),
-                                        lat,
-                                        lon,
-                                        roadName,
-                                        modelName: detectionResult?.modelName,
-                                        modelVersion: detectionResult?.modelVersion,
-                                        inferenceTimeMs: detectionResult?.inferenceTimeMs,
-                                        bbox: detectionResult?.bbox
-                                    }}
-                                 />
+                    <div className="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden">
+                        {/* Image */}
+                        <div className="h-48 overflow-hidden">
+                            <img src={previewUrl} alt="Pothole preview" className="w-full h-full object-cover" />
+                        </div>
+
+                        {/* Details */}
+                        <div className="p-6 space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-0.5">Location</p>
+                                    <p className="text-sm font-medium text-slate-700 font-mono">{lat.toFixed(4)}, {lon.toFixed(4)}</p>
+                                </div>
+                                {roadName && (
+                                    <div>
+                                        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-0.5">Landmark</p>
+                                        <p className="text-sm font-medium text-slate-700">{roadName}</p>
+                                    </div>
+                                )}
                             </div>
-                            
-                            <div className="flex flex-col gap-6">
-                                <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100">
-                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">AI Recommendation</p>
-                                    <p className={cn("text-sm font-bold", 
-                                        detectionResult?.aiStatus === 'ACCEPTED' ? "text-emerald-600" :
-                                        detectionResult?.aiStatus === 'PENDING' ? "text-amber-600" : "text-rose-600"
-                                    )}>
-                                        {detectionResult?.message || 'Awaiting analysis...'}
-                                    </p>
+                            {description && (
+                                <div>
+                                    <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-0.5">Description</p>
+                                    <p className="text-sm text-slate-700 leading-relaxed">{description}</p>
                                 </div>
-                                <div className="space-y-4 px-2">
-                                    <div>
-                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Landmark</p>
-                                        <p className="text-sm font-bold text-slate-900">{roadName || 'Not specified'}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Briefing</p>
-                                        <p className="text-sm font-bold text-slate-900">{description || 'Not specified'}</p>
-                                    </div>
-                                </div>
+                            )}
+                            <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 flex items-start gap-3">
+                                <CheckCircle2 size={17} className="text-blue-500 shrink-0 mt-0.5" />
+                                <p className="text-xs text-blue-700 leading-relaxed">
+                                    <strong className="font-semibold">What happens next?</strong> Our team will review your report and schedule a repair. We'll keep you updated on the progress.
+                                </p>
                             </div>
                         </div>
-                    )}
+                    </div>
 
-                    {error && (
-                        <div className="bg-rose-50 border border-rose-100 p-5 rounded-3xl flex items-center justify-center gap-3 text-rose-600 text-[10px] font-black uppercase tracking-widest text-center">
-                            <AlertCircle size={16} /> {error}
-                        </div>
-                    )}
+                    {error && <div className="flex items-center gap-2 text-rose-600 text-xs font-medium bg-rose-50 border border-rose-100 rounded-lg p-3"><AlertCircle size={14} /> {error}</div>}
 
-                    <div className="flex gap-4">
-                        <button
-                            onClick={() => setStep('DETAILS')}
-                            className="p-6 bg-slate-50 text-slate-400 rounded-[1.5rem] hover:text-slate-900 hover:bg-slate-100 transition-all border border-slate-100"
-                        >
-                            <ArrowLeft size={24} />
+                    <div className="flex gap-3">
+                        <button onClick={() => setStep('DETAILS')} className="p-3.5 bg-white border border-slate-200 text-slate-500 rounded-xl hover:bg-slate-50 transition-all">
+                            <ArrowLeft size={20} />
                         </button>
                         <button
                             onClick={handleSubmit}
-                            className="flex-1 bg-slate-900 text-white rounded-[1.5rem] font-black uppercase tracking-widest text-xs shadow-2xl shadow-slate-900/20 active:scale-95 transition-all flex items-center justify-center gap-4"
+                            className="flex-1 bg-slate-900 text-white rounded-xl font-semibold text-sm shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-3"
                         >
-                            Authorize Transmission
-                            <Navigation size={20} className="fill-white" />
+                            <Navigation size={17} className="fill-white" /> Submit Report
                         </button>
                     </div>
                 </div>

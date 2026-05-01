@@ -1,196 +1,219 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { getPotholeById, listCitizenReports } from '../../lib/api';
-import {
-    ArrowLeft, Navigation, MapPin, Calendar, Link as LinkIcon,
-    Shield, Clock
-} from 'lucide-react';
-import { ActivityTimeline } from '../../components/ActivityTimeline';
+import { listCitizenReports } from '../../lib/api';
+import { ArrowLeft, MapPin, Calendar, CheckCircle2, Clock, Wrench, CircleDot } from 'lucide-react';
 import { format } from 'date-fns';
-import { cn } from '../../lib/utils';
-import type { CitizenReport, PotholeEvent } from '../../types';
-import { StatusPill } from '../../components/StatusPill';
+import type { CitizenReport } from '../../types';
+import { useAuth } from '../../context/AuthContext';
+
+interface TimelineStep {
+    label: string;
+    description: string;
+    icon: React.ElementType;
+    done: boolean;
+    current: boolean;
+}
+
+/**
+ * Build a simple 4-step timeline based on fields that actually exist
+ * on CitizenReport (status: 'New'|'Discarded', aiStatus: 'PENDING'|'ACCEPTED'|'REJECTED').
+ *
+ * Mapping:
+ *   Submitted  – always done
+ *   Under Review – done when aiStatus !== 'PENDING'
+ *   Repair Scheduled – done when aiStatus === 'ACCEPTED'
+ *   Fixed – not derivable from CitizenReport alone; kept as future state
+ */
+function buildTimeline(report: CitizenReport): TimelineStep[] {
+    const submitted = true;
+    const reviewed  = report.aiStatus !== 'PENDING';
+    const accepted  = report.aiStatus === 'ACCEPTED';
+
+    return [
+        {
+            label: 'Submitted',
+            description: 'Your report was received and is being processed by our team.',
+            icon: CircleDot,
+            done: submitted,
+            current: submitted && !reviewed,
+        },
+        {
+            label: 'Under Review',
+            description: 'Our team is reviewing your report and verifying the location.',
+            icon: Clock,
+            done: reviewed,
+            current: reviewed && !accepted,
+        },
+        {
+            label: 'Repair Scheduled',
+            description: 'A maintenance crew has been assigned and a repair date is set.',
+            icon: Wrench,
+            done: accepted,
+            current: accepted,
+        },
+        {
+            label: 'Fixed',
+            description: 'The pothole has been repaired. Thank you for helping improve our roads!',
+            icon: CheckCircle2,
+            done: false,
+            current: false,
+        },
+    ];
+}
 
 const ReportStatus = () => {
     const { id } = useParams();
+    const { user } = useAuth();
     const [report, setReport] = useState<CitizenReport | null>(null);
-    const [pothole, setPothole] = useState<PotholeEvent | null>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        if (id) {
-            const all = listCitizenReports();
-            const found = all.find(r => r.id === id);
-            if (found) {
-                setReport(found);
-                if (found.linkedPotholeId) {
-                    const p = getPotholeById(found.linkedPotholeId);
-                    setPothole(p || null);
-                }
-            }
-            setLoading(false);
-        }
-    }, [id]);
+        if (!id || !user) return;
+        const all = listCitizenReports();
+        const found = all.find(r => r.id === id && r.citizenId === user.id) ?? null;
+        setReport(found);
+        setLoading(false);
+    }, [id, user]);
 
     if (loading) return (
         <div className="min-h-[50vh] flex items-center justify-center">
-            <Clock className="text-slate-200 animate-spin" size={40} />
+            <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-900 rounded-full animate-spin" />
         </div>
     );
 
     if (!report) return (
         <div className="max-w-xl mx-auto p-12 text-center space-y-4">
-            <h2 className="text-2xl font-black text-slate-900">Record Not Found</h2>
-            <p className="text-slate-500">The telemetry packet you're looking for does not exist.</p>
-            <Link to="/citizen/my-reports" className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-widest text-slate-900">
-                <ArrowLeft size={16} /> Back to History
+            <h2 className="text-2xl font-bold text-slate-900">Report Not Found</h2>
+            <p className="text-slate-500 text-sm">We couldn't find this report. It may have been removed.</p>
+            <Link to="/citizen/my-reports" className="inline-flex items-center gap-2 text-sm font-semibold text-slate-900 hover:underline">
+                <ArrowLeft size={16} /> Back to My Reports
             </Link>
         </div>
     );
 
-    const isAccepted = report.aiStatus === 'ACCEPTED';
+    const timeline = buildTimeline(report);
+    const description = report.description ? report.description.replace(/^\[.*?\]\s*/, '') : null;
+    const locationLabel = `${report.lat.toFixed(5)}, ${report.lon.toFixed(5)}`;
+    const submittedDate = format(new Date(report.createdAt), 'MMMM d, yyyy');
+
+    // Friendly overall status badge
+    let overallStatus = { label: 'Under Review', color: 'text-amber-700 bg-amber-50 border-amber-200' };
+    if (report.status === 'Discarded' || report.aiStatus === 'REJECTED') {
+        overallStatus = { label: 'Not Accepted', color: 'text-rose-700 bg-rose-50 border-rose-200' };
+    } else if (report.aiStatus === 'ACCEPTED') {
+        overallStatus = { label: 'Repair Scheduled', color: 'text-violet-700 bg-violet-50 border-violet-200' };
+    }
 
     return (
-        <div className="max-w-4xl mx-auto px-4 py-8 sm:py-12 pb-32 space-y-8 animate-in fade-in duration-500">
+        <div className="max-w-2xl mx-auto px-4 py-8 sm:py-12 pb-24 space-y-6">
+            {/* Back */}
             <Link
                 to="/citizen/my-reports"
-                className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 hover:text-slate-900 transition-colors group"
+                className="inline-flex items-center gap-2 text-xs font-semibold text-slate-400 hover:text-slate-900 transition-colors group"
             >
-                <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" />
-                Back to Command
+                <ArrowLeft size={14} className="group-hover:-translate-x-0.5 transition-transform" />
+                My Reports
             </Link>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Main Intel */}
-                <div className="lg:col-span-2 space-y-8">
-                    <section className="bg-white rounded-[3rem] overflow-hidden border border-slate-100 shadow-2xl shadow-slate-200/50">
-                        <div className="h-64 sm:h-80 w-full relative">
-                            <img src={report.imageUrl} alt="" className="w-full h-full object-cover" />
-                            <div className="absolute top-6 left-6 shadow-2xl scale-125 origin-top-left">
-                                <StatusPill status={report.aiStatus as any} className="shadow-2xl border-none" />
+            {/* Report Card */}
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                {/* Image */}
+                {report.imageUrl && (
+                    <div className="h-52 sm:h-64 w-full overflow-hidden bg-slate-100">
+                        <img src={report.imageUrl} alt="Reported pothole" className="w-full h-full object-cover" />
+                    </div>
+                )}
+
+                <div className="p-6 sm:p-8 space-y-6">
+                    {/* Title + Status */}
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                        <div>
+                            <h1 className="text-xl font-bold text-slate-900 mb-1">
+                                {description || 'Road Damage Report'}
+                            </h1>
+                            <p className="text-xs text-slate-400 font-mono">
+                                Report #{report.id.split('-')[0].toUpperCase()}
+                            </p>
+                        </div>
+                        <span className={`self-start text-sm font-semibold px-3 py-1.5 rounded-full border ${overallStatus.color}`}>
+                            {overallStatus.label}
+                        </span>
+                    </div>
+
+                    {/* Meta */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="flex items-start gap-3 p-4 bg-slate-50 rounded-xl border border-slate-100">
+                            <MapPin size={17} className="text-slate-400 mt-0.5 shrink-0" />
+                            <div>
+                                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-0.5">Location</p>
+                                <p className="text-sm font-medium text-slate-700 font-mono">{locationLabel}</p>
                             </div>
                         </div>
-
-                        <div className="p-8 sm:p-10 space-y-8">
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-50 pb-8">
-                                <div>
-                                    <h1 className="text-3xl font-black text-slate-900 tracking-tighter mb-1">
-                                        Submission Report
-                                    </h1>
-                                    <p className="text-xs font-black text-slate-300 uppercase tracking-widest">
-                                        Packet ID: {report.id}
-                                    </p>
-                                </div>
-                                <div className="text-right">
-                                    <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest leading-none mb-1">Date Logged</p>
-                                    <p className="text-sm font-bold text-slate-900 uppercase">
-                                        {format(new Date(report.createdAt), 'dd MMM yyyy')}
-                                    </p>
-                                </div>
+                        <div className="flex items-start gap-3 p-4 bg-slate-50 rounded-xl border border-slate-100">
+                            <Calendar size={17} className="text-slate-400 mt-0.5 shrink-0" />
+                            <div>
+                                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-0.5">Submitted on</p>
+                                <p className="text-sm font-medium text-slate-700">{submittedDate}</p>
                             </div>
-
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
-                                <div className="space-y-4">
-                                    <div className="flex items-center gap-3 text-slate-400">
-                                        <MapPin size={18} />
-                                        <span className="text-[10px] font-black uppercase tracking-widest">Coordinates</span>
-                                    </div>
-                                    <p className="text-sm font-bold text-slate-900 bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                                        {report.lat.toFixed(6)}, {report.lon.toFixed(6)}
-                                    </p>
-                                </div>
-                                <div className="space-y-4">
-                                    <div className="flex items-center gap-3 text-slate-400">
-                                        <Shield size={18} />
-                                        <span className="text-[10px] font-black uppercase tracking-widest">AI Confidence</span>
-                                    </div>
-                                    <div className="flex items-center gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                                        <p className="text-xl font-black text-slate-900">
-                                            {(report.aiConfidence! * 100).toFixed(1)}%
-                                        </p>
-                                        <div className="flex-1 h-2 bg-slate-200 rounded-full overflow-hidden">
-                                            <div
-                                                className={cn("h-full transition-all duration-1000", isAccepted ? "bg-emerald-500" : "bg-rose-500")}
-                                                style={{ width: `${report.aiConfidence! * 100}%` }}
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="space-y-4">
-                                <div className="flex items-center gap-3 text-slate-400">
-                                    <Clock size={18} />
-                                    <span className="text-[10px] font-black uppercase tracking-widest">Narrative</span>
-                                </div>
-                                <p className="text-sm font-bold text-slate-600 leading-relaxed italic">
-                                    "{report.description || "No narrative provided by reporter."}"
-                                </p>
-                            </div>
-                        </div>
-                    </section>
-
-                    {/* Timeline */}
-                    <section className="bg-white rounded-[3rem] p-10 border border-slate-100 shadow-2xl shadow-slate-200/50">
-                        <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-10 flex items-center gap-3">
-                            <Calendar size={14} /> Propagation Timeline
-                        </h3>
-                        <ActivityTimeline entityId={report.id} />
-                    </section>
-                </div>
-
-                {/* Tactical Sidebar */}
-                <div className="space-y-8">
-                    {isAccepted && pothole && (
-                        <div className="bg-slate-900 rounded-[2.5rem] p-8 text-white space-y-6 shadow-2xl shadow-slate-900/40 relative overflow-hidden group">
-                            <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-bl-full translate-x-16 -translate-y-16 group-hover:scale-110 transition-transform duration-700" />
-
-                            <h4 className="text-[10px] font-black uppercase tracking-widest opacity-60">Operations Link</h4>
-                            <div className="space-y-2">
-                                <p className="text-2xl font-black tracking-tighter">Live Deployment</p>
-                                <p className="text-[11px] font-medium opacity-70">Report has been mapped to current infrastructure works.</p>
-                            </div>
-
-                            <div className="bg-white/10 rounded-2xl p-4 space-y-3 border border-white/10">
-                                <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest">
-                                    <span className="opacity-60">Status</span>
-                                    <span className="text-emerald-400">{pothole.status}</span>
-                                </div>
-                                <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest">
-                                    <span className="opacity-60">Severity</span>
-                                    <span>{pothole.severity}</span>
-                                </div>
-                            </div>
-
-                            <Link
-                                to={`/potholes/${pothole.id}`}
-                                className="flex items-center justify-center gap-2 w-full py-4 bg-white text-slate-900 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-slate-50 transition-all shadow-xl active:scale-95"
-                            >
-                                <Navigation size={14} /> Public Map View
-                            </Link>
-                        </div>
-                    )}
-
-                    <div className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-2xl shadow-slate-200/50 space-y-6">
-                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Protocol Stats</h4>
-                        <div className="space-y-4">
-                            {[
-                                { label: "Discovery Confidence", value: "92.4%", icon: Shield },
-                                { label: "Sector Load", value: "Normal", icon: LinkIcon }
-                            ].map((s, i) => (
-                                <div key={i} className="flex items-center gap-4">
-                                    <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-400">
-                                        <s.icon size={18} />
-                                    </div>
-                                    <div>
-                                        <p className="text-[8px] font-black text-slate-300 uppercase tracking-widest">{s.label}</p>
-                                        <p className="text-xs font-black text-slate-900">{s.value}</p>
-                                    </div>
-                                </div>
-                            ))}
                         </div>
                     </div>
                 </div>
+            </div>
+
+            {/* Timeline */}
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 sm:p-8">
+                <h2 className="text-base font-bold text-slate-900 mb-6">Report Progress</h2>
+                <ol className="relative space-y-0">
+                    {timeline.map((step, idx) => {
+                        const isLast = idx === timeline.length - 1;
+                        return (
+                            <li key={step.label} className="flex gap-4 relative">
+                                {/* Connector line */}
+                                {!isLast && (
+                                    <div className={`absolute left-[15px] top-8 bottom-0 w-0.5 ${step.done ? 'bg-emerald-300' : 'bg-slate-100'}`} />
+                                )}
+
+                                {/* Icon */}
+                                <div className={`relative z-10 flex items-center justify-center w-8 h-8 rounded-full border-2 shrink-0 mt-0.5 transition-all ${
+                                    step.done
+                                        ? 'bg-emerald-500 border-emerald-500 text-white'
+                                        : step.current
+                                            ? 'bg-white border-blue-400 text-blue-500 shadow-sm shadow-blue-100'
+                                            : 'bg-white border-slate-200 text-slate-300'
+                                }`}>
+                                    <step.icon size={15} />
+                                </div>
+
+                                {/* Content */}
+                                <div className={`pb-8 ${isLast ? 'pb-0' : ''}`}>
+                                    <p className={`text-sm font-semibold mb-0.5 ${
+                                        step.done ? 'text-slate-900' : step.current ? 'text-blue-700' : 'text-slate-400'
+                                    }`}>
+                                        {step.label}
+                                        {step.current && (
+                                            <span className="ml-2 text-[10px] font-bold uppercase tracking-wider text-blue-500 bg-blue-50 px-1.5 py-0.5 rounded-full">
+                                                Current
+                                            </span>
+                                        )}
+                                    </p>
+                                    <p className={`text-xs leading-relaxed ${step.done || step.current ? 'text-slate-500' : 'text-slate-300'}`}>
+                                        {step.description}
+                                    </p>
+                                </div>
+                            </li>
+                        );
+                    })}
+                </ol>
+            </div>
+
+            {/* Footer */}
+            <div className="text-center pt-2">
+                <Link
+                    to="/citizen/report"
+                    className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-400 hover:text-slate-900 transition-colors"
+                >
+                    Report another pothole <ArrowLeft size={14} className="rotate-180" />
+                </Link>
             </div>
         </div>
     );
