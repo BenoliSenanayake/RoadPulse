@@ -4,7 +4,6 @@ import { auditLogsApi } from '../lib/api';
 import type { AuditLogAction } from '../types';
 import {
     Send,
-    Bot,
     UserCheck,
     UserX,
     Activity,
@@ -21,15 +20,23 @@ const getActionConfig = (action: AuditLogAction) => {
         case 'SUBMITTED':
             return { icon: Send, color: 'text-blue-500', bg: 'bg-blue-100', label: 'Report Submitted' };
         case 'AI_ACCEPTED':
-            return { icon: Bot, color: 'text-emerald-500', bg: 'bg-emerald-100', label: 'AI Validation Passed' };
+            return { icon: FileText, color: 'text-emerald-500', bg: 'bg-emerald-100', label: 'Report Verified' };
         case 'AI_REJECTED':
-            return { icon: Bot, color: 'text-red-500', bg: 'bg-red-100', label: 'AI Validation Failed' };
+            return { icon: FileText, color: 'text-red-500', bg: 'bg-red-100', label: 'Report Not Accepted' };
         case 'MANUAL_ACCEPTED':
             return { icon: UserCheck, color: 'text-emerald-600', bg: 'bg-emerald-100', label: 'Manually Accepted' };
         case 'MANUAL_REJECTED':
             return { icon: UserX, color: 'text-red-600', bg: 'bg-red-100', label: 'Manually Rejected' };
         case 'STATUS_CHANGED':
             return { icon: Activity, color: 'text-purple-500', bg: 'bg-purple-100', label: 'Status Update' };
+        case 'REPAIR_SCHEDULED':
+            return { icon: Activity, color: 'text-blue-500', bg: 'bg-blue-100', label: 'Repair Scheduled' };
+        case 'REPAIR_STARTED':
+            return { icon: Activity, color: 'text-amber-500', bg: 'bg-amber-100', label: 'Work Started' };
+        case 'REPAIR_COMPLETED':
+            return { icon: Activity, color: 'text-emerald-500', bg: 'bg-emerald-100', label: 'Work Completed' };
+        case 'REPAIR_NOTE_ADDED':
+            return { icon: FileText, color: 'text-slate-500', bg: 'bg-slate-100', label: 'Maintenance Note' };
         default:
             return { icon: FileText, color: 'text-gray-500', bg: 'bg-gray-100', label: 'System Action' };
     }

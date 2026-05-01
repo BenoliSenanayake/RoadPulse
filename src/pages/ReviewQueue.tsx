@@ -11,7 +11,6 @@ import { ResponsiveDataList } from '../components/ResponsiveDataList';
 import { cn } from '../lib/utils';
 import { StatusPill } from '../components/StatusPill';
 import { EmptyState } from '../components/EmptyState';
-import { EvidenceViewer } from '../components/EvidenceViewer';
 
 // Fix Leaflet's default icon path issues
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -35,7 +34,7 @@ const ReviewQueue = () => {
     const [rejectionReason, setRejectionReason] = useState('');
 
     // Tabs
-    const [activeTab, setActiveTab] = useState<'PENDING_CITIZEN' | 'LOW_CONFIDENCE' | 'REJECTED'>('PENDING_CITIZEN');
+    const [activeTab, setActiveTab] = useState<'PENDING_CITIZEN' | 'NEEDS_REVIEW' | 'REJECTED'>('PENDING_CITIZEN');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -60,7 +59,7 @@ const ReviewQueue = () => {
     const filteredReports = useMemo(() => {
         return reports.filter(r => {
             if (activeTab === 'PENDING_CITIZEN') return r.aiStatus === 'PENDING' && !r.aiConfidence;
-            if (activeTab === 'LOW_CONFIDENCE') return r.aiStatus === 'PENDING' && r.aiConfidence !== undefined;
+            if (activeTab === 'NEEDS_REVIEW') return r.aiStatus === 'PENDING' && r.aiConfidence !== undefined;
             if (activeTab === 'REJECTED') return r.aiStatus === 'REJECTED';
             return false;
         });
@@ -125,19 +124,11 @@ const ReviewQueue = () => {
             )
         },
         {
-            header: 'AI Intel',
+            header: 'Review Status',
             className: 'text-center',
             render: (report: CitizenReport) => (
                 <div className="flex flex-col items-center gap-1.5">
                     <StatusPill status={report.aiStatus as any} />
-                    {report.aiConfidence !== undefined && (
-                        <span className={cn(
-                            "text-[10px] font-black font-mono uppercase tracking-[0.1em]",
-                            selectedReport?.id === report.id ? "text-slate-400" : "text-slate-400"
-                        )}>
-                            {(report.aiConfidence * 100).toFixed(0)}% Match
-                        </span>
-                    )}
                 </div>
             )
         }
@@ -165,14 +156,6 @@ const ReviewQueue = () => {
                         {report.description ? report.description.split('] ')[0].replace('[', '') : `${report.lat.toFixed(2)}, ${report.lon.toFixed(2)}`}
                     </span>
                 </div>
-                {report.aiConfidence !== undefined && (
-                    <span className={cn(
-                        "text-[10px] font-black font-mono",
-                        selectedReport?.id === report.id ? "text-white/40" : "text-slate-300"
-                    )}>
-                        {(report.aiConfidence * 100).toFixed(0)}%
-                    </span>
-                )}
             </div>
         </div>
     );
@@ -182,8 +165,8 @@ const ReviewQueue = () => {
             {/* Header & Tabs */}
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 shrink-0 px-2">
                 <div>
-                    <h1 className="section-heading mb-1">Audit Operations</h1>
-                    <p className="text-slate-500 font-bold text-sm">Strategic validation of citizen intelligence reports.</p>
+                    <h1 className="section-heading mb-1">Report Review</h1>
+                    <p className="text-slate-500 font-bold text-sm">Review citizen road reports and decide whether they should become repair records.</p>
                 </div>
 
                 <div className="flex bg-slate-100 p-1.5 rounded-2xl shadow-inner">
@@ -194,10 +177,10 @@ const ReviewQueue = () => {
                         Pending Citizen
                     </button>
                     <button
-                        onClick={() => { setActiveTab('LOW_CONFIDENCE'); setSelectedReport(null); }}
-                        className={cn("px-4 py-2 text-[11px] font-black uppercase tracking-widest rounded-xl transition-all", activeTab === 'LOW_CONFIDENCE' ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700")}
+                        onClick={() => { setActiveTab('NEEDS_REVIEW'); setSelectedReport(null); }}
+                        className={cn("px-4 py-2 text-[11px] font-black uppercase tracking-widest rounded-xl transition-all", activeTab === 'NEEDS_REVIEW' ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700")}
                     >
-                        Low Confidence AI
+                        Needs Review
                     </button>
                     <button
                         onClick={() => { setActiveTab('REJECTED'); setSelectedReport(null); }}
@@ -246,13 +229,13 @@ const ReviewQueue = () => {
                         emptyState={
                             loading ? (
                                 <div className="p-12 flex justify-center text-slate-400 font-bold text-xs uppercase tracking-widest animate-pulse">
-                                    Loading Intelligence Briefs...
+                                    Loading reports...
                                 </div>
                             ) : (
                                 <div className="p-12">
                                     <EmptyState
                                         title="Sector Nominal"
-                                        description="No intelligence reports match your active tactical filters. All submissions cleared."
+                                        description="No citizen reports match the selected review filter."
                                         icon={Inbox}
                                     />
                                 </div>
@@ -265,7 +248,7 @@ const ReviewQueue = () => {
                 {selectedReport && (
                     <div className="flex-1 lg:w-1/2 flex flex-col overflow-hidden bg-white shadow-premium rounded-[2.5rem] border border-slate-100 relative z-20 animate-fade-in-up">
                         <div className="lg:hidden flex items-center justify-between p-6 border-b border-slate-50 bg-slate-50/50">
-                            <span className="text-xs font-black text-slate-900 uppercase tracking-widest">Tactical Breakdown</span>
+                            <span className="text-xs font-black text-slate-900 uppercase tracking-widest">Report Details</span>
                             <button onClick={() => setSelectedReport(null)} className="p-2 -mr-2 text-slate-400 hover:text-slate-900 transition-colors">
                                 <XCircle size={24} />
                             </button>
@@ -274,22 +257,9 @@ const ReviewQueue = () => {
                         <div className="overflow-y-auto flex-1 custom-scroll">
                             {/* Hero Image Container */}
                             <div className="relative border-b border-slate-100">
-                                <EvidenceViewer 
-                                    imageUrl={selectedReport.imageUrl}
-                                    badges={{
-                                        confidence: selectedReport.aiConfidence || 0,
-                                        status: selectedReport.aiStatus as any
-                                    }}
-                                    metadata={{
-                                        timestamp: selectedReport.createdAt,
-                                        lat: selectedReport.lat,
-                                        lon: selectedReport.lon,
-                                        modelName: selectedReport.modelName,
-                                        modelVersion: selectedReport.modelVersion,
-                                        inferenceTimeMs: selectedReport.inferenceTimeMs,
-                                        bbox: selectedReport.bbox
-                                    }}
-                                />
+                                <div className="bg-slate-100">
+                                    <img src={selectedReport.imageUrl} alt="Road damage evidence" className="h-[360px] w-full object-cover" />
+                                </div>
                             </div>
 
                             <div className="p-10 space-y-12">
@@ -297,11 +267,11 @@ const ReviewQueue = () => {
                                 <div className="grid grid-cols-2 gap-10">
                                     <div className="space-y-8">
                                         <div>
-                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Subject Origin</p>
+                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Reporter</p>
                                             <p className="text-sm font-black text-slate-900 tracking-tight">{selectedReport.submittedBy}</p>
                                         </div>
                                         <div>
-                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Citizen Testimony</p>
+                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Citizen Description</p>
                                             <p className="text-xs font-bold text-slate-500 italic leading-relaxed border-l-4 border-slate-100 pl-4 py-1">
                                                 "{selectedReport.description || 'No testimony provided.'}"
                                             </p>
@@ -317,7 +287,7 @@ const ReviewQueue = () => {
                                     </div>
                                 </div>
 
-                                {/* AI Intelligence Report */}
+                                {/* Review Summary */}
                                 <div className={cn(
                                     "card-premium p-8 border-none shadow-xl",
                                     selectedReport.aiStatus === 'PENDING' ? 'bg-amber-50/50' :
@@ -330,32 +300,14 @@ const ReviewQueue = () => {
                                                 selectedReport.aiStatus === 'ACCEPTED' ? 'text-emerald-600' :
                                                     selectedReport.aiStatus === 'REJECTED' ? 'text-rose-600' : 'text-amber-600'
                                             )} />
-                                            <span className="text-[11px] font-black uppercase tracking-widest text-slate-900">Intelligence Brief</span>
+                                            <span className="text-[11px] font-black uppercase tracking-widest text-slate-900">Review Summary</span>
                                         </div>
                                         <StatusPill status={selectedReport.aiStatus as any} />
                                     </div>
 
-                                    {selectedReport.aiConfidence !== undefined && (
-                                        <div className="mb-8">
-                                            <div className="flex justify-between text-[10px] font-black uppercase tracking-widest mb-3 text-slate-500">
-                                                <span>Confidence Accuracy</span>
-                                                <span className="font-mono bg-white px-2 py-0.5 rounded shadow-sm">{(selectedReport.aiConfidence * 100).toFixed(1)}%</span>
-                                            </div>
-                                            <div className="w-full h-2 bg-white rounded-full overflow-hidden shadow-inner">
-                                                <div
-                                                    className={cn(
-                                                        "h-full transition-all duration-1000 ease-out",
-                                                        selectedReport.aiConfidence >= 0.6 ? 'bg-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.5)]' : 'bg-rose-500 shadow-[0_0_15px_rgba(244,63,94,0.5)]'
-                                                    )}
-                                                    style={{ width: `${selectedReport.aiConfidence * 100}%` }}
-                                                />
-                                            </div>
-                                        </div>
-                                    )}
-
                                     {selectedReport.aiReason && (
                                         <div className="p-5 bg-white rounded-2xl border border-slate-100 shadow-sm">
-                                            <span className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 leading-none">Diagnostic Log</span>
+                                            <span className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 leading-none">Review Note</span>
                                             <p className="text-xs font-bold leading-relaxed text-slate-700">{selectedReport.aiReason}</p>
                                         </div>
                                     )}

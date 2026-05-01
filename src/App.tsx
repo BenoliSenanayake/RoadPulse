@@ -11,7 +11,9 @@ const Login = lazy(() => import('./pages/Login'));
 const Signup = lazy(() => import('./pages/Signup'));
 const StaffLogin = lazy(() => import('./pages/StaffLogin'));
 const Overview = lazy(() => import('./pages/Overview'));
+const MaintenanceOverview = lazy(() => import('./pages/MaintenanceOverview'));
 const LiveMap = lazy(() => import('./pages/LiveMap'));
+const PotholeDetail = lazy(() => import('./pages/PotholeDetail'));
 
 const Repairs = lazy(() => import('./pages/Repairs'));
 const ReviewQueue = lazy(() => import('./pages/ReviewQueue'));
@@ -75,7 +77,7 @@ function App() {
             {/* Staff Routes */}
             <Route path="/staff/overview" element={
               <ProtectedRoute allowedRoles={['MAINTENANCE_OFFICER']}>
-                <StaffLayout><Overview /></StaffLayout>
+                <StaffLayout><MaintenanceOverview /></StaffLayout>
               </ProtectedRoute>
             } />
 
@@ -94,6 +96,12 @@ function App() {
             <Route path="/staff/repairs" element={
               <ProtectedRoute allowedRoles={['MAINTENANCE_OFFICER']}>
                 <StaffLayout><Repairs /></StaffLayout>
+              </ProtectedRoute>
+            } />
+
+            <Route path="/potholes/:id" element={
+              <ProtectedRoute allowedRoles={['MAINTENANCE_OFFICER', 'ADMIN']}>
+                <StaffLayout><PotholeDetail /></StaffLayout>
               </ProtectedRoute>
             } />
 

@@ -1,241 +1,228 @@
-import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import {
-    updatePotholeStatus,
-    getPotholeById
-} from '../lib/api';
-import {
-    MapContainer,
-    TileLayer,
-    Marker,
-    Popup
-} from 'react-leaflet';
+import { useEffect, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import {
     ArrowLeft,
     Calendar,
+    ClipboardList,
     MapPin,
-    BarChart,
+    Save,
     ShieldCheck,
+    Users,
+    Wrench
 } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
-import { cn } from '../lib/utils';
-import type { PotholeEvent, PotholeStatus } from '../types';
-import { EvidenceViewer } from '../components/EvidenceViewer';
+import { getPotholeById, listCitizenReports, potholesApi } from '../lib/api';
 import { ActivityTimeline } from '../components/ActivityTimeline';
-import { listCitizenReports } from '../lib/api';
-import type { CitizenReport } from '../types';
+import { StatusPill } from '../components/StatusPill';
+import { useAuth } from '../context/AuthContext';
+import type { CitizenReport, PotholeEvent, RepairPriority, RepairScheduleInput, RepairStatus, RepairTeam } from '../types';
 
-const STATUS_OPTS: PotholeStatus[] = ['New', 'Confirmed', 'Scheduled', 'Fixed', 'Rejected'];
+const TEAMS: RepairTeam[] = ['Team A', 'Team B', 'Team C', 'Emergency Team'];
+const PRIORITIES: RepairPriority[] = ['Low', 'Medium', 'High', 'Urgent'];
+const REPAIR_STATUSES: RepairStatus[] = ['Verified', 'Scheduled', 'In Progress', 'Completed', 'Unable to Repair'];
+const fieldClass = 'w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-900 outline-none transition-all focus:border-emerald-400 focus:bg-white focus:ring-4 focus:ring-emerald-500/10';
 
 const PotholeDetail = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
-    const { user, hasRole } = useAuth();
+    const { user } = useAuth();
     const [pothole, setPothole] = useState<PotholeEvent | null>(null);
-    const [newStatus, setNewStatus] = useState<PotholeStatus>('New');
-    const [note, setNote] = useState('');
-    const [isUpdating, setIsUpdating] = useState(false);
     const [report, setReport] = useState<CitizenReport | null>(null);
+    const [saving, setSaving] = useState(false);
+    const [form, setForm] = useState<RepairScheduleInput>({
+        priority: 'Medium',
+        assignedTeam: 'Team A',
+        scheduledDate: new Date().toISOString().slice(0, 10),
+        maintenanceNotes: '',
+        repairStatus: 'Scheduled',
+    });
 
-    useEffect(() => {
-        const item = id ? getPotholeById(id) : undefined;
-        if (item) {
-            setPothole(item);
-            setNewStatus(item.status);
+    const loadDetail = () => {
+        const item = id ? getPotholeById(id) : null;
+        if (!item) return;
 
-            if (item.reportId) {
-                const reps = listCitizenReports();
-                const matched = reps.find(r => r.id === item.reportId);
-                if (matched) setReport(matched);
-            }
+        setPothole(item);
+        setForm({
+            priority: item.priority || 'Medium',
+            assignedTeam: item.assignedTeam || 'Team A',
+            scheduledDate: item.scheduledDate ? item.scheduledDate.slice(0, 10) : new Date().toISOString().slice(0, 10),
+            maintenanceNotes: item.maintenanceNotes || '',
+            repairStatus: item.repairStatus || (item.status === 'Verified' || item.status === 'Confirmed' ? 'Verified' : 'Scheduled'),
+        });
+
+        if (item.reportId) {
+            const matched = listCitizenReports().find(entry => entry.id === item.reportId) || null;
+            setReport(matched);
         }
-    }, [id]);
-
-    const handleStatusUpdate = () => {
-        if (!id || !user) return;
-        setIsUpdating(true);
-        setTimeout(() => {
-            updatePotholeStatus(id, newStatus, note || `Status changed to ${newStatus}`, user.name);
-            // Refresh
-            const item = id ? getPotholeById(id) : undefined;
-            if (item) setPothole(item);
-            setNote('');
-            setIsUpdating(false);
-        }, 500);
     };
 
-    if (!pothole) return <div>Pothole not found</div>;
+    useEffect(() => {
+        loadDetail();
+    }, [id]);
 
-    const canUpdate = hasRole(['ADMIN', 'MAINTENANCE_OFFICER']);
+    const saveSchedule = async () => {
+        if (!pothole) return;
+        setSaving(true);
+        try {
+            await potholesApi.scheduleRepair(pothole.id, {
+                ...form,
+                scheduledDate: new Date(form.scheduledDate).toISOString(),
+            }, user?.name || 'Maintenance Officer');
+            loadDetail();
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    if (!pothole) {
+        return (
+            <div className="rounded-2xl border border-slate-100 bg-white p-10 text-center shadow-sm">
+                <h1 className="text-xl font-black text-slate-950">Pothole not found</h1>
+                <button onClick={() => navigate(-1)} className="mt-4 text-sm font-bold text-emerald-700">Go back</button>
+            </div>
+        );
+    }
 
     return (
-        <div className="max-w-7xl mx-auto space-y-8 pb-20 px-4 md:px-6">
+        <div className="mx-auto max-w-7xl space-y-8 pb-20">
             <button
                 onClick={() => navigate(-1)}
-                className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-all hover:-translate-x-1 group leading-none"
+                className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400 transition-colors hover:text-slate-900"
             >
-                <ArrowLeft size={14} className="group-hover:scale-125 transition-transform" />
-                Back to Operations
+                <ArrowLeft size={14} /> Back to Operations
             </button>
 
-            <div className="flex flex-col lg:flex-row gap-8">
-                {/* Left Column: Info & Map */}
-                <div className="flex-1 space-y-8">
-                    <div className="card-premium overflow-hidden border-none shadow-2xl shadow-slate-900/5">
-                        <div className="p-8 border-b border-slate-50 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="grid grid-cols-1 gap-8 xl:grid-cols-[1fr_420px]">
+                <main className="space-y-8">
+                    <section className="overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-sm">
+                        <div className="flex flex-col gap-4 border-b border-slate-100 p-6 sm:flex-row sm:items-start sm:justify-between">
                             <div>
-                                <h1 className="text-3xl font-black text-slate-900 tracking-tight mb-1">{pothole.id}</h1>
-                                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{pothole.roadName}, {pothole.district}</p>
+                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Repair Location</p>
+                                <h1 className="mt-1 text-3xl font-black tracking-tight text-slate-950">{pothole.id}</h1>
+                                <p className="mt-1 text-sm font-bold text-slate-500">{pothole.roadName || 'Road location pending'} · {pothole.district || 'Area not set'}</p>
                             </div>
-                            <span className={cn(
-                                "badge px-6 py-2 border-none shadow-sm",
-                                pothole.status === 'New' ? 'bg-blue-50 text-blue-700' :
-                                    pothole.status === 'Confirmed' ? 'bg-amber-50 text-amber-700' :
-                                        pothole.status === 'Scheduled' ? 'bg-purple-50 text-purple-700' :
-                                            pothole.status === 'Fixed' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'
-                            )}>
-                                {pothole.status}
-                            </span>
+                            <StatusPill status={pothole.status as any} />
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-px bg-slate-50 uppercase">
-                            <div className="bg-white p-8 space-y-6">
-                                <div className="flex items-center gap-4">
-                                    <div className="p-2.5 rounded-xl bg-slate-50 text-slate-400 group-hover:text-slate-900 transition-colors"><Calendar size={14} /></div>
-                                    <div>
-                                        <p className="text-[10px] text-slate-300 font-black tracking-widest leading-none mb-1.5">Detected On</p>
-                                        <p className="text-[11px] font-black text-slate-900 tracking-tight">{new Date(pothole.timestamp).toLocaleString()}</p>
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-4">
-                                    <div className="p-2.5 rounded-xl bg-slate-50 text-slate-400 group-hover:text-slate-900 transition-colors"><MapPin size={14} /></div>
-                                    <div>
-                                        <p className="text-[10px] text-slate-300 font-black tracking-widest leading-none mb-1.5">Precision Geo</p>
-                                        <p className="text-[11px] font-black text-slate-900 tracking-tight">{pothole.lat.toFixed(6)}, {pothole.lon.toFixed(6)}</p>
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-4">
-                                    <div className="p-2.5 rounded-xl bg-slate-50 text-slate-400 group-hover:text-slate-900 transition-colors"><BarChart size={14} /></div>
-                                    <div>
-                                        <p className="text-[10px] text-slate-300 font-black tracking-widest leading-none mb-1.5">Source Telemetry</p>
-                                        <p className="text-[11px] font-black text-slate-900 tracking-tight">#{pothole.reportId}</p>
-                                    </div>
-                                </div>
-                            </div>
+                        <div className="grid grid-cols-1 gap-px bg-slate-100 md:grid-cols-2">
+                            <InfoBlock icon={Calendar} label="Reported On" value={new Date(pothole.createdAt || pothole.timestamp).toLocaleString()} />
+                            <InfoBlock icon={MapPin} label="Location" value={`${pothole.lat.toFixed(6)}, ${pothole.lon.toFixed(6)}`} />
+                            <InfoBlock icon={Users} label="Assigned Team" value={pothole.assignedTeam || 'Unassigned'} />
+                            <InfoBlock icon={ShieldCheck} label="Priority" value={pothole.priority || 'Medium'} />
+                            <InfoBlock icon={Wrench} label="Scheduled Date" value={pothole.scheduledDate ? new Date(pothole.scheduledDate).toLocaleDateString() : 'Not scheduled'} />
+                            <InfoBlock icon={ClipboardList} label="Report Reference" value={pothole.reportId || 'No linked report'} />
+                        </div>
+                    </section>
 
-                            {/* Citizen Report Info inserted above the map if available */}
-                            {report && (
-                                <div className="bg-white p-8 md:col-span-2 border-t border-slate-50">
-                                    <h3 className="text-[10px] text-slate-300 font-black uppercase tracking-widest mb-6">Citizen Intelligence Summary</h3>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                        <div className="p-4 bg-slate-50/50 rounded-2xl border border-slate-50">
-                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 leading-none">Primary Reporter</p>
-                                            <p className="text-xs font-black text-slate-900">{report.submittedBy || report.citizenId}</p>
-                                        </div>
-                                        <div className="p-4 bg-slate-50/50 rounded-2xl border border-slate-50">
-                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 leading-none">Evidence description</p>
-                                            <p className="text-xs font-bold text-slate-600 italic">"{report.description || 'No description provided.'}"</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-
-                            <div className="bg-white p-0 relative min-h-[250px] md:col-span-2">
-                                <MapContainer center={[pothole.lat, pothole.lon]} zoom={15} style={{ height: '100%', width: '100%' }}>
-                                    <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                                    <Marker position={[pothole.lat, pothole.lon]}>
-                                        <Popup>{pothole.id}</Popup>
-                                    </Marker>
-                                </MapContainer>
+                    <section className="rounded-3xl border border-slate-100 bg-white p-6 shadow-sm">
+                        <div className="mb-5 flex items-center justify-between">
+                            <div>
+                                <h2 className="text-lg font-black text-slate-950">Report Evidence</h2>
+                                <p className="text-xs font-bold text-slate-400">Photo, location, and citizen description for field review.</p>
                             </div>
                         </div>
-                    </div>
-
-                    {/* Evidence Viewer */}
-                    <EvidenceViewer
-                        imageUrl={pothole.imageUrl}
-                        badges={{
-                            confidence: pothole.confidence,
-                            status: pothole.status
-                        }}
-                        metadata={{
-                            timestamp: pothole.timestamp,
-                            lat: pothole.lat,
-                            lon: pothole.lon,
-                            district: pothole.district,
-                            roadName: pothole.roadName,
-
-                            // Inject AI/ML metadata sourced from CitizenReport directly or Pothole 
-                            ...(pothole.bbox ? { bbox: pothole.bbox } : {}),
-                            ...(report?.modelName ? { modelName: report.modelName } : {}),
-                            ...(report?.modelVersion ? { modelVersion: report.modelVersion } : {}),
-                            ...(report?.inferenceTimeMs ? { inferenceTimeMs: report.inferenceTimeMs } : {})
-                        }}
-                    />
-                </div>
-
-                {/* Right Column: Workflow & Audit */}
-                <div className="w-full lg:w-96 space-y-6">
-                    {/* Status Update Card */}
-                    <div className="card-premium p-8 border-none shadow-2xl shadow-slate-900/5">
-                        <div className="flex items-center gap-3 mb-8 pb-4 border-b border-slate-50">
-                            <ShieldCheck size={16} className="text-slate-900" />
-                            <span className="text-xs font-black text-slate-900 uppercase tracking-[0.2em] leading-none">Operations Workflow</span>
+                        <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1.2fr_0.8fr]">
+                            <div className="overflow-hidden rounded-2xl bg-slate-100">
+                                {pothole.imageUrl ? (
+                                    <img src={pothole.imageUrl} alt="Road damage evidence" className="h-full min-h-[320px] w-full object-cover" />
+                                ) : (
+                                    <div className="flex min-h-[320px] items-center justify-center text-sm font-bold text-slate-400">No image uploaded</div>
+                                )}
+                            </div>
+                            <div className="space-y-4">
+                                <div className="rounded-2xl border border-slate-100 bg-slate-50 p-5">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Citizen Description</p>
+                                    <p className="mt-2 text-sm font-bold leading-relaxed text-slate-700">{report?.description || pothole.maintenanceNotes || 'No description provided.'}</p>
+                                </div>
+                                <div className="rounded-2xl border border-slate-100 bg-slate-50 p-5">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Reporter</p>
+                                    <p className="mt-2 text-sm font-bold text-slate-700">{report?.submittedBy || report?.citizenId || 'Registered citizen'}</p>
+                                </div>
+                                <div className="rounded-2xl border border-slate-100 bg-slate-50 p-5">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Maintenance Notes</p>
+                                    <p className="mt-2 text-sm font-bold leading-relaxed text-slate-700">{pothole.maintenanceNotes || 'No maintenance notes yet.'}</p>
+                                </div>
+                            </div>
                         </div>
+                    </section>
 
-                        {!canUpdate ? (
-                            <div className="text-[10px] font-black uppercase tracking-widest text-amber-700 bg-amber-50 p-6 rounded-2xl border border-amber-100 leading-relaxed">
-                                <span className="block mb-2 text-amber-500 opacity-60">Security Notice</span>
-                                Restricted access. Elevated privileges required to modify deployment status.
-                            </div>
-                        ) : (
-                            <div className="space-y-8">
-                                <div>
-                                    <label className="block text-[10px] font-black text-slate-300 uppercase tracking-widest mb-4">Transition Status</label>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        {STATUS_OPTS.map(opt => (
-                                            <button
-                                                key={opt}
-                                                onClick={() => setNewStatus(opt)}
-                                                className={cn(
-                                                    "px-3 py-3 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all border",
-                                                    newStatus === opt
-                                                        ? "border-slate-900 bg-slate-900 text-white shadow-xl shadow-slate-900/10"
-                                                        : "border-slate-100 text-slate-400 hover:border-slate-300"
-                                                )}
-                                            >
-                                                {opt}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className="block text-[10px] font-black text-slate-300 uppercase tracking-widest mb-4">Command Log Note</label>
-                                    <textarea
-                                        className="w-full px-5 py-4 text-xs font-bold bg-slate-50 border-none rounded-2xl focus:outline-none focus:ring-4 focus:ring-slate-900/5 transition-all text-slate-900 placeholder:text-slate-300"
-                                        rows={4}
-                                        placeholder="Enter operational deployment details..."
-                                        value={note}
-                                        onChange={(e) => setNote(e.target.value)}
-                                    />
-                                </div>
-                                <button
-                                    onClick={handleStatusUpdate}
-                                    disabled={isUpdating || newStatus === pothole.status && !note}
-                                    className="btn-premium w-full py-5 bg-slate-900 text-white shadow-2xl shadow-slate-900/20"
-                                >
-                                    {isUpdating ? 'Executing...' : 'Confirm Deployment'}
-                                </button>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Activity Timeline */}
                     <ActivityTimeline entityId={pothole.id} />
-                </div>
+                </main>
+
+                <aside className="space-y-6">
+                    <section className="rounded-3xl border border-slate-100 bg-white p-6 shadow-sm">
+                        <div className="mb-6 flex items-center gap-3 border-b border-slate-100 pb-4">
+                            <div className="rounded-xl bg-emerald-50 p-3 text-emerald-700">
+                                <Wrench size={18} />
+                            </div>
+                            <div>
+                                <h2 className="text-base font-black text-slate-950">Scheduling Workflow</h2>
+                                <p className="text-xs font-bold text-slate-400">Assign team, priority, date, and status.</p>
+                            </div>
+                        </div>
+
+                        <div className="space-y-4">
+                            <Field label="Priority">
+                                <select value={form.priority} onChange={event => setForm({ ...form, priority: event.target.value as RepairPriority })} className={fieldClass}>
+                                    {PRIORITIES.map(priority => <option key={priority} value={priority}>{priority}</option>)}
+                                </select>
+                            </Field>
+                            <Field label="Repair Team">
+                                <select value={form.assignedTeam} onChange={event => setForm({ ...form, assignedTeam: event.target.value as RepairTeam })} className={fieldClass}>
+                                    {TEAMS.map(team => <option key={team} value={team}>{team}</option>)}
+                                </select>
+                            </Field>
+                            <Field label="Scheduled Repair Date">
+                                <input type="date" value={form.scheduledDate} onChange={event => setForm({ ...form, scheduledDate: event.target.value })} className={fieldClass} />
+                            </Field>
+                            <Field label="Current Repair Status">
+                                <select value={form.repairStatus} onChange={event => setForm({ ...form, repairStatus: event.target.value as RepairStatus })} className={fieldClass}>
+                                    {REPAIR_STATUSES.map(status => <option key={status} value={status}>{status}</option>)}
+                                </select>
+                            </Field>
+                            <Field label="Maintenance Notes">
+                                <textarea
+                                    value={form.maintenanceNotes}
+                                    onChange={event => setForm({ ...form, maintenanceNotes: event.target.value })}
+                                    rows={5}
+                                    placeholder="Crew instructions, access concerns, materials, or follow-up notes..."
+                                    className={`${fieldClass} resize-none`}
+                                />
+                            </Field>
+                        </div>
+
+                        <button
+                            onClick={saveSchedule}
+                            disabled={saving}
+                            className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-900 py-4 text-xs font-black uppercase tracking-widest text-white shadow-xl shadow-slate-900/20 transition-all hover:bg-black disabled:opacity-60"
+                        >
+                            <Save size={16} /> {saving ? 'Saving...' : 'Save Schedule'}
+                        </button>
+                    </section>
+                </aside>
             </div>
         </div>
     );
 };
+
+const InfoBlock = ({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: string }) => (
+    <div className="bg-white p-6">
+        <div className="flex items-start gap-4">
+            <div className="rounded-xl bg-slate-50 p-3 text-slate-400">
+                <Icon size={16} />
+            </div>
+            <div className="min-w-0">
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{label}</p>
+                <p className="mt-1 truncate text-sm font-black text-slate-900">{value}</p>
+            </div>
+        </div>
+    </div>
+);
+
+const Field = ({ label, children }: { label: string; children: React.ReactNode }) => (
+    <label className="block">
+        <span className="mb-2 block text-[10px] font-black uppercase tracking-widest text-slate-400">{label}</span>
+        {children}
+    </label>
+);
 
 export default PotholeDetail;

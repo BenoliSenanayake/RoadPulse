@@ -2,7 +2,7 @@ import React from 'react';
 import { cn } from '../lib/utils';
 import { AlertCircle, CheckCircle2, Calendar, XCircle, Info } from 'lucide-react';
 
-export type StatusType = 'New' | 'Confirmed' | 'Scheduled' | 'Fixed' | 'Rejected' | 'Discarded' | 'PENDING' | 'ACCEPTED' | 'REJECTED';
+export type StatusType = 'New' | 'Confirmed' | 'Verified' | 'Scheduled' | 'In Progress' | 'Fixed' | 'Completed' | 'Rejected' | 'Unable to Repair' | 'Discarded' | 'PENDING' | 'ACCEPTED' | 'REJECTED';
 
 interface StatusConfig {
     class: string;
@@ -21,20 +21,40 @@ const statusConfig: Record<StatusType, StatusConfig> = {
         icon: <CheckCircle2 size={12} />,
         label: 'Confirmed'
     },
+    'Verified': {
+        class: 'status-confirmed',
+        icon: <CheckCircle2 size={12} />,
+        label: 'Verified'
+    },
     'Scheduled': {
         class: 'status-scheduled',
         icon: <Calendar size={12} />,
         label: 'Scheduled'
+    },
+    'In Progress': {
+        class: 'status-scheduled',
+        icon: <Calendar size={12} />,
+        label: 'In Progress'
     },
     'Fixed': {
         class: 'status-fixed',
         icon: <CheckCircle2 size={12} />,
         label: 'Resolved'
     },
+    'Completed': {
+        class: 'status-fixed',
+        icon: <CheckCircle2 size={12} />,
+        label: 'Completed'
+    },
     'Rejected': {
         class: 'status-rejected',
         icon: <XCircle size={12} />,
         label: 'Rejected'
+    },
+    'Unable to Repair': {
+        class: 'status-rejected',
+        icon: <XCircle size={12} />,
+        label: 'Unable'
     },
     'Discarded': {
         class: 'status-rejected',
@@ -44,17 +64,17 @@ const statusConfig: Record<StatusType, StatusConfig> = {
     'PENDING': {
         class: 'status-new',
         icon: <AlertCircle size={12} />,
-        label: 'Audit: Pending'
+        label: 'Under Review'
     },
     'ACCEPTED': {
         class: 'status-confirmed',
         icon: <CheckCircle2 size={12} />,
-        label: 'Audit: Accepted'
+        label: 'Verified'
     },
     'REJECTED': {
         class: 'status-rejected',
         icon: <XCircle size={12} />,
-        label: 'Audit: Rejected'
+        label: 'Not Accepted'
     }
 };
 

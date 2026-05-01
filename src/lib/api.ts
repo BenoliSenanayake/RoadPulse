@@ -4,10 +4,11 @@ import {
     processReport as mockProcessReport,
     getPotholes as mockGetPotholes,
     updatePotholeStatus as mockUpdatePotholeStatus,
+    schedulePotholeRepair as mockSchedulePotholeRepair,
     getSystemSettings,
     MOCK_USERS
 } from '../mockData';
-import type { CitizenReport, PotholeEvent, PotholeStatus } from '../types';
+import type { CitizenReport, PotholeEvent, PotholeStatus, RepairScheduleInput } from '../types';
 import { simulateYoloDetection, type DetectionResult } from './aiValidationService';
 
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
@@ -191,6 +192,15 @@ export const potholesApi = {
                 return mockUpdatePotholeStatus(id, status, note, updatedBy || 'System');
             }
         );
+    },
+    scheduleRepair: async (id: string, data: RepairScheduleInput, updatedBy?: string): Promise<PotholeEvent | null> => {
+        return withFallback(
+            () => apiClient.post(`/potholes/${id}/schedule`, { ...data, updatedBy }),
+            async () => {
+                await new Promise(r => setTimeout(r, 300));
+                return mockSchedulePotholeRepair(id, data, updatedBy || 'Maintenance Officer');
+            }
+        );
     }
 };
 
@@ -200,7 +210,13 @@ export const repairsApi = {
             () => apiClient.post(`/repairs`, { potholeId, teamId, scheduledDate }),
             async () => {
                 await new Promise(r => setTimeout(r, 300));
-                return mockUpdatePotholeStatus(potholeId, 'Scheduled', `Scheduled repair for team ${teamId}`, 'System');
+                return mockSchedulePotholeRepair(potholeId, {
+                    priority: 'Medium',
+                    assignedTeam: teamId as any,
+                    scheduledDate,
+                    maintenanceNotes: `Scheduled repair for ${teamId}`,
+                    repairStatus: 'Scheduled'
+                }, 'System');
             }
         );
     }
@@ -280,3 +296,4 @@ export const listPotholes = (filters?: { status?: PotholeStatus }) => {
 };
 export const getPotholeById = (id: string) => mockGetPotholes().find(p => p.id === id) || null;
 export const updatePotholeStatus = (id: string, status: PotholeStatus, note: string, actor: string = 'System') => mockUpdatePotholeStatus(id, status, note, actor);
+export const schedulePotholeRepair = mockSchedulePotholeRepair;

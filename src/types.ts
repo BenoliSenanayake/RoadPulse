@@ -1,4 +1,16 @@
-export type PotholeStatus = 'New' | 'Confirmed' | 'Scheduled' | 'Fixed' | 'Rejected';
+export type RepairPriority = 'Low' | 'Medium' | 'High' | 'Urgent';
+export type RepairTeam = 'Team A' | 'Team B' | 'Team C' | 'Emergency Team';
+export type RepairStatus = 'Verified' | 'Scheduled' | 'In Progress' | 'Completed' | 'Unable to Repair';
+export type PotholeStatus =
+    | 'New'
+    | 'Confirmed'
+    | 'Verified'
+    | 'Scheduled'
+    | 'In Progress'
+    | 'Fixed'
+    | 'Completed'
+    | 'Rejected'
+    | 'Unable to Repair';
 export type UserRole = 'MAINTENANCE_OFFICER' | 'CITIZEN' | 'ADMIN';
 
 export interface User {
@@ -21,6 +33,13 @@ export interface PotholeEvent {
     source?: 'SYSTEM' | 'CITIZEN_REPORT';
     reportId?: string;
     bbox?: [number, number, number, number]; // [x, y, width, height] relative to image (0-1)
+    priority?: RepairPriority;
+    assignedTeam?: RepairTeam;
+    scheduledDate?: string;
+    maintenanceNotes?: string;
+    repairStatus?: RepairStatus;
+    repairStartedAt?: string;
+    completedAt?: string;
     createdAt: string;
     updatedAt: string;
 }
@@ -28,10 +47,21 @@ export interface PotholeEvent {
 export interface RepairUpdate {
     id: string;
     potholeId: string;
-    status: PotholeStatus;
+    status: RepairStatus;
     note: string;
     updatedBy: string;
     updatedAt: string;
+    assignedTeam?: RepairTeam;
+    scheduledDate?: string;
+    priority?: RepairPriority;
+}
+
+export interface RepairScheduleInput {
+    priority: RepairPriority;
+    assignedTeam: RepairTeam;
+    scheduledDate: string;
+    maintenanceNotes: string;
+    repairStatus: RepairStatus;
 }
 
 export interface CitizenReport {
@@ -61,7 +91,11 @@ export type AuditLogAction =
     | 'AI_REJECTED'
     | 'MANUAL_ACCEPTED'
     | 'MANUAL_REJECTED'
-    | 'STATUS_CHANGED';
+    | 'STATUS_CHANGED'
+    | 'REPAIR_SCHEDULED'
+    | 'REPAIR_STARTED'
+    | 'REPAIR_COMPLETED'
+    | 'REPAIR_NOTE_ADDED';
 
 export interface AuditLog {
     id: string;

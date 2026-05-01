@@ -1,7 +1,19 @@
-import type { PotholeEvent, User, CitizenReport, RepairUpdate, AuditLog } from './types';
+import type {
+    AuditLog,
+    CitizenReport,
+    PotholeEvent,
+    RepairPriority,
+    RepairScheduleInput,
+    RepairStatus,
+    RepairTeam,
+    RepairUpdate,
+    User
+} from './types';
 import { subDays } from 'date-fns';
 
-const statuses: PotholeEvent['status'][] = ['New', 'Confirmed', 'Scheduled', 'Fixed', 'Rejected'];
+const statuses: PotholeEvent['status'][] = ['New', 'Verified', 'Scheduled', 'In Progress', 'Completed'];
+const priorities: RepairPriority[] = ['Low', 'Medium', 'High', 'Urgent'];
+const teams: RepairTeam[] = ['Team A', 'Team B', 'Team C', 'Emergency Team'];
 
 const SRI_LANKA_REGIONS = [
     { name: 'Colombo', lat: 6.9271, lon: 79.8612 },
@@ -17,6 +29,12 @@ const generatePotholes = (count: number): PotholeEvent[] => {
         const status = statuses[Math.floor(Math.random() * statuses.length)];
         const confidence = 0.6 + Math.random() * 0.38;
         const timestamp = subDays(new Date(), Math.floor(Math.random() * 30)).toISOString();
+        const priority = priorities[i % priorities.length];
+        const assignedTeam = ['Scheduled', 'In Progress', 'Completed'].includes(status) ? teams[i % teams.length] : undefined;
+        const scheduledDate = assignedTeam ? subDays(new Date(), i % 4 === 0 ? 0 : -((i % 7) + 1)).toISOString() : undefined;
+        const repairStatus = status === 'Verified' || status === 'Scheduled' || status === 'In Progress' || status === 'Completed'
+            ? status
+            : undefined;
 
         return {
             id: `PH-${1000 + i}`,
@@ -28,6 +46,13 @@ const generatePotholes = (count: number): PotholeEvent[] => {
             roadName: `${region.name} Main Road ${i + 1}`,
             district: region.name,
             imageUrl: `https://picsum.photos/seed/${i}/1280/720`, // Larger image for zoom
+            priority,
+            assignedTeam,
+            scheduledDate,
+            repairStatus,
+            maintenanceNotes: assignedTeam ? `Assigned to ${assignedTeam} for surface repair and traffic control.` : '',
+            repairStartedAt: status === 'In Progress' || status === 'Completed' ? subDays(new Date(), 1).toISOString() : undefined,
+            completedAt: status === 'Completed' ? new Date().toISOString() : undefined,
             createdAt: timestamp,
             updatedAt: timestamp,
         };
@@ -82,6 +107,35 @@ export const getSystemSettings = () => {
 
 export const initialPotholes = generatePotholes(50);
 
+const normalizeRepairStatus = (status: PotholeEvent['status']): RepairStatus | undefined => {
+    if (status === 'Confirmed' || status === 'Verified') return 'Verified';
+    if (status === 'Scheduled') return 'Scheduled';
+    if (status === 'In Progress') return 'In Progress';
+    if (status === 'Fixed' || status === 'Completed') return 'Completed';
+    if (status === 'Rejected' || status === 'Unable to Repair') return 'Unable to Repair';
+    return undefined;
+};
+
+const repairStatusToPotholeStatus = (status: RepairStatus): PotholeEvent['status'] => {
+    if (status === 'Completed') return 'Completed';
+    if (status === 'Unable to Repair') return 'Unable to Repair';
+    return status;
+};
+
+const enrichPothole = (pothole: PotholeEvent, index = 0): PotholeEvent => {
+    const repairStatus = pothole.repairStatus || normalizeRepairStatus(pothole.status);
+    const priority = pothole.priority || priorities[index % priorities.length];
+    return {
+        ...pothole,
+        status: pothole.status === 'Confirmed' ? 'Verified' : pothole.status === 'Fixed' ? 'Completed' : pothole.status,
+        priority,
+        repairStatus,
+        assignedTeam: pothole.assignedTeam,
+        scheduledDate: pothole.scheduledDate,
+        maintenanceNotes: pothole.maintenanceNotes || '',
+    };
+};
+
 export const getReports = (): CitizenReport[] => {
     const stored = localStorage.getItem('rp_reports');
     if (stored) return JSON.parse(stored);
@@ -119,8 +173,8 @@ export const submitReport = async (report: Omit<CitizenReport, 'id' | 'status' |
             entityType: 'REPORT',
             action: 'AI_ACCEPTED',
             actor: 'SYSTEM',
-            actorName: 'AI Validation Engine',
-            details: `Automatically generated bounding box. Confidence: ${(newReport.aiConfidence! * 100).toFixed(1)}%`
+            actorName: 'Report Intake',
+            details: 'Report passed intake review and was converted to a verified pothole.'
         });
 
         const potholes = getPotholes();
@@ -130,11 +184,14 @@ export const submitReport = async (report: Omit<CitizenReport, 'id' | 'status' |
             lon: newReport.lon,
             timestamp: new Date().toISOString(),
             confidence: newReport.aiConfidence!,
-            status: 'New',
+            status: 'Verified',
             imageUrl: newReport.imageUrl,
             source: 'CITIZEN_REPORT',
             reportId: newReport.id,
             bbox: newReport.bbox,
+            priority: 'Medium',
+            repairStatus: 'Verified',
+            maintenanceNotes: '',
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
         };
@@ -153,8 +210,8 @@ export const submitReport = async (report: Omit<CitizenReport, 'id' | 'status' |
             entityType: 'REPORT',
             action: 'AI_REJECTED',
             actor: 'SYSTEM',
-            actorName: 'AI Validation Engine',
-            details: `Validation failed with confidence: ${(newReport.aiConfidence! * 100).toFixed(1)}%. Reason: No features detected.`
+            actorName: 'Report Intake',
+            details: 'Report was not accepted during intake review.'
         });
     }
 
@@ -200,11 +257,14 @@ export const processReport = (id: string, action: 'accept' | 'reject' | 'request
                     lon: reports[index].lon,
                     timestamp: new Date().toISOString(),
                     confidence: reports[index].aiConfidence!,
-                    status: 'New',
+                    status: 'Verified',
                     imageUrl: reports[index].imageUrl,
                     source: 'CITIZEN_REPORT',
                     reportId: reports[index].id,
                     bbox: reports[index].bbox,
+                    priority: 'Medium',
+                    repairStatus: 'Verified',
+                    maintenanceNotes: '',
                     createdAt: new Date().toISOString(),
                     updatedAt: new Date().toISOString(),
                 };
@@ -244,17 +304,34 @@ export const processReport = (id: string, action: 'accept' | 'reject' | 'request
 export const getPotholes = (): PotholeEvent[] => {
     const key = 'rp_potholes_v2'; // Bumped version for new schema
     const stored = localStorage.getItem(key);
-    if (stored) return JSON.parse(stored);
+    if (stored) {
+        const enriched = (JSON.parse(stored) as PotholeEvent[]).map(enrichPothole);
+        localStorage.setItem(key, JSON.stringify(enriched));
+        return enriched;
+    }
     localStorage.setItem(key, JSON.stringify(initialPotholes));
     return initialPotholes;
 };
 
-export const updatePotholeStatus = (id: string, status: PotholeEvent['status'], note: string, user: string) => {
+export const updatePotholeStatus = (
+    id: string,
+    status: PotholeEvent['status'],
+    note: string,
+    user: string,
+    updates: Partial<Pick<PotholeEvent, 'priority' | 'assignedTeam' | 'scheduledDate' | 'maintenanceNotes' | 'repairStatus'>> = {}
+) => {
     const key = 'rp_potholes_v2';
     const potholes = getPotholes();
     const index = potholes.findIndex(p => p.id === id);
     if (index !== -1) {
         potholes[index].status = status;
+        potholes[index].repairStatus = updates.repairStatus || normalizeRepairStatus(status);
+        potholes[index].priority = updates.priority || potholes[index].priority;
+        potholes[index].assignedTeam = updates.assignedTeam || potholes[index].assignedTeam;
+        potholes[index].scheduledDate = updates.scheduledDate || potholes[index].scheduledDate;
+        potholes[index].maintenanceNotes = updates.maintenanceNotes ?? potholes[index].maintenanceNotes;
+        if (status === 'In Progress' && !potholes[index].repairStartedAt) potholes[index].repairStartedAt = new Date().toISOString();
+        if (status === 'Completed' && !potholes[index].completedAt) potholes[index].completedAt = new Date().toISOString();
         potholes[index].updatedAt = new Date().toISOString();
         localStorage.setItem(key, JSON.stringify(potholes));
 
@@ -268,17 +345,42 @@ export const updatePotholeStatus = (id: string, status: PotholeEvent['status'], 
         });
 
         // Add audit log/repair update
-        const updates = getRepairUpdates(id);
+        const repairUpdates = getRepairUpdates(id);
         const newUpdate: RepairUpdate = {
             id: `RU-${Date.now()}`,
             potholeId: id,
-            status,
+            status: potholes[index].repairStatus || normalizeRepairStatus(status) || 'Verified',
             note,
             updatedBy: user,
-            updatedAt: new Date().toISOString()
+            updatedAt: new Date().toISOString(),
+            assignedTeam: potholes[index].assignedTeam,
+            scheduledDate: potholes[index].scheduledDate,
+            priority: potholes[index].priority,
         };
-        localStorage.setItem(`rp_updates_${id}`, JSON.stringify([...updates, newUpdate]));
+        localStorage.setItem(`rp_updates_${id}`, JSON.stringify([...repairUpdates, newUpdate]));
     }
+};
+
+export const schedulePotholeRepair = (id: string, input: RepairScheduleInput, user: string) => {
+    const nextStatus = repairStatusToPotholeStatus(input.repairStatus);
+    updatePotholeStatus(id, nextStatus, input.maintenanceNotes || `Scheduled repair for ${input.assignedTeam}.`, user, {
+        priority: input.priority,
+        assignedTeam: input.assignedTeam,
+        scheduledDate: input.scheduledDate,
+        maintenanceNotes: input.maintenanceNotes,
+        repairStatus: input.repairStatus,
+    });
+
+    addAuditLog({
+        entityId: id,
+        entityType: 'POTHOLE',
+        action: input.repairStatus === 'Scheduled' ? 'REPAIR_SCHEDULED' : 'STATUS_CHANGED',
+        actor: 'MAINTENANCE_OFFICER',
+        actorName: user,
+        details: `${input.assignedTeam} assigned. Priority: ${input.priority}. Scheduled date: ${new Date(input.scheduledDate).toLocaleDateString()}.`
+    });
+
+    return getPotholes().find(p => p.id === id) || null;
 };
 
 export const getRepairUpdates = (potholeId: string): RepairUpdate[] => {
