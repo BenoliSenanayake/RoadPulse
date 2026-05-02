@@ -10,6 +10,7 @@ import type {
     User
 } from './types';
 import { subDays } from 'date-fns';
+import { resolveProvince } from './lib/provinceResolver';
 
 const statuses: PotholeEvent['status'][] = ['New', 'Verified', 'Scheduled', 'In Progress', 'Completed'];
 const priorities: RepairPriority[] = ['Low', 'Medium', 'High', 'Urgent'];
@@ -19,6 +20,13 @@ const SRI_LANKA_REGIONS = [
     { name: 'Colombo', lat: 6.9271, lon: 79.8612 },
     { name: 'Kandy', lat: 7.2906, lon: 80.6337 },
     { name: 'Gampaha', lat: 7.0873, lon: 79.9925 },
+    { name: 'Galle', lat: 6.0535, lon: 80.2210 },
+    { name: 'Jaffna', lat: 9.6615, lon: 80.0255 },
+    { name: 'Batticaloa', lat: 7.7310, lon: 81.6747 },
+    { name: 'Kurunegala', lat: 7.4863, lon: 80.3647 },
+    { name: 'Anuradhapura', lat: 8.3114, lon: 80.4037 },
+    { name: 'Badulla', lat: 6.9934, lon: 81.0550 },
+    { name: 'Ratnapura', lat: 6.6828, lon: 80.3992 },
 ];
 
 const generatePotholes = (count: number): PotholeEvent[] => {
@@ -36,6 +44,8 @@ const generatePotholes = (count: number): PotholeEvent[] => {
             ? status
             : undefined;
 
+        const detected = resolveProvince(lat, lon);
+
         return {
             id: `PH-${1000 + i}`,
             lat,
@@ -45,14 +55,15 @@ const generatePotholes = (count: number): PotholeEvent[] => {
             status,
             roadName: `${region.name} Main Road ${i + 1}`,
             district: region.name,
-            imageUrl: `https://picsum.photos/seed/${i}/1280/720`, // Larger image for zoom
+            imageUrl: `https://picsum.photos/seed/${i}/1280/720`,
             priority,
             assignedTeam,
             scheduledDate,
             repairStatus,
-            maintenanceNotes: assignedTeam ? `Assigned to ${assignedTeam} for surface repair and traffic control.` : '',
+            maintenanceNotes: assignedTeam ? `Repair coordination pending for ${assignedTeam}.` : '',
             repairStartedAt: status === 'In Progress' || status === 'Completed' ? subDays(new Date(), 1).toISOString() : undefined,
             completedAt: status === 'Completed' ? new Date().toISOString() : undefined,
+            provincialCouncil: detected.council,
             createdAt: timestamp,
             updatedAt: timestamp,
         };
@@ -60,8 +71,9 @@ const generatePotholes = (count: number): PotholeEvent[] => {
 };
 
 export const MOCK_USERS: User[] = [
-    { id: 'u1', name: 'Admin User', email: 'admin@roadpulse.lk', role: 'ADMIN' },
-    { id: 'u2', name: 'Maintenance Officer', email: 'officer@roadpulse.lk', role: 'MAINTENANCE_OFFICER' },
+    { id: 'u1', name: 'Admin Hub', email: 'admin@roadpulse.lk', role: 'ADMIN' },
+    { id: 'u2', name: 'Western Officer', email: 'western@roadpulse.lk', role: 'MAINTENANCE_OFFICER' },
+    { id: 'u4', name: 'Central Officer', email: 'central@roadpulse.lk', role: 'MAINTENANCE_OFFICER' },
     { id: 'u3', name: 'Citizen Reporter', email: 'citizen@roadpulse.lk', role: 'CITIZEN' },
 ];
 
@@ -72,11 +84,57 @@ export const MOCK_REPORTS: CitizenReport[] = [
         submittedBy: 'Citizen Reporter',
         lat: 6.9272,
         lon: 79.8613,
-        description: 'Large pothole near the junction.',
+        description: 'Large pothole near the Colombo junction.',
         imageUrl: 'https://picsum.photos/seed/cr101/800/600',
         aiStatus: 'PENDING',
+        provincialCouncil: 'Western Provincial Council',
+        provinceDetectionMethod: 'GPS_BOUNDARY',
         status: 'New',
-        createdAt: new Date().toISOString()
+        createdAt: subDays(new Date(), 1).toISOString()
+    },
+    {
+        id: 'CR-102',
+        citizenId: 'u3',
+        submittedBy: 'Citizen Reporter',
+        lat: 7.2910,
+        lon: 80.6340,
+        description: 'Deep pothole on Kandy-Peradeniya road.',
+        imageUrl: 'https://picsum.photos/seed/cr102/800/600',
+        aiStatus: 'ACCEPTED',
+        aiConfidence: 0.92,
+        provincialCouncil: 'Central Provincial Council',
+        provinceDetectionMethod: 'GPS_BOUNDARY',
+        status: 'New',
+        createdAt: subDays(new Date(), 3).toISOString()
+    },
+    {
+        id: 'CR-103',
+        citizenId: 'u3',
+        submittedBy: 'Citizen Reporter',
+        lat: 6.0540,
+        lon: 80.2215,
+        description: 'Crumbling road surface near Galle Fort.',
+        imageUrl: 'https://picsum.photos/seed/cr103/800/600',
+        aiStatus: 'PENDING',
+        provincialCouncil: 'Southern Provincial Council',
+        provinceDetectionMethod: 'GPS_BOUNDARY',
+        status: 'New',
+        createdAt: subDays(new Date(), 2).toISOString()
+    },
+    {
+        id: 'CR-104',
+        citizenId: 'u3',
+        submittedBy: 'Citizen Reporter',
+        lat: 7.0880,
+        lon: 79.9930,
+        description: 'Pothole near Gampaha bus stand.',
+        imageUrl: 'https://picsum.photos/seed/cr104/800/600',
+        aiStatus: 'REJECTED',
+        aiReason: 'Image quality too low for verification.',
+        provincialCouncil: 'Western Provincial Council',
+        provinceDetectionMethod: 'GPS_BOUNDARY',
+        status: 'Discarded',
+        createdAt: subDays(new Date(), 5).toISOString()
     }
 ];
 
@@ -148,11 +206,16 @@ export const submitReport = async (report: Omit<CitizenReport, 'id' | 'status' |
         throw new Error('Reports must be linked to a registered citizen.');
     }
 
+    // Auto-detect province from coordinates
+    const detected = resolveProvince(report.lat, report.lon);
+
     const reports = getReports();
     const newReport: CitizenReport = {
         ...report,
         id: `CR-${Date.now()}`,
         status: report.aiStatus === 'REJECTED' ? 'Discarded' : 'New',
+        provincialCouncil: report.provincialCouncil || detected.council,
+        provinceDetectionMethod: report.provinceDetectionMethod || detected.method,
         createdAt: new Date().toISOString()
     };
 
@@ -192,6 +255,7 @@ export const submitReport = async (report: Omit<CitizenReport, 'id' | 'status' |
             priority: 'Medium',
             repairStatus: 'Verified',
             maintenanceNotes: '',
+            provincialCouncil: newReport.provincialCouncil,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
         };
@@ -265,6 +329,7 @@ export const processReport = (id: string, action: 'accept' | 'reject' | 'request
                     priority: 'Medium',
                     repairStatus: 'Verified',
                     maintenanceNotes: '',
+                    provincialCouncil: reports[index].provincialCouncil,
                     createdAt: new Date().toISOString(),
                     updatedAt: new Date().toISOString(),
                 };

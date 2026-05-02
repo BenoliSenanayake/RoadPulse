@@ -1,7 +1,4 @@
-import { useState, useMemo } from 'react';
-import {
-    listPotholes
-} from '../lib/api';
+import { potholesApi } from '../lib/api';
 import {
     Search,
     Download,
@@ -13,16 +10,39 @@ import {
 import { useNavigate } from 'react-router-dom';
 import * as Papa from 'papaparse';
 
+import { useState, useMemo, useEffect } from 'react';
 import type { PotholeEvent } from '../types';
 import { ResponsiveDataList } from '../components/ResponsiveDataList';
 import { StatusPill } from '../components/StatusPill';
+import { useAuth } from '../context/AuthContext';
+import { getProvinceShortName } from '../lib/provinceResolver';
 
 const PotholesTable = () => {
     const navigate = useNavigate();
+    const { user } = useAuth();
+    const province = user?.provincialCouncil;
+    const [potholes, setPotholes] = useState<PotholeEvent[]>([]);
+    const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState<string>('All');
 
-    const potholes = useMemo(() => listPotholes(), []);
+    const loadData = async () => {
+        setLoading(true);
+        try {
+            let data = await potholesApi.list();
+            // Filter by province for maintenance officers
+            if (province && province !== 'Unassigned') {
+                data = data.filter(p => p.provincialCouncil === province);
+            }
+            setPotholes(data);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        loadData();
+    }, [province]);
 
     const filteredPotholes = useMemo<PotholeEvent[]>(() => {
         return potholes.filter((p: PotholeEvent) => {
@@ -137,9 +157,16 @@ const PotholesTable = () => {
     return (
         <div className="space-y-8 animate-fade-in-up">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <h1 className="section-heading">Tactical Inventory</h1>
-                    <p className="text-slate-500 font-bold text-sm">Comprehensive archive of all detected road surface anomalies.</p>
+                <div className="flex flex-col gap-2">
+                    <div className="flex items-center gap-3">
+                        <h1 className="section-heading">Tactical Inventory</h1>
+                        {province && province !== 'Unassigned' && (
+                            <div className="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-1.5 text-[10px] font-black uppercase tracking-widest text-emerald-700 flex items-center gap-2">
+                                <MapPin size={12} /> {getProvinceShortName(province)}
+                            </div>
+                        )}
+                    </div>
+                    <p className="text-slate-500 font-bold text-sm">Comprehensive archive of detected road surface anomalies within your jurisdiction.</p>
                 </div>
                 <button
                     onClick={handleExport}

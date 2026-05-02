@@ -23,6 +23,8 @@ import { potholesApi } from '../lib/api';
 import type { PotholeEvent, PotholeStatus, RepairPriority, RepairTeam } from '../types';
 import { StatusPill } from '../components/StatusPill';
 import { cn } from '../lib/utils';
+import { useAuth } from '../context/AuthContext';
+import { getProvinceShortName } from '../lib/provinceResolver';
 import 'leaflet/dist/leaflet.css';
 
 const TEAMS: RepairTeam[] = ['Team A', 'Team B', 'Team C', 'Emergency Team'];
@@ -64,6 +66,8 @@ const getMarkerIcon = (pothole: PotholeEvent) => {
 };
 
 const LiveMap = () => {
+    const { user } = useAuth();
+    const province = user?.provincialCouncil;
     const [potholes, setPotholes] = useState<PotholeEvent[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -81,7 +85,11 @@ const LiveMap = () => {
         setLoading(true);
         setError('');
         try {
-            const data = await potholesApi.list();
+            let data = await potholesApi.list();
+            // Filter by province for maintenance officers
+            if (province && province !== 'Unassigned') {
+                data = data.filter(p => p.provincialCouncil === province);
+            }
             setPotholes(data);
         } catch {
             setError('Failed to load map data. Please try again later.');
@@ -92,7 +100,7 @@ const LiveMap = () => {
 
     useEffect(() => {
         loadMapData();
-    }, []);
+    }, [province]);
 
     const areas = useMemo(() => {
         const values = new Set(potholes.map(p => p.district).filter(Boolean));
@@ -194,7 +202,14 @@ const LiveMap = () => {
 
             <main className="relative z-0 flex-1 overflow-hidden rounded-none bg-white shadow-2xl md:rounded-2xl">
                 <div className="absolute left-4 top-4 z-[1000] max-w-[calc(100%-90px)] rounded-2xl bg-slate-900/90 px-4 py-3 text-white shadow-xl backdrop-blur">
-                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Repair Operations Map</p>
+                    <div className="flex items-center gap-2 mb-1">
+                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Repair Operations Map</p>
+                        {province && province !== 'Unassigned' && (
+                            <span className="bg-emerald-500/20 text-emerald-400 text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded border border-emerald-500/30">
+                                {getProvinceShortName(province)}
+                            </span>
+                        )}
+                    </div>
                     <p className="text-sm font-black">{filtered.length} locations visible</p>
                 </div>
 

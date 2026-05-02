@@ -1,32 +1,35 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Shield, Lock, Mail, ChevronLeft, Loader2 } from 'lucide-react';
+import { Shield, Lock, Mail, ChevronLeft, Loader2, MapPin } from 'lucide-react';
 import { AuthInput } from '../components/AuthInput';
 import { Alert, type AlertType } from '../components/Alert';
+import { PROVINCIAL_COUNCILS, type ProvincialCouncil } from '../types';
 import logo from '../assets/logo.png';
 
 const StaffLogin = () => {
-    const [email, setEmail] = useState('admin@roadpulse.lk');
+    const [email, setEmail] = useState('western@roadpulse.lk');
     const [password, setPassword] = useState('');
+    const [selectedProvince, setSelectedProvince] = useState<ProvincialCouncil>('Western Provincial Council');
     const [isLoading, setIsLoading] = useState(false);
-    const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+    const [errors, setErrors] = useState<{ email?: string; password?: string; province?: string }>({});
     const [feedback, setFeedback] = useState<{ type: AlertType; message: string; description?: string } | null>(null);
 
-    const { login, isAuthenticated, getHomePath } = useAuth();
+    const { login, isAuthenticated, user, getHomePath } = useAuth();
     const navigate = useNavigate();
 
-    if (isAuthenticated) {
-        navigate('/overview');
+    // Only redirect if already authenticated as a Staff member
+    if (isAuthenticated && user?.role !== 'CITIZEN') {
+        navigate(getHomePath());
     }
 
     const validate = () => {
-        const newErrors: { email?: string; password?: string } = {};
+        const newErrors: { email?: string; password?: string; province?: string } = {};
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-            newErrors.email = "Command email invalid";
+            newErrors.email = "Enter a valid staff email";
         }
         if (password.length < 1) {
-            newErrors.password = "Authentication key required";
+            newErrors.password = "Password required";
         }
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
@@ -37,9 +40,9 @@ const StaffLogin = () => {
         if (!validate()) return;
 
         setIsLoading(true);
-        await new Promise(r => setTimeout(r, 1800));
+        await new Promise(r => setTimeout(r, 1200));
 
-        const result = await login(email, password);
+        const result = await login(email, password, selectedProvince);
         setIsLoading(false);
 
         if (result.success) {
@@ -47,10 +50,10 @@ const StaffLogin = () => {
         } else {
             setFeedback({
                 type: 'error',
-                message: 'Access Restricted',
-                description: result.error || 'Identity not authorized for this portal.'
+                message: 'Access Denied',
+                description: result.error || 'Invalid credentials. Contact your administrator.'
             });
-            setErrors({ password: 'Key rejected' });
+            setErrors({ password: 'Check your credentials' });
         }
     };
 
@@ -58,29 +61,29 @@ const StaffLogin = () => {
         <div className="min-h-screen flex items-center justify-center bg-white px-4 py-8 relative overflow-hidden">
             {feedback && <Alert {...feedback} onClose={() => setFeedback(null)} />}
 
-            {/* Clean Tactical Grid */}
+            {/* Clean Grid Background */}
             <div className="absolute inset-0 bg-[linear-gradient(to_right,#f1f5f9_1px,transparent_1px),linear-gradient(to_bottom,#f1f5f9_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] opacity-50" />
 
-            <div className="max-w-[400px] w-full relative z-10 flex flex-col gap-8">
+            <div className="max-w-[420px] w-full relative z-10 flex flex-col gap-8">
                 {/* Brand Header */}
                 <div className="flex flex-col items-center">
                     <div className="w-16 h-16 bg-slate-900 rounded-2xl shadow-xl flex items-center justify-center mb-4 border border-white/10 group">
                         <img src={logo} alt="RP" className="w-10 h-10 object-contain brightness-0 invert opacity-90 group-hover:scale-110 transition-transform duration-500" />
                     </div>
                     <div className="text-center">
-                        <h1 className="text-xl font-black text-slate-900 tracking-[0.2em] uppercase leading-none mb-2">Staff Command</h1>
-                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.4em] leading-none">Internal Security Portal</p>
+                        <h1 className="text-xl font-black text-slate-900 tracking-[0.15em] uppercase leading-none mb-2">Staff Portal</h1>
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.4em] leading-none">Maintenance & Administration</p>
                     </div>
                 </div>
 
                 <div className="bg-white p-8 sm:p-10 rounded-[2rem] border border-slate-100 shadow-2xl shadow-slate-950/5 relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-slate-50 rounded-bl-full translate-x-16 -translate-y-16" />
 
-                    <form onSubmit={handleSubmit} className="space-y-6 relative z-10">
+                    <form onSubmit={handleSubmit} className="space-y-5 relative z-10">
                         <AuthInput
-                            label="Staff Identity"
+                            label="Staff Email"
                             type="email"
-                            placeholder="command@roadpulse.lk"
+                            placeholder="your.name@roadpulse.lk"
                             icon={<Mail />}
                             value={email}
                             onChange={(e) => {
@@ -91,8 +94,33 @@ const StaffLogin = () => {
                             required
                         />
 
+                        {/* Provincial Council Selector */}
+                        <div className="space-y-2">
+                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                Provincial Council
+                            </label>
+                            <div className="relative">
+                                <MapPin size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none z-10" />
+                                <select
+                                    value={selectedProvince}
+                                    onChange={(e) => setSelectedProvince(e.target.value as ProvincialCouncil)}
+                                    className="w-full pl-11 pr-4 py-3.5 bg-slate-50/60 border border-slate-200 rounded-2xl text-sm font-bold text-slate-900 appearance-none focus:outline-none focus:ring-2 focus:ring-slate-300 focus:border-transparent transition-all cursor-pointer"
+                                >
+                                    {PROVINCIAL_COUNCILS.map(pc => (
+                                        <option key={pc} value={pc}>{pc}</option>
+                                    ))}
+                                </select>
+                                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                                </div>
+                            </div>
+                            <p className="text-[9px] font-medium text-slate-400 pl-1">
+                                You will only see reports from this province
+                            </p>
+                        </div>
+
                         <AuthInput
-                            label="Security Protocol Key"
+                            label="Password"
                             type="password"
                             placeholder="••••••••"
                             icon={<Lock />}
@@ -115,7 +143,7 @@ const StaffLogin = () => {
                                 <Loader2 size={16} className="animate-spin" />
                             ) : (
                                 <>
-                                    Grant Access <Shield size={16} />
+                                    Sign In <Shield size={16} />
                                 </>
                             )}
                         </button>
@@ -123,12 +151,12 @@ const StaffLogin = () => {
                 </div>
 
                 <div className="flex flex-col items-center gap-4">
-                    <Link to="/login" className="text-[10px] font-black text-slate-500 uppercase tracking-widest hover:text-slate-900 transition-colors flex items-center gap-2 group">
+                    <Link to="/citizen" className="text-[10px] font-black text-slate-500 uppercase tracking-widest hover:text-slate-900 transition-colors flex items-center gap-2 group">
                         <ChevronLeft size={14} className="group-hover:-translate-x-1 transition-transform" /> Return to Citizen Portal
                     </Link>
                     <div className="flex items-center gap-2">
                         <div className="w-1 h-1 bg-slate-200 rounded-full" />
-                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-none">Secured by RoadPulse Tactical Layer</span>
+                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-none">RoadPulse Staff Access</span>
                     </div>
                 </div>
             </div>

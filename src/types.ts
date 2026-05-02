@@ -13,11 +13,36 @@ export type PotholeStatus =
     | 'Unable to Repair';
 export type UserRole = 'MAINTENANCE_OFFICER' | 'CITIZEN' | 'ADMIN';
 
+export type ProvincialCouncil =
+    | 'Western Provincial Council'
+    | 'Central Provincial Council'
+    | 'Southern Provincial Council'
+    | 'Northern Provincial Council'
+    | 'Eastern Provincial Council'
+    | 'North Western Provincial Council'
+    | 'North Central Provincial Council'
+    | 'Uva Provincial Council'
+    | 'Sabaragamuwa Provincial Council'
+    | 'Unassigned';
+
+export const PROVINCIAL_COUNCILS: ProvincialCouncil[] = [
+    'Western Provincial Council',
+    'Central Provincial Council',
+    'Southern Provincial Council',
+    'Northern Provincial Council',
+    'Eastern Provincial Council',
+    'North Western Provincial Council',
+    'North Central Provincial Council',
+    'Uva Provincial Council',
+    'Sabaragamuwa Provincial Council',
+];
+
 export interface User {
     id: string;
     name: string;
     role: UserRole;
     email: string;
+    provincialCouncil?: ProvincialCouncil; // For MAINTENANCE_OFFICER
 }
 
 export interface PotholeEvent {
@@ -40,6 +65,8 @@ export interface PotholeEvent {
     repairStatus?: RepairStatus;
     repairStartedAt?: string;
     completedAt?: string;
+    provincialCouncil?: ProvincialCouncil;
+    lastStatusUpdatedBy?: string;
     createdAt: string;
     updatedAt: string;
 }
@@ -80,6 +107,8 @@ export interface CitizenReport {
     inferenceTimeMs?: number;
     bbox?: [number, number, number, number];
     linkedPotholeId?: string;
+    provincialCouncil?: ProvincialCouncil;
+    provinceDetectionMethod?: 'GPS_BOUNDARY' | 'MANUAL' | 'UNKNOWN';
     status: 'New' | 'Discarded'; // Mapping from assignment
     createdAt: string; // Keep as submittedAt alias
 }

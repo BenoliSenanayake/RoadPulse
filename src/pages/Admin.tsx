@@ -58,6 +58,14 @@ const AdminPage = () => {
             )
         },
         {
+            header: 'Jurisdiction',
+            render: (user: any) => (
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                    {user.provincialCouncil || 'Global Oversight'}
+                </span>
+            )
+        },
+        {
             header: 'Ops',
             className: 'text-right',
             render: () => (

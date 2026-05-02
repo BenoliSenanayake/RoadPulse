@@ -17,6 +17,7 @@ import { useAuth } from '../context/AuthContext';
 import type { PotholeEvent, RepairPriority, RepairScheduleInput, RepairStatus, RepairTeam } from '../types';
 import { StatusPill } from '../components/StatusPill';
 import { cn } from '../lib/utils';
+import { getProvinceShortName } from '../lib/provinceResolver';
 
 const TEAMS: RepairTeam[] = ['Team A', 'Team B', 'Team C', 'Emergency Team'];
 const PRIORITIES: RepairPriority[] = ['Low', 'Medium', 'High', 'Urgent'];
@@ -47,6 +48,7 @@ const getWorkload = (count: number) => {
 
 const RepairsPage = () => {
     const { user } = useAuth();
+    const province = user?.provincialCouncil;
     const [potholes, setPotholes] = useState<PotholeEvent[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -59,7 +61,11 @@ const RepairsPage = () => {
         setLoading(true);
         setError('');
         try {
-            const data = await potholesApi.list();
+            let data = await potholesApi.list();
+            // Filter by province for maintenance officers
+            if (province && province !== 'Unassigned') {
+                data = data.filter(p => p.provincialCouncil === province);
+            }
             setPotholes(data);
         } catch {
             setError('Failed to load repairs data. Please try again later.');
@@ -70,7 +76,7 @@ const RepairsPage = () => {
 
     useEffect(() => {
         loadPotholes();
-    }, []);
+    }, [province]);
 
     const openSchedule = (pothole: PotholeEvent, status: RepairStatus = 'Scheduled') => {
         setSelected(pothole);
@@ -138,8 +144,15 @@ const RepairsPage = () => {
     return (
         <div className="space-y-8 pb-12 animate-fade-in-up">
             <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-                <div>
-                    <h1 className="section-heading mb-1">Repair Operations</h1>
+                <div className="flex flex-col gap-2">
+                    <div className="flex items-center gap-3">
+                        <h1 className="section-heading">Repair Operations</h1>
+                        {province && province !== 'Unassigned' && (
+                            <div className="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-1.5 text-[10px] font-black uppercase tracking-widest text-emerald-700 flex items-center gap-2">
+                                <MapPin size={12} /> {getProvinceShortName(province)}
+                            </div>
+                        )}
+                    </div>
                     <p className="text-sm font-bold text-slate-500">Schedule verified potholes, assign teams, and track field progress.</p>
                 </div>
                 <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">

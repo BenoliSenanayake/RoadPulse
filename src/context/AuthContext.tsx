@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
-import type { User, UserRole } from '../types';
-import { MOCK_USERS } from '../mockData';
+import type { User, UserRole, ProvincialCouncil } from '../types';
+import { authApi } from '../lib/api';
 
 export interface CitizenAccount extends User {
     passwordHash: string; // Simple hash/plain for prototype
@@ -12,7 +12,7 @@ export interface CitizenAccount extends User {
 
 interface AuthContextType {
     user: User | null;
-    login: (email: string, password?: string) => Promise<{ success: boolean; error?: string }>;
+    login: (email: string, password?: string, provincialCouncil?: ProvincialCouncil) => Promise<{ success: boolean; error?: string }>;
     signup: (data: Omit<CitizenAccount, 'id' | 'role' | 'createdAt'>) => Promise<{ success: boolean; error?: string }>;
     logout: () => void;
     isAuthenticated: boolean;
@@ -30,15 +30,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // Current Session
     const [user, setUser] = useState<User | null>(() => {
         const saved = localStorage.getItem(USER_KEY);
-        if (!saved) return null;
-
-        const parsed = JSON.parse(saved) as User;
-        if (parsed.id.startsWith('guest-') || parsed.email === 'guest@roadpulse.lk') {
-            localStorage.removeItem(USER_KEY);
-            return null;
-        }
-
-        return parsed;
+        return saved ? JSON.parse(saved) : null;
     });
 
     // Persistent Accounts
@@ -52,11 +44,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         localStorage.setItem(CITIZEN_ACCOUNTS_KEY, JSON.stringify(citizenAccounts));
     }, [citizenAccounts]);
 
-    const login = async (email: string, password?: string) => {
-        const normalizedEmail = email.trim().toLowerCase();
+    const login = async (email: string, password?: string, provincialCouncil?: ProvincialCouncil) => {
+        // 1. Check Mock Staff Accounts (Admin/Officer)
+        const staffUser = await authApi.verifyStaff(email);
+        if (staffUser) {
+            // Attach provincial council if the user is a maintenance officer
+            const sessionUser: User = {
+                ...staffUser,
+                provincialCouncil: staffUser.role === 'MAINTENANCE_OFFICER' ? provincialCouncil : undefined,
+            };
+            setUser(sessionUser);
+            localStorage.setItem(USER_KEY, JSON.stringify(sessionUser));
+            return { success: true };
+        }
 
-        const citizen = citizenAccounts.find(u => u.email.toLowerCase() === normalizedEmail);
+        // If we are in the staff login flow (provincialCouncil provided) and no staff found, fail immediately
+        if (provincialCouncil) {
+            return { success: false, error: 'Staff account not found or unauthorized for this province.' };
+        }
+
+        // 2. Check Citizen Accounts
+        const citizen = citizenAccounts.find(u => u.email === email);
         if (citizen) {
+            // Simple credential check
             if (citizen.passwordHash === password) {
                 const sessionUser: User = {
                     id: citizen.id,
@@ -68,24 +78,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 localStorage.setItem(USER_KEY, JSON.stringify(sessionUser));
                 return { success: true };
             }
-            return { success: false, error: 'Invalid security key' };
+            return { success: false, error: 'Invalid password' };
         }
 
-        const mockUser = MOCK_USERS.find(u => u.email.toLowerCase() === normalizedEmail);
-        if (mockUser && password) {
-            setUser(mockUser);
-            localStorage.setItem(USER_KEY, JSON.stringify(mockUser));
-            return { success: true };
-        }
-
-        return { success: false, error: 'Identity not found' };
+        return { success: false, error: 'Account not found' };
     };
 
     const signup = async (data: Omit<CitizenAccount, 'id' | 'role' | 'createdAt'>) => {
-        const normalizedEmail = data.email.trim().toLowerCase();
-        const emailExists = MOCK_USERS.some(u => u.email.toLowerCase() === normalizedEmail);
-        if (citizenAccounts.some(u => u.email.toLowerCase() === normalizedEmail) || emailExists) {
-            return { success: false, error: 'Identity already registered' };
+        // Check if email taken
+        const emailExists = await authApi.checkEmailExists(data.email);
+        if (citizenAccounts.some(u => u.email === data.email) || emailExists) {
+            return { success: false, error: 'Email already registered' };
         }
 
         const newCitizen: CitizenAccount = {

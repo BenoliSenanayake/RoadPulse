@@ -11,6 +11,8 @@ import { ResponsiveDataList } from '../components/ResponsiveDataList';
 import { cn } from '../lib/utils';
 import { StatusPill } from '../components/StatusPill';
 import { EmptyState } from '../components/EmptyState';
+import { useAuth } from '../context/AuthContext';
+import { getProvinceShortName } from '../lib/provinceResolver';
 
 // Fix Leaflet's default icon path issues
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -29,6 +31,8 @@ function MapController({ center }: { center: [number, number] }) {
 }
 
 const ReviewQueue = () => {
+    const { user } = useAuth();
+    const province = user?.provincialCouncil;
     const [reports, setReports] = useState<CitizenReport[]>([]);
     const [selectedReport, setSelectedReport] = useState<CitizenReport | null>(null);
     const [rejectionReason, setRejectionReason] = useState('');
@@ -42,7 +46,10 @@ const ReviewQueue = () => {
         setLoading(true);
         setError(null);
         try {
-            const data = await reportsApi.list();
+            let data = await reportsApi.list();
+            if (province && province !== 'Unassigned') {
+                data = data.filter(r => r.provincialCouncil === province);
+            }
             setReports(data.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
         } catch (e) {
             console.error(e);
@@ -54,7 +61,7 @@ const ReviewQueue = () => {
 
     useEffect(() => {
         fetchReports();
-    }, []);
+    }, [province]);
 
     const filteredReports = useMemo(() => {
         return reports.filter(r => {
@@ -174,7 +181,7 @@ const ReviewQueue = () => {
                         onClick={() => { setActiveTab('PENDING_CITIZEN'); setSelectedReport(null); }}
                         className={cn("px-4 py-2 text-[11px] font-black uppercase tracking-widest rounded-xl transition-all", activeTab === 'PENDING_CITIZEN' ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700")}
                     >
-                        Pending Citizen
+                        Incoming
                     </button>
                     <button
                         onClick={() => { setActiveTab('NEEDS_REVIEW'); setSelectedReport(null); }}
@@ -234,7 +241,7 @@ const ReviewQueue = () => {
                             ) : (
                                 <div className="p-12">
                                     <EmptyState
-                                        title="Sector Nominal"
+                                        title="Jurisdiction Clear"
                                         description="No citizen reports match the selected review filter."
                                         icon={Inbox}
                                     />

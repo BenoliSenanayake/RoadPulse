@@ -10,10 +10,11 @@ import {
     Users,
     Wrench
 } from 'lucide-react';
-import { getPotholeById, listCitizenReports, potholesApi } from '../lib/api';
+import { potholesApi, reportsApi } from '../lib/api';
 import { ActivityTimeline } from '../components/ActivityTimeline';
 import { StatusPill } from '../components/StatusPill';
 import { useAuth } from '../context/AuthContext';
+import { getProvinceShortName } from '../lib/provinceResolver';
 import type { CitizenReport, PotholeEvent, RepairPriority, RepairScheduleInput, RepairStatus, RepairTeam } from '../types';
 
 const TEAMS: RepairTeam[] = ['Team A', 'Team B', 'Team C', 'Emergency Team'];
@@ -27,6 +28,8 @@ const PotholeDetail = () => {
     const { user } = useAuth();
     const [pothole, setPothole] = useState<PotholeEvent | null>(null);
     const [report, setReport] = useState<CitizenReport | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
     const [saving, setSaving] = useState(false);
     const [form, setForm] = useState<RepairScheduleInput>({
         priority: 'Medium',
@@ -36,22 +39,46 @@ const PotholeDetail = () => {
         repairStatus: 'Scheduled',
     });
 
-    const loadDetail = () => {
-        const item = id ? getPotholeById(id) : null;
-        if (!item) return;
+    const loadDetail = async () => {
+        if (!id) return;
+        setLoading(true);
+        setError('');
+        try {
+            const item = await potholesApi.getById(id);
+            if (!item) {
+                setPothole(null);
+                return;
+            }
 
-        setPothole(item);
-        setForm({
-            priority: item.priority || 'Medium',
-            assignedTeam: item.assignedTeam || 'Team A',
-            scheduledDate: item.scheduledDate ? item.scheduledDate.slice(0, 10) : new Date().toISOString().slice(0, 10),
-            maintenanceNotes: item.maintenanceNotes || '',
-            repairStatus: item.repairStatus || (item.status === 'Verified' || item.status === 'Confirmed' ? 'Verified' : 'Scheduled'),
-        });
+            // Access Control: Officer must match province
+            if (user?.role === 'MAINTENANCE_OFFICER' && user.provincialCouncil !== item.provincialCouncil) {
+                setError('Access Restricted: This record belongs to another Provincial Council.');
+                setPothole(null);
+                return;
+            }
 
-        if (item.reportId) {
-            const matched = listCitizenReports().find(entry => entry.id === item.reportId) || null;
-            setReport(matched);
+            setPothole(item);
+            setForm({
+                priority: item.priority || 'Medium',
+                assignedTeam: item.assignedTeam || 'Team A',
+                scheduledDate: item.scheduledDate ? item.scheduledDate.slice(0, 10) : new Date().toISOString().slice(0, 10),
+                maintenanceNotes: item.maintenanceNotes || '',
+                repairStatus: item.repairStatus || (item.status === 'Verified' || item.status === 'Confirmed' ? 'Verified' : 'Scheduled'),
+            });
+
+            if (item.reportId) {
+                try {
+                    const matched = await reportsApi.list({ status: undefined }); // Fetch all to find specific one
+                    const found = matched.find(r => r.id === item.reportId) || null;
+                    setReport(found);
+                } catch (e) {
+                    console.error("Failed to load report evidence:", e);
+                }
+            }
+        } catch {
+            setError('Failed to load detail. Record may not exist.');
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -73,11 +100,23 @@ const PotholeDetail = () => {
         }
     };
 
-    if (!pothole) {
+    if (loading) {
         return (
-            <div className="rounded-2xl border border-slate-100 bg-white p-10 text-center shadow-sm">
-                <h1 className="text-xl font-black text-slate-950">Pothole not found</h1>
-                <button onClick={() => navigate(-1)} className="mt-4 text-sm font-bold text-emerald-700">Go back</button>
+            <div className="flex h-[400px] items-center justify-center rounded-3xl border border-slate-100 bg-white p-10 text-center shadow-sm">
+                <div className="text-center">
+                    <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-emerald-600" />
+                    <p className="text-xs font-black uppercase tracking-widest text-slate-400">Loading record details</p>
+                </div>
+            </div>
+        );
+    }
+
+    if (error || !pothole) {
+        return (
+            <div className="rounded-2xl border border-slate-100 bg-white p-10 text-center shadow-sm max-w-md mx-auto">
+                <h1 className="text-xl font-black text-slate-950 mb-2 uppercase tracking-tight">{error || 'Pothole not found'}</h1>
+                <p className="text-slate-500 font-bold mb-6 text-sm">Identity authorization or record existence issue detected.</p>
+                <button onClick={() => navigate(-1)} className="btn-premium bg-slate-900 text-white w-full py-3">Return to Dashboard</button>
             </div>
         );
     }
@@ -95,10 +134,16 @@ const PotholeDetail = () => {
                 <main className="space-y-8">
                     <section className="overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-sm">
                         <div className="flex flex-col gap-4 border-b border-slate-100 p-6 sm:flex-row sm:items-start sm:justify-between">
-                            <div>
-                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Repair Location</p>
-                                <h1 className="mt-1 text-3xl font-black tracking-tight text-slate-950">{pothole.id}</h1>
-                                <p className="mt-1 text-sm font-bold text-slate-500">{pothole.roadName || 'Road location pending'} · {pothole.district || 'Area not set'}</p>
+                            <div className="flex flex-col gap-2">
+                                <div className="flex items-center gap-3">
+                                    <h1 className="text-3xl font-black tracking-tight text-slate-950">{pothole.id}</h1>
+                                    {pothole.provincialCouncil && (
+                                        <div className="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-1.5 text-[10px] font-black uppercase tracking-widest text-emerald-700 flex items-center gap-2">
+                                            <MapPin size={12} /> {getProvinceShortName(pothole.provincialCouncil)}
+                                        </div>
+                                    )}
+                                </div>
+                                <p className="text-sm font-bold text-slate-500">{pothole.roadName || 'Road location pending'} · {pothole.district || 'Area not set'}</p>
                             </div>
                             <StatusPill status={pothole.status as any} />
                         </div>

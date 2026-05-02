@@ -10,8 +10,11 @@ import {
     HardHat,
     Hammer,
     Inbox,
-    Database
+    Database,
+    MapPin
 } from 'lucide-react';
+import { getProvinceShortName, PROVINCIAL_COUNCILS } from '../lib/provinceResolver';
+import type { ProvincialCouncil } from '../types';
 import {
     XAxis,
     YAxis,
@@ -102,6 +105,7 @@ const Overview = () => {
     const [error, setError] = useState<string | null>(null);
     const [currentTime, setCurrentTime] = useState(new Date());
     const [isBackendHealthy, setIsBackendHealthy] = useState<boolean>(false);
+    const [provinceFilter, setProvinceFilter] = useState<ProvincialCouncil | 'All'>('All');
 
     useEffect(() => {
         const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -132,30 +136,33 @@ const Overview = () => {
         });
     }, []);
 
-    const { stats, statusData, weeklyTrendData, repairProgressData } = useMemo(() => {
-        const totalReports = reports.length;
-        const pendingReview = reports.filter(r => r.aiStatus === 'PENDING').length;
-        const rejectedSubmissions = reports.filter(r => r.aiStatus === 'REJECTED').length;
+    const { stats, statusData, weeklyTrendData, repairProgressData, filteredPotholes } = useMemo(() => {
+        const fPotholes = provinceFilter === 'All' ? potholes : potholes.filter(p => p.provincialCouncil === provinceFilter);
+        const fReports = provinceFilter === 'All' ? reports : reports.filter(r => r.provincialCouncil === provinceFilter);
 
-        const reportsThisWeekCount = reports.filter(r => isAfter(new Date(r.createdAt), subDays(new Date(), 7))).length;
+        const totalReports = fReports.length;
+        const pendingReview = fReports.filter(r => r.aiStatus === 'PENDING').length;
+        const rejectedSubmissions = fReports.filter(r => r.aiStatus === 'REJECTED').length;
 
-        const aiReportsWithConf = reports.filter(r => r.aiConfidence !== undefined);
+        const reportsThisWeekCount = fReports.filter(r => isAfter(new Date(r.createdAt), subDays(new Date(), 7))).length;
+
+        const aiReportsWithConf = fReports.filter(r => r.aiConfidence !== undefined);
         const avgAiConfidence = aiReportsWithConf.length > 0
             ? aiReportsWithConf.reduce((acc, r) => acc + (r.aiConfidence || 0), 0) / aiReportsWithConf.length
             : 0;
 
-        const confirmedPotholes = potholes.filter(p => p.status === 'Confirmed').length;
-        const scheduledRepairs = potholes.filter(p => p.status === 'Scheduled').length;
-        const fixedPotholes = potholes.filter(p => p.status === 'Fixed').length;
+        const confirmedPotholes = fPotholes.filter(p => p.status === 'Confirmed').length;
+        const scheduledRepairs = fPotholes.filter(p => p.status === 'Scheduled').length;
+        const fixedPotholes = fPotholes.filter(p => p.status === 'Fixed').length;
 
         const calculatedStats = [
-            { title: 'Total Reports', value: totalReports, icon: FileText, trend: '+12% vs last month', colorClass: 'bg-blue-600' },
-            { title: 'Pending AI Review', value: pendingReview, icon: Clock, trend: 'Action Required', colorClass: 'bg-amber-500' },
-            { title: 'Avg AI Confidence', value: `${(avgAiConfidence * 100).toFixed(1)}%`, icon: Target, trend: 'High Accuracy', colorClass: 'bg-slate-900' },
-            { title: 'Reports This Week', value: reportsThisWeekCount, icon: Calendar, trend: '+5% vs last week', colorClass: 'bg-indigo-500' },
-            { title: 'Confirmed Potholes', value: confirmedPotholes, icon: AlertTriangle, trend: 'Awaiting Schedule', colorClass: 'bg-orange-500' },
+            { title: 'Total Reports', value: totalReports, icon: FileText, trend: `${fReports.filter(r => isAfter(new Date(r.createdAt), subDays(new Date(), 30))).length} this month`, colorClass: 'bg-blue-600' },
+            { title: 'Pending Review', value: pendingReview, icon: Clock, trend: 'Action Required', colorClass: 'bg-amber-500' },
+            { title: 'Avg AI Confidence', value: `${(avgAiConfidence * 100).toFixed(1)}%`, icon: Target, trend: 'Detection quality', colorClass: 'bg-slate-900' },
+            { title: 'Reports This Week', value: reportsThisWeekCount, icon: Calendar, trend: 'Last 7 days', colorClass: 'bg-indigo-500' },
+            { title: 'Confirmed Nodes', value: confirmedPotholes, icon: AlertTriangle, trend: 'Awaiting Schedule', colorClass: 'bg-orange-500' },
             { title: 'Scheduled Repairs', value: scheduledRepairs, icon: HardHat, trend: 'In Pipeline', colorClass: 'bg-purple-500' },
-            { title: 'Fixed Potholes', value: fixedPotholes, icon: Hammer, trend: '+8% this month', colorClass: 'bg-emerald-500' },
+            { title: 'Fixed Surface', value: fixedPotholes, icon: Hammer, trend: 'Resolved issues', colorClass: 'bg-emerald-500' },
             { title: 'Rejected Submissions', value: rejectedSubmissions, icon: XCircle, trend: 'Low priority', colorClass: 'bg-rose-500' },
         ];
 
@@ -164,7 +171,7 @@ const Overview = () => {
         const last7Days = Array.from({ length: 7 }).map((_, i) => format(subDays(today, 6 - i), 'EEE'));
 
         const trendData = last7Days.map(dayName => ({ name: dayName, count: 0 }));
-        reports.forEach(r => {
+        fReports.forEach(r => {
             const rDate = new Date(r.createdAt);
             if (isAfter(rDate, subDays(today, 7))) {
                 const dName = format(rDate, 'EEE');
@@ -174,22 +181,22 @@ const Overview = () => {
         });
 
         const statusCounts = [
-            { name: 'New', value: potholes.filter(p => p.status === 'New').length },
-            { name: 'Confirmed', value: potholes.filter(p => p.status === 'Confirmed').length },
-            { name: 'Scheduled', value: potholes.filter(p => p.status === 'Scheduled').length },
-            { name: 'Fixed', value: potholes.filter(p => p.status === 'Fixed').length },
-            { name: 'Rejected', value: potholes.filter(p => p.status === 'Rejected').length },
+            { name: 'New', value: fPotholes.filter(p => p.status === 'New').length },
+            { name: 'Confirmed', value: fPotholes.filter(p => p.status === 'Confirmed').length },
+            { name: 'Scheduled', value: fPotholes.filter(p => p.status === 'Scheduled').length },
+            { name: 'Fixed', value: fPotholes.filter(p => p.status === 'Fixed').length },
+            { name: 'Rejected', value: fPotholes.filter(p => p.status === 'Rejected').length },
         ].filter(d => d.value > 0);
 
         const repairData = [
-            { stage: 'New', count: potholes.filter(p => p.status === 'New').length },
-            { stage: 'Confirmed', count: potholes.filter(p => p.status === 'Confirmed').length },
-            { stage: 'Scheduled', count: potholes.filter(p => p.status === 'Scheduled').length },
-            { stage: 'Fixed', count: potholes.filter(p => p.status === 'Fixed').length },
+            { stage: 'New', count: fPotholes.filter(p => p.status === 'New').length },
+            { stage: 'Confirmed', count: fPotholes.filter(p => p.status === 'Confirmed').length },
+            { stage: 'Scheduled', count: fPotholes.filter(p => p.status === 'Scheduled').length },
+            { stage: 'Fixed', count: fPotholes.filter(p => p.status === 'Fixed').length },
         ];
 
-        return { stats: calculatedStats, statusData: statusCounts, weeklyTrendData: trendData, repairProgressData: repairData };
-    }, [potholes, reports]);
+        return { stats: calculatedStats, statusData: statusCounts, weeklyTrendData: trendData, repairProgressData: repairData, filteredPotholes: fPotholes };
+    }, [potholes, reports, provinceFilter]);
 
     if (error) {
         return (
@@ -239,6 +246,19 @@ const Overview = () => {
                     <p className="text-slate-500 font-bold text-sm">Real-time telemetry and infrastructure tracking dashboard.</p>
                 </div>
                 <div className="flex flex-col sm:flex-row items-end sm:items-center gap-3">
+                    <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white p-1.5 shadow-sm">
+                        <MapPin size={14} className="ml-2 text-slate-400" />
+                        <select
+                            value={provinceFilter}
+                            onChange={e => setProvinceFilter(e.target.value as any)}
+                            className="rounded-lg bg-slate-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-slate-700 outline-none border-none"
+                        >
+                            <option value="All">All Provinces</option>
+                            {PROVINCIAL_COUNCILS.map(pc => (
+                                <option key={pc} value={pc}>{pc}</option>
+                            ))}
+                        </select>
+                    </div>
                     <div className={cn(
                         "flex items-center gap-2 px-3 py-2 rounded-xl border shadow-sm transition-colors",
                         isBackendHealthy ? "bg-emerald-50 border-emerald-100" : "bg-rose-50 border-rose-100"
@@ -428,7 +448,7 @@ const Overview = () => {
                     <div className="flex-1 relative z-0">
                         <MapContainer center={[6.9271, 79.8612]} zoom={10} style={{ height: '100%', width: '100%' }}>
                             <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                            {potholes.slice(0, 15).map((p) => (
+                            {filteredPotholes.slice(0, 15).map((p) => (
                                 <Marker key={p.id} position={[p.lat, p.lon]}>
                                     <Popup>
                                         <div className="p-1">

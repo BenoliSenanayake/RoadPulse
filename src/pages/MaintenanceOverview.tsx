@@ -13,6 +13,8 @@ import {
 import { potholesApi, reportsApi } from '../lib/api';
 import type { CitizenReport, PotholeEvent, RepairTeam } from '../types';
 import { cn } from '../lib/utils';
+import { useAuth } from '../context/AuthContext';
+import { getProvinceShortName } from '../lib/provinceResolver';
 
 const TEAMS: RepairTeam[] = ['Team A', 'Team B', 'Team C', 'Emergency Team'];
 
@@ -41,6 +43,8 @@ const getWorkload = (count: number) => {
 };
 
 const MaintenanceOverview = () => {
+    const { user } = useAuth();
+    const province = user?.provincialCouncil;
     const [potholes, setPotholes] = useState<PotholeEvent[]>([]);
     const [reports, setReports] = useState<CitizenReport[]>([]);
     const [loading, setLoading] = useState(true);
@@ -52,12 +56,18 @@ const MaintenanceOverview = () => {
 
         Promise.all([potholesApi.list(), reportsApi.list()])
             .then(([potholeData, reportData]) => {
-                setPotholes(potholeData);
-                setReports(reportData);
+                // Filter by province for maintenance officers
+                if (province && province !== 'Unassigned') {
+                    setPotholes(potholeData.filter(p => p.provincialCouncil === province));
+                    setReports(reportData.filter(r => r.provincialCouncil === province));
+                } else {
+                    setPotholes(potholeData);
+                    setReports(reportData);
+                }
             })
             .catch(() => setError('Unable to load maintenance overview. Please try again.'))
             .finally(() => setLoading(false));
-    }, []);
+    }, [province]);
 
     const { cards, todaySummary, teamStats, priorityQueue } = useMemo(() => {
         const newReports = reports.filter(report => report.status === 'New').length;
@@ -123,11 +133,13 @@ const MaintenanceOverview = () => {
             <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
                 <div>
                     <h1 className="section-heading mb-1">Maintenance Overview</h1>
-                    <p className="text-sm font-bold text-slate-500">Daily repair operations, team workload, and scheduling priorities.</p>
+                    <p className="text-sm font-bold text-slate-500">Repair coordination, field status, and scheduling priorities.</p>
                 </div>
-                <div className="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-emerald-700">
-                    Field Operations
-                </div>
+                {province && province !== 'Unassigned' && (
+                    <div className="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-emerald-700 flex items-center gap-2">
+                        <MapPin size={12} /> {getProvinceShortName(province)} Province
+                    </div>
+                )}
             </div>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
