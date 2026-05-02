@@ -135,6 +135,18 @@ function App() {
               </ProtectedRoute>
             } />
 
+            <Route path="/admin/reports" element={
+              <ProtectedRoute allowedRoles={['ADMIN']}>
+                <AdminLayout><FilteredReportList /></AdminLayout>
+              </ProtectedRoute>
+            } />
+
+            <Route path="/admin/provinces" element={
+              <ProtectedRoute allowedRoles={['ADMIN']}>
+                <AdminLayout><LiveMap /></AdminLayout>
+              </ProtectedRoute>
+            } />
+
             <Route path="/admin/audit-logs" element={
               <ProtectedRoute allowedRoles={['ADMIN']}>
                 <AdminLayout><AuditLogs /></AdminLayout>

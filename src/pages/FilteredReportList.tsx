@@ -22,7 +22,7 @@ import { cn } from '../lib/utils';
 import { getProvinceShortName } from '../lib/provinceResolver';
 import type { CitizenReport, PotholeEvent, PotholeStatus, RepairPriority } from '../types';
 
-type ReportFilter = 'verified' | 'manual-review' | 'in-progress' | 'completed' | 'overdue' | 'rejected';
+type ReportFilter = 'verified' | 'manual-review' | 'in-progress' | 'completed' | 'overdue' | 'rejected' | 'all';
 
 const FILTER_LABELS: Record<ReportFilter, string> = {
     'verified': 'Verified Pothole Reports',
@@ -30,7 +30,8 @@ const FILTER_LABELS: Record<ReportFilter, string> = {
     'in-progress': 'In Progress Repairs',
     'completed': 'Completed Repairs',
     'overdue': 'Overdue Repairs',
-    'rejected': 'Rejected Reports'
+    'rejected': 'Rejected Reports',
+    'all': 'All RoadPulse Reports'
 };
 
 const FILTER_ICONS: Record<ReportFilter, any> = {
@@ -39,7 +40,8 @@ const FILTER_ICONS: Record<ReportFilter, any> = {
     'in-progress': Wrench,
     'completed': CheckCircle2,
     'overdue': AlertTriangle,
-    'rejected': XCircle
+    'rejected': XCircle,
+    'all': FileClock
 };
 
 const FILTER_COLORS: Record<ReportFilter, string> = {
@@ -48,7 +50,8 @@ const FILTER_COLORS: Record<ReportFilter, string> = {
     'in-progress': 'text-blue-600 bg-blue-50 border-blue-100',
     'completed': 'text-slate-600 bg-slate-50 border-slate-100',
     'overdue': 'text-rose-600 bg-rose-50 border-rose-100',
-    'rejected': 'text-slate-600 bg-slate-50 border-slate-100'
+    'rejected': 'text-slate-600 bg-slate-50 border-slate-100',
+    'all': 'text-slate-900 bg-slate-100 border-slate-200'
 };
 
 const isOverdue = (item: CitizenReport | PotholeEvent) => {
@@ -70,7 +73,8 @@ const getDaysSince = (dateStr?: string) => {
 };
 
 const FilteredReportList = () => {
-    const { filter } = useParams<{ filter: ReportFilter }>();
+    const { filter: rawFilter } = useParams<{ filter: string }>();
+    const filter = (rawFilter || 'all') as ReportFilter;
     const navigate = useNavigate();
     const { user } = useAuth();
     const province = user?.provincialCouncil;
@@ -80,6 +84,12 @@ const FilteredReportList = () => {
     const [loading, setLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
+
+    useEffect(() => {
+        if (rawFilter && !FILTER_LABELS[rawFilter as ReportFilter]) {
+            navigate('/staff/overview');
+        }
+    }, [rawFilter, navigate]);
 
     const loadData = async () => {
         setLoading(true);
@@ -129,6 +139,9 @@ const FilteredReportList = () => {
             case 'rejected':
                 items = reports.filter(r => r.aiStatus === 'REJECTED');
                 break;
+            case 'all':
+                items = [...reports, ...potholes];
+                break;
         }
 
         if (searchTerm) {
@@ -141,8 +154,10 @@ const FilteredReportList = () => {
         }
 
         return items.sort((a, b) => {
-            const dateA = new Date('createdAt' in a ? a.createdAt : a.timestamp).getTime();
-            const dateB = new Date('createdAt' in b ? b.createdAt : b.timestamp).getTime();
+            const dateA = new Date('createdAt' in a ? (a.createdAt || 0) : (a.timestamp || 0)).getTime();
+            const dateB = new Date('createdAt' in b ? (b.createdAt || 0) : (b.timestamp || 0)).getTime();
+            if (isNaN(dateA)) return 1;
+            if (isNaN(dateB)) return -1;
             return dateB - dateA;
         });
     }, [filter, potholes, reports, searchTerm]);
@@ -192,12 +207,14 @@ const FilteredReportList = () => {
 
     const Icon = FILTER_ICONS[filter];
 
+    const backPath = user?.role === 'ADMIN' ? '/admin/overview' : '/staff/overview';
+
     return (
         <div className="space-y-8 pb-12 animate-fade-in-up">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div className="flex flex-col gap-2">
                     <button 
-                        onClick={() => navigate('/staff/overview')}
+                        onClick={() => navigate(backPath)}
                         className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-colors w-fit"
                     >
                         <ArrowLeft size={14} /> Back to Overview
@@ -211,7 +228,7 @@ const FilteredReportList = () => {
                                 {FILTER_LABELS[filter]}
                             </h1>
                             <p className="text-xs font-bold text-slate-400">
-                                {displayItems.length} records found {province && `for ${getProvinceShortName(province)}`}
+                                {displayItems.length} records detected {province && province !== 'Unassigned' ? `for ${getProvinceShortName(province)}` : 'globally'}
                             </p>
                         </div>
                     </div>

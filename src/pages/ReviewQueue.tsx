@@ -12,7 +12,6 @@ import { cn } from '../lib/utils';
 import { StatusPill } from '../components/StatusPill';
 import { EmptyState } from '../components/EmptyState';
 import { useAuth } from '../context/AuthContext';
-import { getProvinceShortName } from '../lib/provinceResolver';
 
 // Fix Leaflet's default icon path issues
 delete (L.Icon.Default.prototype as any)._getIconUrl;
