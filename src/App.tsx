@@ -21,6 +21,7 @@ const FilteredReportList = lazy(() => import('./pages/FilteredReportList'));
 const ReportMaintenanceHistory = lazy(() => import('./pages/ReportMaintenanceHistory'));
 const Admin = lazy(() => import('./pages/Admin'));
 const AdminReports = lazy(() => import('./pages/AdminReports'));
+const ProvinceMonitoring = lazy(() => import('./pages/ProvinceMonitoring'));
 const Settings = lazy(() => import('./pages/Settings'));
 const AuditLogs = lazy(() => import('./pages/AuditLogs'));
 
@@ -144,7 +145,7 @@ function App() {
 
             <Route path="/admin/provinces" element={
               <ProtectedRoute allowedRoles={['ADMIN']}>
-                <AdminLayout><LiveMap /></AdminLayout>
+                <AdminLayout><ProvinceMonitoring /></AdminLayout>
               </ProtectedRoute>
             } />
 
