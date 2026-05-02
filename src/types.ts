@@ -138,5 +138,8 @@ export interface AuditLog {
     action: AuditLogAction;
     actor: 'CITIZEN' | 'SYSTEM' | 'MAINTENANCE_OFFICER' | 'ADMIN';
     actorName?: string;
-    details?: string; // JSON string or human-readable details
+    details?: string;
+    province?: ProvincialCouncil;
+    oldStatus?: string;
+    newStatus?: string;
 }

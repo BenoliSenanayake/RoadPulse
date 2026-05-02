@@ -148,7 +148,49 @@ export const MOCK_REPORTS: CitizenReport[] = [
 export const getAuditLogs = (): AuditLog[] => {
     const stored = localStorage.getItem('rp_audit_logs');
     if (stored) return JSON.parse(stored);
-    return [];
+    
+    const initialLogs: AuditLog[] = [
+        {
+            id: 'ALG-1',
+            timestamp: subDays(new Date(), 1).toISOString(),
+            entityId: 'PH-1001',
+            entityType: 'POTHOLE',
+            action: 'STATUS_CHANGED',
+            actor: 'MAINTENANCE_OFFICER',
+            actorName: 'Western Officer',
+            province: 'Western Provincial Council',
+            oldStatus: 'Verified',
+            newStatus: 'In Progress',
+            details: 'Repair crew dispatched to Colombo Main Road.'
+        },
+        {
+            id: 'ALG-2',
+            timestamp: subDays(new Date(), 2).toISOString(),
+            entityId: 'CR-101',
+            entityType: 'REPORT',
+            action: 'AI_ACCEPTED',
+            actor: 'SYSTEM',
+            actorName: 'AI Validator',
+            province: 'Western Provincial Council',
+            newStatus: 'Verified',
+            details: 'Pothole detection confirmed with 94% confidence.'
+        },
+        {
+            id: 'ALG-3',
+            timestamp: subDays(new Date(), 3).toISOString(),
+            entityId: 'PH-1002',
+            entityType: 'POTHOLE',
+            action: 'REPAIR_COMPLETED',
+            actor: 'MAINTENANCE_OFFICER',
+            actorName: 'Central Officer',
+            province: 'Central Provincial Council',
+            oldStatus: 'In Progress',
+            newStatus: 'Completed',
+            details: 'Pothole filled and road surface restored.'
+        }
+    ];
+    localStorage.setItem('rp_audit_logs', JSON.stringify(initialLogs));
+    return initialLogs;
 };
 
 export const addAuditLog = (log: Omit<AuditLog, 'id' | 'timestamp'>) => {
@@ -234,7 +276,8 @@ export const submitReport = async (report: Omit<CitizenReport, 'id' | 'status' |
         action: 'SUBMITTED',
         actor: 'CITIZEN',
         actorName: newReport.submittedBy || newReport.citizenId,
-        details: 'Citizen submitted a new report for validation.'
+        details: 'Citizen submitted a new report for validation.',
+        province: newReport.provincialCouncil
     });
 
     if (newReport.aiStatus === 'ACCEPTED') {
@@ -244,7 +287,9 @@ export const submitReport = async (report: Omit<CitizenReport, 'id' | 'status' |
             action: 'AI_ACCEPTED',
             actor: 'SYSTEM',
             actorName: 'Report Intake',
-            details: 'Report passed intake review and was converted to a verified pothole.'
+            details: 'Report passed intake review and was converted to a verified pothole.',
+            province: newReport.provincialCouncil,
+            newStatus: 'Verified'
         });
 
         const potholes = getPotholes();
@@ -282,7 +327,9 @@ export const submitReport = async (report: Omit<CitizenReport, 'id' | 'status' |
             action: 'AI_REJECTED',
             actor: 'SYSTEM',
             actorName: 'Report Intake',
-            details: 'Report was not accepted during intake review.'
+            details: 'Report was not accepted during intake review.',
+            province: newReport.provincialCouncil,
+            newStatus: 'Rejected'
         });
     }
 
@@ -294,8 +341,9 @@ export const processReport = (id: string, action: 'accept' | 'reject' | 'request
     const index = reports.findIndex(r => r.id === id);
     if (index !== -1) {
         if (action === 'accept') {
+            const oldStatus = reports[index].aiStatus;
             reports[index].aiStatus = 'ACCEPTED';
-            reports[index].aiConfidence = reports[index].aiConfidence || (0.85 + Math.random() * 0.1); // Mocked AI confidence if missing
+            reports[index].aiConfidence = reports[index].aiConfidence || (0.85 + Math.random() * 0.1); 
             reports[index].status = 'New';
 
             addAuditLog({
@@ -304,23 +352,13 @@ export const processReport = (id: string, action: 'accept' | 'reject' | 'request
                 action: 'MANUAL_ACCEPTED',
                 actor: 'MAINTENANCE_OFFICER',
                 actorName,
-                details: reason || 'Report manually overridden and accepted by officer.'
+                details: reason || 'Report manually overridden and accepted by officer.',
+                province: reports[index].provincialCouncil,
+                oldStatus,
+                newStatus: 'ACCEPTED'
             });
 
-            // Retroactively assign bbox and ML metadata if not present
-            if (!reports[index].bbox) {
-                reports[index].modelName = reports[index].modelName || "YOLOv8";
-                reports[index].modelVersion = reports[index].modelVersion || "v0.1";
-                reports[index].inferenceTimeMs = reports[index].inferenceTimeMs || Math.round(800 + Math.random() * 2400);
-                const w = 0.15 + Math.random() * 0.2;
-                const h = 0.15 + Math.random() * 0.2;
-                const x = 0.35 + Math.random() * 0.3;
-                const y = 0.5 + Math.random() * 0.3;
-                reports[index].bbox = [x, y, w, h];
-            }
-
             if (!reports[index].linkedPotholeId) {
-                // Validation creates a PotholeEvent
                 const potholes = getPotholes();
                 const newPothole: PotholeEvent = {
                     id: `PH-${Date.now()}`,
@@ -353,9 +391,12 @@ export const processReport = (id: string, action: 'accept' | 'reject' | 'request
                 action: 'STATUS_CHANGED',
                 actor: 'MAINTENANCE_OFFICER',
                 actorName,
-                details: `Requested more info. Reason: ${reason}`
+                details: `Requested more info. Reason: ${reason}`,
+                province: reports[index].provincialCouncil,
+                newStatus: 'Info Requested'
             });
         } else {
+            const oldStatus = reports[index].aiStatus;
             reports[index].aiStatus = 'REJECTED';
             reports[index].aiReason = reason;
             reports[index].status = 'Discarded';
@@ -366,7 +407,10 @@ export const processReport = (id: string, action: 'accept' | 'reject' | 'request
                 action: 'MANUAL_REJECTED',
                 actor: 'MAINTENANCE_OFFICER',
                 actorName,
-                details: `Manually rejected by officer. Reason: ${reason}`
+                details: `Manually rejected by officer. Reason: ${reason}`,
+                province: reports[index].provincialCouncil,
+                oldStatus,
+                newStatus: 'REJECTED'
             });
         }
         localStorage.setItem('rp_reports', JSON.stringify(reports));
@@ -374,7 +418,7 @@ export const processReport = (id: string, action: 'accept' | 'reject' | 'request
 };
 
 export const getPotholes = (): PotholeEvent[] => {
-    const key = 'rp_potholes_v2'; // Bumped version for new schema
+    const key = 'rp_potholes_v2'; 
     const stored = localStorage.getItem(key);
     if (stored) {
         const enriched = (JSON.parse(stored) as PotholeEvent[]).map(enrichPothole);
@@ -396,6 +440,7 @@ export const updatePotholeStatus = (
     const potholes = getPotholes();
     const index = potholes.findIndex(p => p.id === id);
     if (index !== -1) {
+        const oldStatus = potholes[index].status;
         potholes[index].status = status;
         potholes[index].repairStatus = updates.repairStatus || normalizeRepairStatus(status);
         potholes[index].priority = updates.priority || potholes[index].priority;
@@ -413,10 +458,12 @@ export const updatePotholeStatus = (
             action: 'STATUS_CHANGED',
             actor: 'MAINTENANCE_OFFICER',
             actorName: user,
-            details: `Status updated to ${status}. Note: ${note}`
+            details: `Status updated to ${status}. Note: ${note}`,
+            province: potholes[index].provincialCouncil,
+            oldStatus,
+            newStatus: status
         });
 
-        // Add audit log/repair update
         const repairUpdates = getRepairUpdates(id);
         const newUpdate: RepairUpdate = {
             id: `RU-${Date.now()}`,
@@ -449,7 +496,8 @@ export const schedulePotholeRepair = (id: string, input: RepairScheduleInput, us
         action: input.repairStatus === 'Scheduled' ? 'REPAIR_SCHEDULED' : 'STATUS_CHANGED',
         actor: 'MAINTENANCE_OFFICER',
         actorName: user,
-        details: `${input.assignedTeam} assigned. Priority: ${input.priority}. Scheduled date: ${new Date(input.scheduledDate).toLocaleDateString()}.`
+        details: `${input.assignedTeam} assigned. Priority: ${input.priority}. Scheduled date: ${new Date(input.scheduledDate).toLocaleDateString()}.`,
+        newStatus: input.repairStatus
     });
 
     return getPotholes().find(p => p.id === id) || null;
