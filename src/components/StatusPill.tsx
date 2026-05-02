@@ -1,6 +1,6 @@
 import React from 'react';
 import { cn } from '../lib/utils';
-import { AlertCircle, CheckCircle2, Calendar, XCircle, Info } from 'lucide-react';
+import { AlertCircle, CheckCircle2, XCircle, Info, Wrench, ShieldAlert } from 'lucide-react';
 
 export type StatusType = 'New' | 'Confirmed' | 'Verified' | 'Scheduled' | 'In Progress' | 'Fixed' | 'Completed' | 'Rejected' | 'Unable to Repair' | 'Discarded' | 'PENDING' | 'ACCEPTED' | 'REJECTED';
 
@@ -12,69 +12,69 @@ interface StatusConfig {
 
 const statusConfig: Record<StatusType, StatusConfig> = {
     'New': {
-        class: 'status-new',
+        class: 'bg-rose-50 text-rose-600 border-rose-100',
         icon: <AlertCircle size={12} />,
-        label: 'New Detection'
+        label: 'Discovery'
     },
     'Confirmed': {
-        class: 'status-confirmed',
+        class: 'bg-emerald-50 text-emerald-700 border-emerald-100',
         icon: <CheckCircle2 size={12} />,
-        label: 'Confirmed'
+        label: 'Verified'
     },
     'Verified': {
-        class: 'status-confirmed',
+        class: 'bg-emerald-50 text-emerald-700 border-emerald-100',
         icon: <CheckCircle2 size={12} />,
         label: 'Verified'
     },
     'Scheduled': {
-        class: 'status-scheduled',
-        icon: <Calendar size={12} />,
-        label: 'Scheduled'
+        class: 'bg-slate-100 text-slate-600 border-slate-200',
+        icon: <Wrench size={12} />,
+        label: 'Awaiting Crew'
     },
     'In Progress': {
-        class: 'status-scheduled',
-        icon: <Calendar size={12} />,
+        class: 'bg-blue-50 text-blue-700 border-blue-100 shadow-sm',
+        icon: <Wrench size={12} />,
         label: 'In Progress'
     },
     'Fixed': {
-        class: 'status-fixed',
+        class: 'bg-emerald-100 text-emerald-800 border-emerald-200',
         icon: <CheckCircle2 size={12} />,
-        label: 'Resolved'
+        label: 'Completed'
     },
     'Completed': {
-        class: 'status-fixed',
+        class: 'bg-emerald-100 text-emerald-800 border-emerald-200',
         icon: <CheckCircle2 size={12} />,
         label: 'Completed'
     },
     'Rejected': {
-        class: 'status-rejected',
+        class: 'bg-slate-100 text-slate-500 border-slate-200',
         icon: <XCircle size={12} />,
-        label: 'Rejected'
+        label: 'Declined'
     },
     'Unable to Repair': {
-        class: 'status-rejected',
+        class: 'bg-slate-100 text-slate-500 border-slate-200',
         icon: <XCircle size={12} />,
-        label: 'Unable'
+        label: 'Unresolvable'
     },
     'Discarded': {
-        class: 'status-rejected',
+        class: 'bg-slate-100 text-slate-500 border-slate-200',
         icon: <XCircle size={12} />,
         label: 'Discarded'
     },
     'PENDING': {
-        class: 'status-new',
-        icon: <AlertCircle size={12} />,
-        label: 'Under Review'
+        class: 'bg-amber-50 text-amber-700 border-amber-100',
+        icon: <ShieldAlert size={12} />,
+        label: 'Manual Review'
     },
     'ACCEPTED': {
-        class: 'status-confirmed',
+        class: 'bg-emerald-50 text-emerald-700 border-emerald-100',
         icon: <CheckCircle2 size={12} />,
-        label: 'Verified'
+        label: 'AI-Verified'
     },
     'REJECTED': {
-        class: 'status-rejected',
+        class: 'bg-slate-100 text-slate-500 border-slate-200',
         icon: <XCircle size={12} />,
-        label: 'Not Accepted'
+        label: 'Rejected'
     }
 };
 
@@ -94,7 +94,7 @@ export const StatusPill = ({ status, className, showIcon = true, hideLabel = fal
 
     return (
         <div className={cn(
-            "status-pill inline-flex items-center justify-center gap-1.5 shrink-0",
+            "status-pill inline-flex items-center justify-center gap-1.5 shrink-0 px-2.5 py-1 rounded-md border text-[10px] font-black uppercase tracking-widest transition-all",
             config.class,
             hideLabel ? "w-6 h-6 p-0 rounded-full border-none shadow-sm" : "",
             className

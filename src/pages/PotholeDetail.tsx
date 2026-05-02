@@ -15,11 +15,10 @@ import { ActivityTimeline } from '../components/ActivityTimeline';
 import { StatusPill } from '../components/StatusPill';
 import { useAuth } from '../context/AuthContext';
 import { getProvinceShortName } from '../lib/provinceResolver';
-import type { CitizenReport, PotholeEvent, RepairPriority, RepairScheduleInput, RepairStatus, RepairTeam } from '../types';
+import type { CitizenReport, PotholeEvent, RepairPriority, RepairScheduleInput, RepairStatus } from '../types';
 
-const TEAMS: RepairTeam[] = ['Team A', 'Team B', 'Team C', 'Emergency Team'];
 const PRIORITIES: RepairPriority[] = ['Low', 'Medium', 'High', 'Urgent'];
-const REPAIR_STATUSES: RepairStatus[] = ['Verified', 'Scheduled', 'In Progress', 'Completed', 'Unable to Repair'];
+const REPAIR_STATUSES: RepairStatus[] = ['Verified', 'In Progress', 'Completed'];
 const fieldClass = 'w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-900 outline-none transition-all focus:border-emerald-400 focus:bg-white focus:ring-4 focus:ring-emerald-500/10';
 
 const PotholeDetail = () => {
@@ -33,10 +32,10 @@ const PotholeDetail = () => {
     const [saving, setSaving] = useState(false);
     const [form, setForm] = useState<RepairScheduleInput>({
         priority: 'Medium',
-        assignedTeam: 'Team A',
-        scheduledDate: new Date().toISOString().slice(0, 10),
+        assignedTeam: 'Unassigned',
+        scheduledDate: new Date().toISOString(),
         maintenanceNotes: '',
-        repairStatus: 'Scheduled',
+        repairStatus: 'Verified',
     });
 
     const loadDetail = async () => {
@@ -60,10 +59,10 @@ const PotholeDetail = () => {
             setPothole(item);
             setForm({
                 priority: item.priority || 'Medium',
-                assignedTeam: item.assignedTeam || 'Team A',
-                scheduledDate: item.scheduledDate ? item.scheduledDate.slice(0, 10) : new Date().toISOString().slice(0, 10),
+                assignedTeam: 'Unassigned',
+                scheduledDate: item.timestamp || new Date().toISOString(),
                 maintenanceNotes: item.maintenanceNotes || '',
-                repairStatus: item.repairStatus || (item.status === 'Verified' || item.status === 'Confirmed' ? 'Verified' : 'Scheduled'),
+                repairStatus: (['Fixed', 'Completed'].includes(item.status) ? 'Completed' : item.status) as RepairStatus,
             });
 
             if (item.reportId) {
@@ -86,15 +85,12 @@ const PotholeDetail = () => {
         loadDetail();
     }, [id]);
 
-    const saveSchedule = async () => {
+    const saveStatusUpdate = async () => {
         if (!pothole) return;
         setSaving(true);
         try {
-            await potholesApi.scheduleRepair(pothole.id, {
-                ...form,
-                scheduledDate: new Date(form.scheduledDate).toISOString(),
-            }, user?.name || 'Maintenance Officer');
-            loadDetail();
+            await potholesApi.scheduleRepair(pothole.id, form, user?.name || 'Maintenance Officer');
+            await loadDetail();
         } finally {
             setSaving(false);
         }
@@ -148,43 +144,36 @@ const PotholeDetail = () => {
                             <StatusPill status={pothole.status as any} />
                         </div>
 
-                        <div className="grid grid-cols-1 gap-px bg-slate-100 md:grid-cols-2">
-                            <InfoBlock icon={Calendar} label="Reported On" value={new Date(pothole.createdAt || pothole.timestamp).toLocaleString()} />
-                            <InfoBlock icon={MapPin} label="Location" value={`${pothole.lat.toFixed(6)}, ${pothole.lon.toFixed(6)}`} />
-                            <InfoBlock icon={Users} label="Assigned Team" value={pothole.assignedTeam || 'Unassigned'} />
+                        <div className="grid grid-cols-1 gap-px bg-slate-100 md:grid-cols-3">
+                            <InfoBlock icon={Calendar} label="Discovery Date" value={new Date(pothole.createdAt || pothole.timestamp).toLocaleDateString()} />
+                            <InfoBlock icon={MapPin} label="Coordinates" value={`${pothole.lat.toFixed(5)}, ${pothole.lon.toFixed(5)}`} />
                             <InfoBlock icon={ShieldCheck} label="Priority" value={pothole.priority || 'Medium'} />
-                            <InfoBlock icon={Wrench} label="Scheduled Date" value={pothole.scheduledDate ? new Date(pothole.scheduledDate).toLocaleDateString() : 'Not scheduled'} />
-                            <InfoBlock icon={ClipboardList} label="Report Reference" value={pothole.reportId || 'No linked report'} />
                         </div>
                     </section>
 
                     <section className="rounded-3xl border border-slate-100 bg-white p-6 shadow-sm">
-                        <div className="mb-5 flex items-center justify-between">
+                        <div className="mb-6 flex items-center justify-between">
                             <div>
-                                <h2 className="text-lg font-black text-slate-950">Report Evidence</h2>
-                                <p className="text-xs font-bold text-slate-400">Photo, location, and citizen description for field review.</p>
+                                <h2 className="text-base font-black text-slate-950 uppercase tracking-tight">Report Evidence</h2>
+                                <p className="text-xs font-bold text-slate-400">Official imagery and citizen testimony.</p>
                             </div>
                         </div>
-                        <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1.2fr_0.8fr]">
-                            <div className="overflow-hidden rounded-2xl bg-slate-100">
+                        <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+                            <div className="overflow-hidden rounded-2xl bg-slate-100 shadow-inner">
                                 {pothole.imageUrl ? (
-                                    <img src={pothole.imageUrl} alt="Road damage evidence" className="h-full min-h-[320px] w-full object-cover" />
+                                    <img src={pothole.imageUrl} alt="Road damage evidence" className="aspect-video w-full object-cover" />
                                 ) : (
-                                    <div className="flex min-h-[320px] items-center justify-center text-sm font-bold text-slate-400">No image uploaded</div>
+                                    <div className="flex aspect-video items-center justify-center text-xs font-black uppercase tracking-widest text-slate-400">No Image Uploaded</div>
                                 )}
                             </div>
                             <div className="space-y-4">
-                                <div className="rounded-2xl border border-slate-100 bg-slate-50 p-5">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Citizen Description</p>
-                                    <p className="mt-2 text-sm font-bold leading-relaxed text-slate-700">{report?.description || pothole.maintenanceNotes || 'No description provided.'}</p>
+                                <div className="rounded-2xl border border-slate-100 bg-slate-50/50 p-5">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Citizen Testimony</p>
+                                    <p className="text-xs font-bold leading-relaxed text-slate-700 italic">"{report?.description || pothole.maintenanceNotes || 'No description provided.'}"</p>
                                 </div>
-                                <div className="rounded-2xl border border-slate-100 bg-slate-50 p-5">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Reporter</p>
-                                    <p className="mt-2 text-sm font-bold text-slate-700">{report?.submittedBy || report?.citizenId || 'Registered citizen'}</p>
-                                </div>
-                                <div className="rounded-2xl border border-slate-100 bg-slate-50 p-5">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Maintenance Notes</p>
-                                    <p className="mt-2 text-sm font-bold leading-relaxed text-slate-700">{pothole.maintenanceNotes || 'No maintenance notes yet.'}</p>
+                                <div className="rounded-2xl border border-slate-100 bg-slate-50/50 p-5">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Report Origin</p>
+                                    <p className="text-xs font-bold text-slate-900 tracking-tight">{report?.submittedBy || 'Anonymous Contributor'}</p>
                                 </div>
                             </div>
                         </div>
@@ -194,53 +183,45 @@ const PotholeDetail = () => {
                 </main>
 
                 <aside className="space-y-6">
-                    <section className="rounded-3xl border border-slate-100 bg-white p-6 shadow-sm">
-                        <div className="mb-6 flex items-center gap-3 border-b border-slate-100 pb-4">
-                            <div className="rounded-xl bg-emerald-50 p-3 text-emerald-700">
-                                <Wrench size={18} />
+                    <section className="rounded-3xl border border-slate-100 bg-white p-8 shadow-sm">
+                        <div className="mb-8 flex items-center gap-3 border-b border-slate-100 pb-5">
+                            <div className="rounded-xl bg-slate-900 p-3 text-white">
+                                <Activity size={18} />
                             </div>
                             <div>
-                                <h2 className="text-base font-black text-slate-950">Scheduling Workflow</h2>
-                                <p className="text-xs font-bold text-slate-400">Assign team, priority, date, and status.</p>
+                                <h2 className="text-base font-black text-slate-950 uppercase tracking-tight">Record Management</h2>
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Update status & priorities.</p>
                             </div>
                         </div>
 
-                        <div className="space-y-4">
-                            <Field label="Priority">
+                        <div className="space-y-6">
+                            <Field label="Categorize Priority">
                                 <select value={form.priority} onChange={event => setForm({ ...form, priority: event.target.value as RepairPriority })} className={fieldClass}>
                                     {PRIORITIES.map(priority => <option key={priority} value={priority}>{priority}</option>)}
                                 </select>
                             </Field>
-                            <Field label="Repair Team">
-                                <select value={form.assignedTeam} onChange={event => setForm({ ...form, assignedTeam: event.target.value as RepairTeam })} className={fieldClass}>
-                                    {TEAMS.map(team => <option key={team} value={team}>{team}</option>)}
-                                </select>
-                            </Field>
-                            <Field label="Scheduled Repair Date">
-                                <input type="date" value={form.scheduledDate} onChange={event => setForm({ ...form, scheduledDate: event.target.value })} className={fieldClass} />
-                            </Field>
-                            <Field label="Current Repair Status">
+                            <Field label="Field Operation Status">
                                 <select value={form.repairStatus} onChange={event => setForm({ ...form, repairStatus: event.target.value as RepairStatus })} className={fieldClass}>
                                     {REPAIR_STATUSES.map(status => <option key={status} value={status}>{status}</option>)}
                                 </select>
                             </Field>
-                            <Field label="Maintenance Notes">
+                            <Field label="Maintenance & Field Notes">
                                 <textarea
                                     value={form.maintenanceNotes}
                                     onChange={event => setForm({ ...form, maintenanceNotes: event.target.value })}
-                                    rows={5}
-                                    placeholder="Crew instructions, access concerns, materials, or follow-up notes..."
+                                    rows={6}
+                                    placeholder="Add field coordination notes, material updates, or completion remarks..."
                                     className={`${fieldClass} resize-none`}
                                 />
                             </Field>
                         </div>
 
                         <button
-                            onClick={saveSchedule}
+                            onClick={saveStatusUpdate}
                             disabled={saving}
-                            className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-900 py-4 text-xs font-black uppercase tracking-widest text-white shadow-xl shadow-slate-900/20 transition-all hover:bg-black disabled:opacity-60"
+                            className="mt-8 flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-900 py-4 text-xs font-black uppercase tracking-widest text-white shadow-xl shadow-slate-900/20 transition-all hover:bg-black disabled:opacity-60"
                         >
-                            <Save size={16} /> {saving ? 'Saving...' : 'Save Schedule'}
+                            <Save size={16} /> {saving ? 'Syncing...' : 'Update Maintenance Record'}
                         </button>
                     </section>
                 </aside>

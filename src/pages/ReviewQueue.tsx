@@ -38,7 +38,7 @@ const ReviewQueue = () => {
     const [rejectionReason, setRejectionReason] = useState('');
 
     // Tabs
-    const [activeTab, setActiveTab] = useState<'PENDING_CITIZEN' | 'NEEDS_REVIEW' | 'REJECTED'>('PENDING_CITIZEN');
+    const [activeTab, setActiveTab] = useState<'AI_VERIFIED' | 'NEEDS_REVIEW' | 'REJECTED'>('AI_VERIFIED');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -65,8 +65,8 @@ const ReviewQueue = () => {
 
     const filteredReports = useMemo(() => {
         return reports.filter(r => {
-            if (activeTab === 'PENDING_CITIZEN') return r.aiStatus === 'PENDING' && !r.aiConfidence;
-            if (activeTab === 'NEEDS_REVIEW') return r.aiStatus === 'PENDING' && r.aiConfidence !== undefined;
+            if (activeTab === 'AI_VERIFIED') return r.aiStatus === 'ACCEPTED';
+            if (activeTab === 'NEEDS_REVIEW') return r.aiStatus === 'PENDING';
             if (activeTab === 'REJECTED') return r.aiStatus === 'REJECTED';
             return false;
         });
@@ -178,16 +178,16 @@ const ReviewQueue = () => {
 
                 <div className="flex bg-slate-100 p-1.5 rounded-2xl shadow-inner">
                     <button
-                        onClick={() => { setActiveTab('PENDING_CITIZEN'); setSelectedReport(null); }}
-                        className={cn("px-4 py-2 text-[11px] font-black uppercase tracking-widest rounded-xl transition-all", activeTab === 'PENDING_CITIZEN' ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700")}
+                        onClick={() => { setActiveTab('AI_VERIFIED'); setSelectedReport(null); }}
+                        className={cn("px-4 py-2 text-[11px] font-black uppercase tracking-widest rounded-xl transition-all", activeTab === 'AI_VERIFIED' ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700")}
                     >
-                        Incoming
+                        AI-Verified
                     </button>
                     <button
                         onClick={() => { setActiveTab('NEEDS_REVIEW'); setSelectedReport(null); }}
                         className={cn("px-4 py-2 text-[11px] font-black uppercase tracking-widest rounded-xl transition-all", activeTab === 'NEEDS_REVIEW' ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700")}
                     >
-                        Needs Review
+                        Needs Officer Review
                     </button>
                     <button
                         onClick={() => { setActiveTab('REJECTED'); setSelectedReport(null); }}

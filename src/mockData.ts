@@ -12,9 +12,9 @@ import type {
 import { subDays } from 'date-fns';
 import { resolveProvince } from './lib/provinceResolver';
 
-const statuses: PotholeEvent['status'][] = ['New', 'Verified', 'Scheduled', 'In Progress', 'Completed'];
+const statuses: PotholeEvent['status'][] = ['Verified', 'In Progress', 'Completed'];
 const priorities: RepairPriority[] = ['Low', 'Medium', 'High', 'Urgent'];
-const teams: RepairTeam[] = ['Team A', 'Team B', 'Team C', 'Emergency Team'];
+const teams: RepairTeam[] = ['Unassigned'];
 
 const SRI_LANKA_REGIONS = [
     { name: 'Colombo', lat: 6.9271, lon: 79.8612 },

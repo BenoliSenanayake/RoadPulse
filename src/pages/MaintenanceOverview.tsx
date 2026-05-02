@@ -1,48 +1,54 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
     AlertTriangle,
-    CalendarCheck,
     CheckCircle2,
     ClipboardList,
     Clock,
-    HardHat,
     MapPin,
-    Users,
-    Wrench
+    ShieldAlert,
+    Wrench,
+    CheckCircle,
+    ChevronRight,
+    BarChart3
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { 
+    BarChart, 
+    Bar, 
+    XAxis, 
+    YAxis, 
+    CartesianGrid, 
+    Tooltip, 
+    ResponsiveContainer, 
+    Cell 
+} from 'recharts';
 import { potholesApi, reportsApi } from '../lib/api';
-import type { CitizenReport, PotholeEvent, RepairTeam } from '../types';
+import type { CitizenReport, PotholeEvent } from '../types';
 import { cn } from '../lib/utils';
 import { useAuth } from '../context/AuthContext';
 import { getProvinceShortName } from '../lib/provinceResolver';
 
-const TEAMS: RepairTeam[] = ['Team A', 'Team B', 'Team C', 'Emergency Team'];
-
-const isSameDay = (value?: string) => {
-    if (!value) return false;
-    const date = new Date(value);
+const isOverdue = (item: CitizenReport | PotholeEvent) => {
+    const dateStr = 'createdAt' in item ? item.createdAt : (item as PotholeEvent).timestamp;
+    if (!dateStr) return false;
+    
+    const createdDate = new Date(dateStr);
     const today = new Date();
-    return date.getFullYear() === today.getFullYear()
-        && date.getMonth() === today.getMonth()
-        && date.getDate() === today.getDate();
+    const diffDays = Math.floor((today.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24));
+    
+    // Status is New or Verified for more than 14 days
+    return ['New', 'Verified', 'Confirmed'].includes(item.status) && diffDays > 14;
 };
 
-const isOverdue = (pothole: PotholeEvent) => {
-    if (!pothole.scheduledDate || ['Completed', 'Fixed', 'Unable to Repair', 'Rejected'].includes(pothole.status)) return false;
-    const scheduled = new Date(pothole.scheduledDate);
+const getDaysSince = (dateStr?: string) => {
+    if (!dateStr) return 0;
+    const date = new Date(dateStr);
     const today = new Date();
-    scheduled.setHours(0, 0, 0, 0);
-    today.setHours(0, 0, 0, 0);
-    return scheduled < today;
-};
-
-const getWorkload = (count: number) => {
-    if (count <= 1) return { label: 'Available', className: 'bg-emerald-50 text-emerald-700 border-emerald-100' };
-    if (count <= 4) return { label: 'Moderate', className: 'bg-amber-50 text-amber-700 border-amber-100' };
-    return { label: 'Busy', className: 'bg-rose-50 text-rose-700 border-rose-100' };
+    return Math.floor((today.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
 };
 
 const MaintenanceOverview = () => {
+    const navigate = useNavigate();
     const { user } = useAuth();
     const province = user?.provincialCouncil;
     const [potholes, setPotholes] = useState<PotholeEvent[]>([]);
@@ -56,7 +62,6 @@ const MaintenanceOverview = () => {
 
         Promise.all([potholesApi.list(), reportsApi.list()])
             .then(([potholeData, reportData]) => {
-                // Filter by province for maintenance officers
                 if (province && province !== 'Unassigned') {
                     setPotholes(potholeData.filter(p => p.provincialCouncil === province));
                     setReports(reportData.filter(r => r.provincialCouncil === province));
@@ -69,52 +74,58 @@ const MaintenanceOverview = () => {
             .finally(() => setLoading(false));
     }, [province]);
 
-    const { cards, todaySummary, teamStats, priorityQueue } = useMemo(() => {
-        const newReports = reports.filter(report => report.status === 'New').length;
-        const verified = potholes.filter(p => ['Verified', 'Confirmed'].includes(p.status)).length;
-        const scheduled = potholes.filter(p => p.status === 'Scheduled').length;
+    const { cards, overdueItems, districtData } = useMemo(() => {
+        // AI-Verified: High confidence reports or already in pothole inventory
+        const verified = potholes.filter(p => ['Verified', 'Confirmed', 'New'].includes(p.status)).length;
+        
+        // Manual Review Required: PENDING reports
+        const needsReview = reports.filter(r => r.aiStatus === 'PENDING').length;
+        
         const inProgress = potholes.filter(p => p.status === 'In Progress').length;
         const completed = potholes.filter(p => ['Completed', 'Fixed'].includes(p.status)).length;
-        const overdue = potholes.filter(isOverdue).length;
+        
+        const overdueReports = reports.filter(isOverdue);
+        const overduePotholes = potholes.filter(isOverdue);
+        const totalOverdue = overdueReports.length + overduePotholes.length;
 
-        const todaysScheduled = potholes.filter(p => isSameDay(p.scheduledDate));
-        const highPriorityAwaitingSchedule = potholes.filter(p =>
-            ['Verified', 'Confirmed'].includes(p.status)
-            && ['High', 'Urgent'].includes(p.priority || 'Medium')
-            && !p.assignedTeam
-        );
-        const activeTeams = new Set(potholes.filter(p =>
-            p.assignedTeam && !['Completed', 'Fixed', 'Unable to Repair', 'Rejected'].includes(p.status)
-        ).map(p => p.assignedTeam));
-        const completedToday = potholes.filter(p => isSameDay(p.completedAt));
+        const overdueList = [
+            ...overdueReports.map(r => ({
+                id: r.id,
+                district: r.district || 'Unknown',
+                location: 'Coordinate Point',
+                days: getDaysSince(r.createdAt),
+                status: r.status,
+                type: 'REPORT'
+            })),
+            ...overduePotholes.map(p => ({
+                id: p.id,
+                district: p.district || 'Unknown',
+                location: p.roadName || 'Coordinate Point',
+                days: getDaysSince(p.timestamp),
+                status: p.status,
+                type: 'POTHOLE'
+            }))
+        ].sort((a, b) => b.days - a.days);
 
-        const calculatedTeamStats = TEAMS.map(team => {
-            const assigned = potholes.filter(p => p.assignedTeam === team);
-            const pending = assigned.filter(p => !['Completed', 'Fixed', 'Unable to Repair', 'Rejected'].includes(p.status));
-            const todayJobs = assigned.filter(p => isSameDay(p.scheduledDate));
-            const done = assigned.filter(p => ['Completed', 'Fixed'].includes(p.status));
-            const workload = getWorkload(pending.length);
-
-            return { team, assigned: assigned.length, pending: pending.length, today: todayJobs.length, completed: done.length, workload };
+        // Chart Data: Potholes per district
+        const districts: Record<string, number> = {};
+        potholes.forEach(p => {
+            const d = p.district || 'Other';
+            districts[d] = (districts[d] || 0) + 1;
         });
+        const chartData = Object.entries(districts).map(([name, count]) => ({ name, count }))
+            .sort((a, b) => b.count - a.count);
 
         return {
             cards: [
-                { label: 'New Reports', value: newReports, icon: ClipboardList, color: 'bg-blue-600' },
-                { label: 'Verified Potholes', value: verified, icon: CheckCircle2, color: 'bg-emerald-600' },
-                { label: 'Scheduled Repairs', value: scheduled, icon: CalendarCheck, color: 'bg-violet-600' },
-                { label: 'In Progress Repairs', value: inProgress, icon: Wrench, color: 'bg-amber-500' },
-                { label: 'Completed Repairs', value: completed, icon: HardHat, color: 'bg-slate-900' },
-                { label: 'Overdue Repairs', value: overdue, icon: AlertTriangle, color: 'bg-rose-600' },
+                { label: 'Verified Pothole Reports', value: verified, icon: CheckCircle, color: 'bg-emerald-600', filter: 'verified' },
+                { label: 'Manual Review Required', value: needsReview, icon: ShieldAlert, color: 'bg-amber-500', filter: 'manual-review' },
+                { label: 'In Progress Repairs', value: inProgress, icon: Wrench, color: 'bg-blue-600', filter: 'in-progress' },
+                { label: 'Completed Repairs', value: completed, icon: CheckCircle2, color: 'bg-slate-900', filter: 'completed' },
+                { label: 'Overdue Repairs', value: totalOverdue, icon: AlertTriangle, color: 'bg-rose-600', filter: 'overdue' },
             ],
-            todaySummary: {
-                todaysScheduled: todaysScheduled.length,
-                highPriorityAwaitingSchedule: highPriorityAwaitingSchedule.length,
-                activeTeams: activeTeams.size,
-                completedToday: completedToday.length,
-            },
-            teamStats: calculatedTeamStats,
-            priorityQueue: highPriorityAwaitingSchedule.slice(0, 5),
+            overdueItems: overdueList.slice(0, 5),
+            districtData: chartData
         };
     }, [potholes, reports]);
 
@@ -133,114 +144,44 @@ const MaintenanceOverview = () => {
             <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
                 <div>
                     <h1 className="section-heading mb-1">Maintenance Overview</h1>
-                    <p className="text-sm font-bold text-slate-500">Repair coordination, field status, and scheduling priorities.</p>
+                    <p className="text-sm font-bold text-slate-500">Provincial operational summary. Click cards to view detailed reports.</p>
                 </div>
                 {province && province !== 'Unassigned' && (
                     <div className="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-emerald-700 flex items-center gap-2">
-                        <MapPin size={12} /> {getProvinceShortName(province)} Province
+                        <MapPin size={12} /> {getProvinceShortName(province)} Sector
                     </div>
                 )}
             </div>
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
                 {cards.map(card => (
-                    <div key={card.label} className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
-                        <div className="flex items-start justify-between gap-4">
-                            <div>
-                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{card.label}</p>
-                                <p className="mt-2 text-3xl font-black tracking-tight text-slate-950">{loading ? '-' : card.value}</p>
+                    <button 
+                        key={card.label} 
+                        onClick={() => navigate(`/staff/reports/${card.filter}`)}
+                        className="group relative overflow-hidden rounded-[2rem] border border-slate-100 bg-white p-8 text-left shadow-sm hover:shadow-2xl hover:shadow-slate-200/50 hover:border-slate-200 hover:-translate-y-1 transition-all duration-300 active:scale-95"
+                    >
+                        <div className="flex flex-col gap-6">
+                            <div className={cn('w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-xl transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3', card.color)}>
+                                <card.icon size={24} />
                             </div>
-                            <div className={cn('rounded-2xl p-3 text-white shadow-lg', card.color)}>
-                                <card.icon size={20} />
+                            <div>
+                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 leading-tight mb-2">{card.label}</p>
+                                <div className="flex items-baseline gap-2">
+                                    <p className="text-4xl font-black tracking-tight text-slate-950">
+                                        {loading ? <span className="animate-pulse opacity-20">--</span> : card.value}
+                                    </p>
+                                    <ChevronRight className="text-slate-200 group-hover:text-slate-950 group-hover:translate-x-1 transition-all" size={20} />
+                                </div>
                             </div>
                         </div>
-                    </div>
+                        
+                        {/* Subtle background glow on hover */}
+                        <div className={cn("absolute -right-4 -bottom-4 w-24 h-24 rounded-full opacity-0 group-hover:opacity-10 blur-3xl transition-opacity duration-500", card.color)} />
+                    </button>
                 ))}
             </div>
-
-            <section className="grid grid-cols-1 gap-6 xl:grid-cols-3">
-                <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm xl:col-span-2">
-                    <div className="mb-6 flex items-center justify-between">
-                        <div>
-                            <h2 className="text-base font-black text-slate-900">Today's Work Summary</h2>
-                            <p className="text-xs font-bold text-slate-400">A quick view of work planned and moving today.</p>
-                        </div>
-                        <Clock className="text-slate-300" size={22} />
-                    </div>
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                        <SummaryItem label="Repairs scheduled today" value={todaySummary.todaysScheduled} icon={CalendarCheck} />
-                        <SummaryItem label="High-priority awaiting schedule" value={todaySummary.highPriorityAwaitingSchedule} icon={AlertTriangle} />
-                        <SummaryItem label="Teams currently assigned" value={todaySummary.activeTeams} icon={Users} />
-                        <SummaryItem label="Completed work today" value={todaySummary.completedToday} icon={CheckCircle2} />
-                    </div>
-                </div>
-
-                <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
-                    <h2 className="text-base font-black text-slate-900">Priority Queue</h2>
-                    <p className="mb-5 text-xs font-bold text-slate-400">High-priority verified potholes needing a team.</p>
-                    <div className="space-y-3">
-                        {priorityQueue.length === 0 ? (
-                            <p className="rounded-xl bg-slate-50 p-4 text-sm font-bold text-slate-500">No high-priority potholes are waiting for scheduling.</p>
-                        ) : priorityQueue.map(pothole => (
-                            <div key={pothole.id} className="rounded-xl border border-slate-100 p-4">
-                                <div className="flex items-center justify-between gap-3">
-                                    <p className="text-sm font-black text-slate-900">{pothole.id}</p>
-                                    <span className="rounded-full bg-rose-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-rose-700">{pothole.priority}</span>
-                                </div>
-                                <p className="mt-2 flex items-center gap-1.5 text-xs font-bold text-slate-500">
-                                    <MapPin size={12} /> {pothole.roadName || pothole.district || 'Location pending'}
-                                </p>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </section>
-
-            <section className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
-                <div className="mb-6">
-                    <h2 className="text-base font-black text-slate-900">Team Distribution</h2>
-                    <p className="text-xs font-bold text-slate-400">Current workload by repair team.</p>
-                </div>
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-                    {teamStats.map(stat => (
-                        <div key={stat.team} className="rounded-2xl border border-slate-100 bg-slate-50/60 p-5">
-                            <div className="mb-4 flex items-center justify-between gap-3">
-                                <h3 className="text-sm font-black text-slate-950">{stat.team}</h3>
-                                <span className={cn('rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-widest', stat.workload.className)}>
-                                    {stat.workload.label}
-                                </span>
-                            </div>
-                            <div className="grid grid-cols-2 gap-3 text-center">
-                                <MiniMetric label="Assigned" value={stat.assigned} />
-                                <MiniMetric label="Today" value={stat.today} />
-                                <MiniMetric label="Pending" value={stat.pending} />
-                                <MiniMetric label="Completed" value={stat.completed} />
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </section>
         </div>
     );
 };
-
-const SummaryItem = ({ label, value, icon: Icon }: { label: string; value: number; icon: React.ElementType }) => (
-    <div className="flex items-center gap-4 rounded-2xl border border-slate-100 bg-slate-50/60 p-4">
-        <div className="rounded-xl bg-white p-3 text-emerald-700 shadow-sm">
-            <Icon size={18} />
-        </div>
-        <div>
-            <p className="text-2xl font-black text-slate-950">{value}</p>
-            <p className="text-xs font-bold text-slate-500">{label}</p>
-        </div>
-    </div>
-);
-
-const MiniMetric = ({ label, value }: { label: string; value: number }) => (
-    <div className="rounded-xl bg-white p-3">
-        <p className="text-xl font-black text-slate-950">{value}</p>
-        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{label}</p>
-    </div>
-);
 
 export default MaintenanceOverview;
