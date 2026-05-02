@@ -10,7 +10,8 @@ import {
     Search,
     ShieldCheck,
     Wrench,
-    X
+    X,
+    History
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { cn } from '../lib/utils';
@@ -19,8 +20,7 @@ import { Logo } from './Logo';
 const staffNavItems = [
     { name: 'Overview', icon: LayoutDashboard, path: '/staff/overview' },
     { name: 'Live Map', icon: MapIcon, path: '/staff/map' },
-    { name: 'Review Queue', icon: ClipboardList, path: '/staff/review-queue' },
-    { name: 'Repairs', icon: Wrench, path: '/staff/repairs' },
+    { name: 'Maintenance History', icon: History, path: '/staff/report-history' },
 ];
 
 const StaffSidebar = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {

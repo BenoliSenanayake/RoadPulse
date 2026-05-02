@@ -18,6 +18,7 @@ const PotholeDetail = lazy(() => import('./pages/PotholeDetail'));
 const Repairs = lazy(() => import('./pages/Repairs'));
 const ReviewQueue = lazy(() => import('./pages/ReviewQueue'));
 const FilteredReportList = lazy(() => import('./pages/FilteredReportList'));
+const ReportMaintenanceHistory = lazy(() => import('./pages/ReportMaintenanceHistory'));
 const Admin = lazy(() => import('./pages/Admin'));
 const Settings = lazy(() => import('./pages/Settings'));
 const AuditLogs = lazy(() => import('./pages/AuditLogs'));
@@ -103,6 +104,12 @@ function App() {
             <Route path="/staff/reports/:filter" element={
               <ProtectedRoute allowedRoles={['MAINTENANCE_OFFICER', 'ADMIN']}>
                 <StaffLayout><FilteredReportList /></StaffLayout>
+              </ProtectedRoute>
+            } />
+
+            <Route path="/staff/report-history" element={
+              <ProtectedRoute allowedRoles={['MAINTENANCE_OFFICER', 'ADMIN']}>
+                <StaffLayout><ReportMaintenanceHistory /></StaffLayout>
               </ProtectedRoute>
             } />
 
