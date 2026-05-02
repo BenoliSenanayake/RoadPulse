@@ -31,7 +31,8 @@ const SRI_LANKA_REGIONS = [
 
 const generatePotholes = (count: number): PotholeEvent[] => {
     return Array.from({ length: count }).map((_, i) => {
-        const region = SRI_LANKA_REGIONS[Math.floor(Math.random() * SRI_LANKA_REGIONS.length)];
+        const regionIndex = i < 10 ? (i % 2) : Math.floor(Math.random() * SRI_LANKA_REGIONS.length);
+        const region = SRI_LANKA_REGIONS[regionIndex];
         const lat = region.lat + (Math.random() - 0.5) * 0.1;
         const lon = region.lon + (Math.random() - 0.5) * 0.1;
         const status = statuses[Math.floor(Math.random() * statuses.length)];
@@ -297,7 +298,7 @@ export const processReport = (id: string, action: 'accept' | 'reject' | 'request
                 action: 'MANUAL_ACCEPTED',
                 actor: 'MAINTENANCE_OFFICER',
                 actorName,
-                details: 'Report manually overridden and accepted by officer.'
+                details: reason || 'Report manually overridden and accepted by officer.'
             });
 
             // Retroactively assign bbox and ML metadata if not present
