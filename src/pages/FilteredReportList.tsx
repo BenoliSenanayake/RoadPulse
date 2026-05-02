@@ -12,7 +12,8 @@ import {
     ChevronRight,
     Loader2,
     Search,
-    Filter
+    Filter,
+    XCircle
 } from 'lucide-react';
 import { potholesApi, reportsApi } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
@@ -21,14 +22,15 @@ import { cn } from '../lib/utils';
 import { getProvinceShortName } from '../lib/provinceResolver';
 import type { CitizenReport, PotholeEvent, PotholeStatus, RepairPriority } from '../types';
 
-type ReportFilter = 'verified' | 'manual-review' | 'in-progress' | 'completed' | 'overdue';
+type ReportFilter = 'verified' | 'manual-review' | 'in-progress' | 'completed' | 'overdue' | 'rejected';
 
 const FILTER_LABELS: Record<ReportFilter, string> = {
     'verified': 'Verified Pothole Reports',
     'manual-review': 'Manual Review Required',
     'in-progress': 'In Progress Repairs',
     'completed': 'Completed Repairs',
-    'overdue': 'Overdue Repairs'
+    'overdue': 'Overdue Repairs',
+    'rejected': 'Rejected Reports'
 };
 
 const FILTER_ICONS: Record<ReportFilter, any> = {
@@ -36,7 +38,8 @@ const FILTER_ICONS: Record<ReportFilter, any> = {
     'manual-review': ShieldAlert,
     'in-progress': Wrench,
     'completed': CheckCircle2,
-    'overdue': AlertTriangle
+    'overdue': AlertTriangle,
+    'rejected': XCircle
 };
 
 const FILTER_COLORS: Record<ReportFilter, string> = {
@@ -44,7 +47,8 @@ const FILTER_COLORS: Record<ReportFilter, string> = {
     'manual-review': 'text-amber-600 bg-amber-50 border-amber-100',
     'in-progress': 'text-blue-600 bg-blue-50 border-blue-100',
     'completed': 'text-slate-600 bg-slate-50 border-slate-100',
-    'overdue': 'text-rose-600 bg-rose-50 border-rose-100'
+    'overdue': 'text-rose-600 bg-rose-50 border-rose-100',
+    'rejected': 'text-slate-600 bg-slate-50 border-slate-100'
 };
 
 const isOverdue = (item: CitizenReport | PotholeEvent) => {
@@ -122,6 +126,9 @@ const FilteredReportList = () => {
             case 'overdue':
                 items = [...reports.filter(isOverdue), ...potholes.filter(isOverdue)];
                 break;
+            case 'rejected':
+                items = reports.filter(r => r.aiStatus === 'REJECTED');
+                break;
         }
 
         if (searchTerm) {
@@ -169,6 +176,10 @@ const FilteredReportList = () => {
                 if (action === 'update') {
                     navigate(`/potholes/${item.id}`);
                     return;
+                }
+            } else if (filter === 'rejected') {
+                if (action === 'restore') {
+                    await reportsApi.review(item.id, 'accept', 'Report manually moved from Rejected to Verified by officer');
                 }
             }
             await loadData();
@@ -350,6 +361,14 @@ const FilteredReportList = () => {
                                                     className="px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-600 bg-slate-50 hover:bg-slate-100 transition-all flex items-center gap-2"
                                                 >
                                                     View Record <ChevronRight size={14} />
+                                                </button>
+                                            )}
+                                            {filter === 'rejected' && (
+                                                <button 
+                                                    onClick={() => handleQuickAction(item, 'restore')}
+                                                    className="px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest text-white bg-emerald-600 hover:bg-emerald-700 transition-all shadow-xl shadow-emerald-600/10 flex items-center gap-2"
+                                                >
+                                                    <CheckCircle2 size={14} /> Move to Verified
                                                 </button>
                                             )}
                                         </>

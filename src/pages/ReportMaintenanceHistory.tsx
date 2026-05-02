@@ -49,6 +49,7 @@ const ReportMaintenanceHistory = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [districtFilter, setDistrictFilter] = useState('All');
     const [statusFilter, setStatusFilter] = useState('All');
+    const [priorityFilter, setPriorityFilter] = useState('All');
 
     const fetchData = async () => {
         setLoading(true);
@@ -160,10 +161,11 @@ const ReportMaintenanceHistory = () => {
                                 item.location.toLowerCase().includes(searchTerm.toLowerCase());
             const matchesDistrict = districtFilter === 'All' || item.district === districtFilter;
             const matchesStatus = statusFilter === 'All' || item.status === statusFilter;
+            const matchesPriority = priorityFilter === 'All' || item.priority === priorityFilter;
             
-            return matchesSearch && matchesDistrict && matchesStatus;
+            return matchesSearch && matchesDistrict && matchesStatus && matchesPriority;
         }).sort((a, b) => new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime());
-    }, [potholes, reports, auditLogs, searchTerm, districtFilter, statusFilter]);
+    }, [potholes, reports, auditLogs, searchTerm, districtFilter, statusFilter, priorityFilter]);
 
     return (
         <div className="space-y-8 pb-12 animate-fade-in-up">
@@ -201,6 +203,20 @@ const ReportMaintenanceHistory = () => {
                             {districts.map(d => (
                                 <option key={d} value={d}>{d === 'All' ? 'All Districts' : d}</option>
                             ))}
+                        </select>
+                    </div>
+                    <div className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl">
+                        <AlertTriangle size={14} className="text-slate-400" />
+                        <select 
+                            value={priorityFilter}
+                            onChange={(e) => setPriorityFilter(e.target.value)}
+                            className="bg-transparent text-[10px] font-black uppercase tracking-widest outline-none cursor-pointer"
+                        >
+                            <option value="All">All Priorities</option>
+                            <option value="Low">Low</option>
+                            <option value="Medium">Medium</option>
+                            <option value="High">High</option>
+                            <option value="Urgent">Urgent</option>
                         </select>
                     </div>
                     <div className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl">

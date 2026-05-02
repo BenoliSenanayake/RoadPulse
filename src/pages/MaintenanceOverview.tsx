@@ -9,7 +9,8 @@ import {
     Wrench,
     CheckCircle,
     ChevronRight,
-    BarChart3
+    BarChart3,
+    XCircle
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -83,6 +84,7 @@ const MaintenanceOverview = () => {
         
         const inProgress = potholes.filter(p => p.status === 'In Progress').length;
         const completed = potholes.filter(p => ['Completed', 'Fixed'].includes(p.status)).length;
+        const rejected = reports.filter(r => r.aiStatus === 'REJECTED').length;
         
         const overdueReports = reports.filter(isOverdue);
         const overduePotholes = potholes.filter(isOverdue);
@@ -123,6 +125,7 @@ const MaintenanceOverview = () => {
                 { label: 'In Progress Repairs', value: inProgress, icon: Wrench, color: 'bg-blue-600', filter: 'in-progress' },
                 { label: 'Completed Repairs', value: completed, icon: CheckCircle2, color: 'bg-slate-900', filter: 'completed' },
                 { label: 'Overdue Repairs', value: totalOverdue, icon: AlertTriangle, color: 'bg-rose-600', filter: 'overdue' },
+                { label: 'Rejected Reports', value: rejected, icon: XCircle, color: 'bg-slate-400', filter: 'rejected' },
             ],
             overdueItems: overdueList.slice(0, 5),
             districtData: chartData
@@ -153,7 +156,7 @@ const MaintenanceOverview = () => {
                 )}
             </div>
 
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
                 {cards.map(card => (
                     <button 
                         key={card.label} 
