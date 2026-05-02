@@ -417,6 +417,31 @@ export const processReport = (id: string, action: 'accept' | 'reject' | 'request
     }
 };
 
+export const updateReportDetails = (id: string, updates: Partial<CitizenReport>, actorName: string = 'Admin') => {
+    const reports = getReports();
+    const index = reports.findIndex(r => r.id === id);
+    if (index !== -1) {
+        const oldReport = reports[index];
+        const newReport = { ...oldReport, ...updates };
+        reports[index] = newReport;
+        localStorage.setItem('rp_reports', JSON.stringify(reports));
+
+        addAuditLog({
+            entityId: id,
+            entityType: 'REPORT',
+            action: 'STATUS_CHANGED',
+            actor: 'ADMIN',
+            actorName,
+            details: `Admin corrected report details. Fields updated: ${Object.keys(updates).join(', ')}`,
+            province: newReport.provincialCouncil,
+            oldStatus: oldReport.status,
+            newStatus: newReport.status
+        });
+        return newReport;
+    }
+    return null;
+};
+
 export const getPotholes = (): PotholeEvent[] => {
     const key = 'rp_potholes_v2'; 
     const stored = localStorage.getItem(key);

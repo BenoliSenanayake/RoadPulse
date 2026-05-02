@@ -393,7 +393,7 @@ const AdminReports = () => {
                                         </td>
                                         <td className="px-6 py-5 text-right">
                                             <button 
-                                                onClick={() => navigate(item.type === 'CITIZEN_REPORT' ? `/admin/reports` : `/potholes/${item.id}`)}
+                                                onClick={() => navigate(item.type === 'CITIZEN_REPORT' ? `/admin/reports/${item.id}` : `/potholes/${item.id}`)}
                                                 className="h-9 px-4 bg-white border border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-900 hover:text-white hover:border-slate-900 transition-all active:scale-95 flex items-center gap-2 ml-auto"
                                             >
                                                 <Eye size={14} /> Details

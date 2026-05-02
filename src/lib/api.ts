@@ -177,6 +177,24 @@ export const reportsApi = {
                 return mockProcessReport(id, action, reason);
             }
         );
+    },
+    getById: async (id: string): Promise<CitizenReport | null> => {
+        return withFallback(
+            () => apiClient.get(`/reports/${id}`),
+            async () => {
+                await new Promise(r => setTimeout(r, 300));
+                return mockGetReports().find(r => r.id === id) || null;
+            }
+        );
+    },
+    update: async (id: string, updates: Partial<CitizenReport>): Promise<CitizenReport | null> => {
+        return withFallback(
+            () => apiClient.patch(`/reports/${id}`, updates),
+            async () => {
+                const { updateReportDetails } = await import('../mockData');
+                return updateReportDetails(id, updates);
+            }
+        );
     }
 };
 
