@@ -2,27 +2,14 @@ import { useEffect, useMemo, useState } from 'react';
 import {
     AlertTriangle,
     CheckCircle2,
-    ClipboardList,
-    Clock,
     MapPin,
     ShieldAlert,
     Wrench,
     CheckCircle,
     ChevronRight,
-    BarChart3,
     XCircle
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { 
-    BarChart, 
-    Bar, 
-    XAxis, 
-    YAxis, 
-    CartesianGrid, 
-    Tooltip, 
-    ResponsiveContainer, 
-    Cell 
-} from 'recharts';
 import { potholesApi, reportsApi } from '../lib/api';
 import type { CitizenReport, PotholeEvent } from '../types';
 import { cn } from '../lib/utils';
@@ -41,12 +28,6 @@ const isOverdue = (item: CitizenReport | PotholeEvent) => {
     return ['New', 'Verified', 'Confirmed'].includes(item.status) && diffDays > 14;
 };
 
-const getDaysSince = (dateStr?: string) => {
-    if (!dateStr) return 0;
-    const date = new Date(dateStr);
-    const today = new Date();
-    return Math.floor((today.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
-};
 
 const MaintenanceOverview = () => {
     const navigate = useNavigate();
@@ -75,7 +56,7 @@ const MaintenanceOverview = () => {
             .finally(() => setLoading(false));
     }, [province]);
 
-    const { cards, overdueItems, districtData } = useMemo(() => {
+    const { cards } = useMemo(() => {
         // AI-Verified: High confidence reports or already in pothole inventory
         const verified = potholes.filter(p => ['Verified', 'Confirmed', 'New'].includes(p.status)).length;
         
@@ -90,34 +71,6 @@ const MaintenanceOverview = () => {
         const overduePotholes = potholes.filter(isOverdue);
         const totalOverdue = overdueReports.length + overduePotholes.length;
 
-        const overdueList = [
-            ...overdueReports.map(r => ({
-                id: r.id,
-                district: r.district || 'Unknown',
-                location: 'Coordinate Point',
-                days: getDaysSince(r.createdAt),
-                status: r.status,
-                type: 'REPORT'
-            })),
-            ...overduePotholes.map(p => ({
-                id: p.id,
-                district: p.district || 'Unknown',
-                location: p.roadName || 'Coordinate Point',
-                days: getDaysSince(p.timestamp),
-                status: p.status,
-                type: 'POTHOLE'
-            }))
-        ].sort((a, b) => b.days - a.days);
-
-        // Chart Data: Potholes per district
-        const districts: Record<string, number> = {};
-        potholes.forEach(p => {
-            const d = p.district || 'Other';
-            districts[d] = (districts[d] || 0) + 1;
-        });
-        const chartData = Object.entries(districts).map(([name, count]) => ({ name, count }))
-            .sort((a, b) => b.count - a.count);
-
         return {
             cards: [
                 { label: 'Verified Pothole Reports', value: verified, icon: CheckCircle, color: 'bg-emerald-600', filter: 'verified' },
@@ -126,9 +79,7 @@ const MaintenanceOverview = () => {
                 { label: 'Completed Repairs', value: completed, icon: CheckCircle2, color: 'bg-slate-900', filter: 'completed' },
                 { label: 'Overdue Repairs', value: totalOverdue, icon: AlertTriangle, color: 'bg-rose-600', filter: 'overdue' },
                 { label: 'Rejected Reports', value: rejected, icon: XCircle, color: 'bg-slate-400', filter: 'rejected' },
-            ],
-            overdueItems: overdueList.slice(0, 5),
-            districtData: chartData
+            ]
         };
     }, [potholes, reports]);
 

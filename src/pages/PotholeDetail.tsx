@@ -3,12 +3,10 @@ import { useNavigate, useParams } from 'react-router-dom';
 import {
     ArrowLeft,
     Calendar,
-    ClipboardList,
     MapPin,
     Save,
     ShieldCheck,
-    Users,
-    Wrench
+    Activity
 } from 'lucide-react';
 import { potholesApi, reportsApi } from '../lib/api';
 import { ActivityTimeline } from '../components/ActivityTimeline';

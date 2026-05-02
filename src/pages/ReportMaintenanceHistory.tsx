@@ -3,13 +3,9 @@ import {
     History, 
     Search, 
     Filter, 
-    ChevronRight, 
     AlertTriangle, 
-    CheckCircle2, 
     Clock, 
     MapPin, 
-    Calendar,
-    ArrowRight,
     Loader2,
     Eye
 } from 'lucide-react';
@@ -19,7 +15,7 @@ import { useAuth } from '../context/AuthContext';
 import { StatusPill } from '../components/StatusPill';
 import { cn } from '../lib/utils';
 import { getProvinceShortName, PROVINCE_DISTRICTS } from '../lib/provinceResolver';
-import type { CitizenReport, PotholeEvent, AuditLog, PotholeStatus, RepairPriority } from '../types';
+import type { CitizenReport, PotholeEvent, AuditLog } from '../types';
 
 interface LifecycleHistory {
     id: string;
@@ -136,7 +132,6 @@ const ReportMaintenanceHistory = () => {
         reports.forEach(r => {
             if (r.linkedPotholeId && seenPotholes.has(r.linkedPotholeId)) return;
 
-            const logs = auditLogs.filter(l => l.entityId === r.id);
             const submittedAt = r.createdAt;
             
             items.push({

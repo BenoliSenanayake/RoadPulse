@@ -85,7 +85,8 @@ const Signup = () => {
             email: formData.email,
             passwordHash: formData.password,
             phone: formData.phone,
-            district: formData.district
+            district: formData.district,
+            status: 'ACTIVE'
         });
 
         setIsLoading(false);

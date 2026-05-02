@@ -1,5 +1,5 @@
 export type RepairPriority = 'Low' | 'Medium' | 'High' | 'Urgent';
-export type RepairTeam = 'Team A' | 'Team B' | 'Team C' | 'Emergency Team';
+export type RepairTeam = 'Team A' | 'Team B' | 'Team C' | 'Emergency Team' | 'Unassigned';
 export type RepairStatus = 'Verified' | 'Scheduled' | 'In Progress' | 'Completed' | 'Unable to Repair';
 export type PotholeStatus =
     | 'New'
@@ -113,7 +113,7 @@ export interface CitizenReport {
     provincialCouncil?: ProvincialCouncil;
     provinceDetectionMethod?: 'GPS_BOUNDARY' | 'MANUAL' | 'UNKNOWN';
     district?: string;
-    status: 'New' | 'Discarded'; // Mapping from assignment
+    status: 'New' | 'Verified' | 'In Progress' | 'Completed' | 'Rejected' | 'Discarded'; // Mapping from assignment
     createdAt: string; // Keep as submittedAt alias
 }
 

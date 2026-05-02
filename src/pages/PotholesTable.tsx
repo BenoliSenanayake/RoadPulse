@@ -22,12 +22,10 @@ const PotholesTable = () => {
     const { user } = useAuth();
     const province = user?.provincialCouncil;
     const [potholes, setPotholes] = useState<PotholeEvent[]>([]);
-    const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState<string>('All');
 
     const loadData = async () => {
-        setLoading(true);
         try {
             let data = await potholesApi.list();
             // Filter by province for maintenance officers
@@ -36,7 +34,7 @@ const PotholesTable = () => {
             }
             setPotholes(data);
         } finally {
-            setLoading(false);
+            // Data sync complete
         }
     };
 

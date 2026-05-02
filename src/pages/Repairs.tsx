@@ -7,7 +7,6 @@ import {
     MapPin,
     Play,
     Save,
-    StickyNote,
     Wrench,
     AlertTriangle
 } from 'lucide-react';

@@ -12,7 +12,6 @@ import {
     ChevronRight,
     Loader2,
     Search,
-    Filter,
     XCircle
 } from 'lucide-react';
 import { potholesApi, reportsApi } from '../lib/api';
@@ -20,7 +19,7 @@ import { useAuth } from '../context/AuthContext';
 import { StatusPill } from '../components/StatusPill';
 import { cn } from '../lib/utils';
 import { getProvinceShortName } from '../lib/provinceResolver';
-import type { CitizenReport, PotholeEvent, PotholeStatus, RepairPriority } from '../types';
+import type { CitizenReport, PotholeEvent, RepairPriority } from '../types';
 
 type ReportFilter = 'verified' | 'manual-review' | 'in-progress' | 'completed' | 'overdue' | 'rejected' | 'all';
 
@@ -41,7 +40,7 @@ const FILTER_ICONS: Record<ReportFilter, any> = {
     'completed': CheckCircle2,
     'overdue': AlertTriangle,
     'rejected': XCircle,
-    'all': FileClock
+    'all': History
 };
 
 const FILTER_COLORS: Record<ReportFilter, string> = {
@@ -71,6 +70,7 @@ const getDaysSince = (dateStr?: string) => {
     const today = new Date();
     return Math.floor((today.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
 };
+
 
 const FilteredReportList = () => {
     const { filter: rawFilter } = useParams<{ filter: string }>();
@@ -154,10 +154,8 @@ const FilteredReportList = () => {
         }
 
         return items.sort((a, b) => {
-            const dateA = new Date('createdAt' in a ? (a.createdAt || 0) : (a.timestamp || 0)).getTime();
-            const dateB = new Date('createdAt' in b ? (b.createdAt || 0) : (b.timestamp || 0)).getTime();
-            if (isNaN(dateA)) return 1;
-            if (isNaN(dateB)) return -1;
+            const dateA = new Date(a.createdAt).getTime();
+            const dateB = new Date(b.createdAt).getTime();
             return dateB - dateA;
         });
     }, [filter, potholes, reports, searchTerm]);
@@ -177,8 +175,9 @@ const FilteredReportList = () => {
                     await potholesApi.scheduleRepair(item.id, { 
                         priority: value as RepairPriority,
                         repairStatus: item.status as any,
-                        assignedTeam: item.assignedTeam || 'Unassigned',
-                        scheduledDate: item.timestamp || new Date().toISOString()
+                        assignedTeam: (item as any).assignedTeam || 'Unassigned',
+                        scheduledDate: (item as any).timestamp || (item as any).createdAt || new Date().toISOString(),
+                        maintenanceNotes: (item as any).maintenanceNotes || ''
                     }, user?.name);
                 } else if (action === 'start') {
                     await potholesApi.updateStatus(item.id, 'In Progress', 'Work started from priority queue.', user?.name);

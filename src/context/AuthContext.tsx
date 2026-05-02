@@ -72,7 +72,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                     id: citizen.id,
                     name: citizen.name,
                     email: citizen.email,
-                    role: 'CITIZEN'
+                    role: 'CITIZEN',
+                    status: 'ACTIVE',
+                    createdAt: new Date().toISOString()
                 };
                 setUser(sessionUser);
                 localStorage.setItem(USER_KEY, JSON.stringify(sessionUser));
@@ -105,7 +107,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             id: newCitizen.id,
             name: newCitizen.name,
             email: newCitizen.email,
-            role: 'CITIZEN'
+            role: 'CITIZEN',
+            status: 'ACTIVE',
+            createdAt: new Date().toISOString()
         };
         setUser(sessionUser);
         localStorage.setItem(USER_KEY, JSON.stringify(sessionUser));

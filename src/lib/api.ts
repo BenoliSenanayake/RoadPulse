@@ -8,7 +8,7 @@ import {
     getSystemSettings,
     MOCK_USERS
 } from '../mockData';
-import type { CitizenReport, PotholeEvent, PotholeStatus, RepairScheduleInput, User } from '../types';
+import type { CitizenReport, PotholeEvent, PotholeStatus, RepairScheduleInput } from '../types';
 import { simulateYoloDetection, type DetectionResult } from './aiValidationService';
 
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';

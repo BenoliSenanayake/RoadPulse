@@ -19,7 +19,6 @@ const Repairs = lazy(() => import('./pages/Repairs'));
 const ReviewQueue = lazy(() => import('./pages/ReviewQueue'));
 const FilteredReportList = lazy(() => import('./pages/FilteredReportList'));
 const ReportMaintenanceHistory = lazy(() => import('./pages/ReportMaintenanceHistory'));
-const Admin = lazy(() => import('./pages/Admin'));
 const AdminReports = lazy(() => import('./pages/AdminReports'));
 const AdminReportDetail = lazy(() => import('./pages/AdminReportDetail'));
 const ProvinceMonitoring = lazy(() => import('./pages/ProvinceMonitoring'));

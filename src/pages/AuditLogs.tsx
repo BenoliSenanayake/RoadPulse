@@ -5,24 +5,20 @@ import {
     Filter, 
     ArrowRight, 
     User, 
-    Shield, 
     MapPin, 
-    Calendar,
     Activity,
-    Info,
     CheckCircle2,
     XCircle,
     Clock,
-    AlertCircle,
+    Info,
     ChevronDown,
-    ArrowUpRight,
-    Terminal
+    Terminal,
+    RefreshCw
 } from 'lucide-react';
 import { auditLogsApi } from '../lib/api';
-import { PROVINCIAL_COUNCILS } from '../lib/provinceResolver';
-import { Skeleton } from '../components/Skeleton';
+import { PROVINCIAL_COUNCILS, getProvinceShortName } from '../lib/provinceResolver';
 import { cn } from '../lib/utils';
-import { format } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
 import type { AuditLog, AuditLogAction, UserRole, ProvincialCouncil } from '../types';
 
 const AuditLogs = () => {
@@ -63,92 +59,98 @@ const AuditLogs = () => {
 
     const getActionIcon = (action: AuditLogAction) => {
         switch (action) {
-            case 'SUBMITTED': return <Activity className="text-blue-500" size={16} />;
+            case 'SUBMITTED': return <Activity className="text-blue-500" size={14} />;
             case 'AI_ACCEPTED':
-            case 'MANUAL_ACCEPTED': return <CheckCircle2 className="text-emerald-500" size={16} />;
+            case 'MANUAL_ACCEPTED': return <CheckCircle2 className="text-emerald-500" size={14} />;
             case 'AI_REJECTED':
-            case 'MANUAL_REJECTED': return <XCircle className="text-rose-500" size={16} />;
-            case 'STATUS_CHANGED': return <Clock className="text-amber-500" size={16} />;
-            case 'REPAIR_COMPLETED': return <CheckCircle2 className="text-blue-500" size={16} />;
-            default: return <Info className="text-slate-400" size={16} />;
+            case 'MANUAL_REJECTED': return <XCircle className="text-rose-500" size={14} />;
+            case 'STATUS_CHANGED': return <Clock className="text-amber-500" size={14} />;
+            case 'REPAIR_COMPLETED': return <CheckCircle2 className="text-blue-500" size={14} />;
+            default: return <Info className="text-slate-400" size={14} />;
         }
     };
 
     return (
-        <div className="space-y-8 pb-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
-            {/* Header */}
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+        <div className="space-y-10">
+            {/* Header Area */}
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                 <div>
-                    <h1 className="text-3xl font-black text-slate-900 tracking-tight uppercase leading-none">System Audit Trail</h1>
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-2">Immutable activity logs for all governance actions and status transitions</p>
+                    <h1 className="section-heading">System Audit Trail</h1>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mt-2">Immutable history of system events and administrative overrides</p>
                 </div>
-                <div className="bg-slate-900 px-6 py-3 rounded-2xl flex items-center gap-4 shadow-xl shadow-slate-900/20">
-                    <div className="flex flex-col">
-                        <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest leading-none">Total Events</p>
-                        <p className="text-xl font-black text-white tracking-tight">{logs.length}</p>
+                <div className="flex items-center gap-3">
+                    <div className="bg-slate-900 px-6 py-3 rounded-2xl flex items-center gap-4 shadow-xl shadow-slate-900/10">
+                        <div className="flex flex-col">
+                            <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest leading-none">Global Events</p>
+                            <p className="text-xl font-black text-white tracking-tight">{logs.length}</p>
+                        </div>
+                        <div className="w-px h-8 bg-white/10" />
+                        <Terminal className="text-blue-400" size={20} />
                     </div>
-                    <div className="w-px h-8 bg-white/10" />
-                    <Terminal className="text-cyan-400" size={20} />
+                    <button onClick={loadLogs} className="btn-premium bg-white text-slate-600 border border-slate-100 shadow-sm hover:bg-slate-50">
+                        <RefreshCw size={14} className={cn(loading && "animate-spin")} />
+                    </button>
                 </div>
             </div>
 
-            {/* Filters */}
-            <div className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-                    <div className="relative lg:col-span-1">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+            {/* Filter Console */}
+            <div className="bg-white p-8 rounded-[2.5rem] border border-slate-50 shadow-sm">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+                    <div className="relative group lg:col-span-1">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" size={14} />
                         <input 
                             type="text" 
-                            placeholder="Report ID / Keywords..." 
+                            placeholder="Search details or ID..." 
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-bold text-slate-900 outline-none focus:bg-white focus:ring-4 focus:ring-blue-500/5 transition-all"
+                            className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-[11px] font-black uppercase tracking-widest text-slate-900 outline-none transition-all focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/5"
                         />
                     </div>
-                    <div className="relative">
-                        <Activity className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                    <div className="relative group">
+                        <Filter className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" size={14} />
                         <select 
                             value={actionFilter}
                             onChange={(e) => setActionFilter(e.target.value as any)}
-                            className="w-full pl-11 pr-10 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-700 outline-none focus:bg-white transition-all appearance-none cursor-pointer"
+                            className="w-full pl-11 pr-10 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-700 outline-none focus:border-blue-500 focus:bg-white transition-all appearance-none cursor-pointer"
                         >
-                            <option value="ALL">All Actions</option>
-                            <option value="SUBMITTED">Submission</option>
-                            <option value="STATUS_CHANGED">Status Change</option>
-                            <option value="AI_ACCEPTED">AI Accepted</option>
+                            <option value="ALL">All Protocols</option>
+                            <option value="SUBMITTED">Submitted</option>
+                            <option value="STATUS_CHANGED">Status Update</option>
+                            <option value="MANUAL_ACCEPTED">Manual Acceptance</option>
+                            <option value="MANUAL_REJECTED">Manual Rejection</option>
+                            <option value="AI_ACCEPTED">AI Verified</option>
                             <option value="AI_REJECTED">AI Rejected</option>
-                            <option value="REPAIR_COMPLETED">Repair Completed</option>
                         </select>
-                        <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={14} />
+                        <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none" size={14} />
                     </div>
-                    <div className="relative">
-                        <Shield className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                    <div className="relative group">
+                        <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" size={14} />
                         <select 
                             value={roleFilter}
                             onChange={(e) => setRoleFilter(e.target.value as any)}
-                            className="w-full pl-11 pr-10 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-700 outline-none focus:bg-white transition-all appearance-none cursor-pointer"
+                            className="w-full pl-11 pr-10 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-700 outline-none focus:border-blue-500 focus:bg-white transition-all appearance-none cursor-pointer"
                         >
-                            <option value="ALL">All Roles</option>
-                            <option value="ADMIN">Admins</option>
-                            <option value="MAINTENANCE_OFFICER">Officers</option>
-                            <option value="SYSTEM">System/AI</option>
+                            <option value="ALL">All Actors</option>
+                            <option value="ADMIN">Administrators</option>
+                            <option value="MAINTENANCE_OFFICER">Staff Officers</option>
                             <option value="CITIZEN">Citizens</option>
+                            <option value="SYSTEM">AI Engine</option>
                         </select>
-                        <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={14} />
+                        <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none" size={14} />
                     </div>
-                    <div className="relative">
-                        <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                    <div className="relative group">
+                        <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" size={14} />
                         <select 
                             value={provinceFilter}
                             onChange={(e) => setProvinceFilter(e.target.value as any)}
-                            className="w-full pl-11 pr-10 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-700 outline-none focus:bg-white transition-all appearance-none cursor-pointer"
+                            className="w-full pl-11 pr-10 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-700 outline-none focus:border-blue-500 focus:bg-white transition-all appearance-none cursor-pointer"
                         >
                             <option value="ALL">All Provinces</option>
                             {PROVINCIAL_COUNCILS.map(pc => (
                                 <option key={pc} value={pc}>{pc}</option>
                             ))}
                         </select>
-                        <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={14} />
+                        <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none" size={14} />
                     </div>
                     <button 
                         onClick={() => {
@@ -157,129 +159,105 @@ const AuditLogs = () => {
                             setRoleFilter('ALL');
                             setProvinceFilter('ALL');
                         }}
-                        className="py-3 bg-slate-100 text-slate-900 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 transition-all"
+                        className="btn-premium bg-slate-100 text-slate-600 hover:bg-slate-200"
                     >
-                        Reset
+                        Reset Trail
                     </button>
                 </div>
             </div>
 
-            {/* Audit Table */}
-            <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
-                <div className="overflow-x-auto">
-                    <table className="w-full border-collapse">
+            {/* Audit Trail Table */}
+            <div className="bg-white rounded-[2.5rem] border border-slate-50 shadow-sm overflow-hidden">
+                <div className="overflow-x-auto custom-scrollbar">
+                    <table className="table-premium">
                         <thead>
-                            <tr className="bg-slate-50/50 border-bottom border-slate-100">
-                                <th className="px-8 py-5 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Event Time</th>
-                                <th className="px-6 py-5 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Action / Entity</th>
-                                <th className="px-6 py-5 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Actor</th>
-                                <th className="px-6 py-5 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Status Transition</th>
-                                <th className="px-8 py-5 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Observation / Details</th>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Protocol Action</th>
+                                <th>Actor / Role</th>
+                                <th>Jurisdiction</th>
+                                <th>Event Observation</th>
+                                <th className="text-right px-8">Linked Unit</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-50">
-                            {loading ? (
-                                Array.from({ length: 5 }).map((_, i) => (
-                                    <tr key={i}>
-                                        <td className="px-8 py-6"><Skeleton variant="text" className="w-24 h-4" /></td>
-                                        <td className="px-6 py-6"><Skeleton variant="text" className="w-32 h-4" /></td>
-                                        <td className="px-6 py-6"><Skeleton variant="text" className="w-28 h-4" /></td>
-                                        <td className="px-6 py-6"><Skeleton variant="text" className="w-32 h-4" /></td>
-                                        <td className="px-8 py-6"><Skeleton variant="text" className="w-full h-4" /></td>
-                                    </tr>
-                                ))
-                            ) : filteredLogs.length > 0 ? (
+                            {!loading && filteredLogs.length > 0 ? (
                                 filteredLogs.map((log) => (
-                                    <tr key={log.id} className="hover:bg-slate-50/50 transition-colors group">
-                                        <td className="px-8 py-6">
+                                    <tr key={log.id} className="hover:bg-slate-50/50 transition-all duration-300 group">
+                                        <td className="whitespace-nowrap">
                                             <div className="flex flex-col">
-                                                <span className="text-[10px] font-black text-slate-900 tracking-tight">
-                                                    {format(new Date(log.timestamp), 'dd MMM yyyy')}
+                                                <span className="text-[11px] font-black text-slate-900 uppercase">
+                                                    {formatDistanceToNow(new Date(log.timestamp))} ago
                                                 </span>
-                                                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
-                                                    {format(new Date(log.timestamp), 'HH:mm:ss')}
+                                                <span className="text-[9px] font-bold text-slate-400">
+                                                    {format(new Date(log.timestamp), 'dd MMM yyyy, HH:mm:ss')}
                                                 </span>
                                             </div>
                                         </td>
-                                        <td className="px-6 py-6">
-                                            <div className="flex flex-col gap-1.5">
-                                                <div className="flex items-center gap-2">
+                                        <td>
+                                            <div className="flex items-center gap-2.5">
+                                                <div className="w-8 h-8 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center group-hover:bg-white transition-colors">
                                                     {getActionIcon(log.action)}
-                                                    <span className="text-[10px] font-black text-slate-900 uppercase tracking-widest">
-                                                        {log.action.replace('_', ' ')}
-                                                    </span>
                                                 </div>
-                                                <div className="flex items-center gap-1.5">
-                                                    <span className="text-[8px] font-black bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded uppercase">
-                                                        {log.entityType}
-                                                    </span>
-                                                    <span className="text-[9px] font-mono font-bold text-blue-600">{log.entityId}</span>
-                                                </div>
+                                                <span className="text-[10px] font-black text-slate-700 uppercase tracking-widest">
+                                                    {log.action.replace('_', ' ')}
+                                                </span>
                                             </div>
                                         </td>
-                                        <td className="px-6 py-6">
+                                        <td>
                                             <div className="flex items-center gap-3">
-                                                <div className={cn(
-                                                    "w-8 h-8 rounded-lg flex items-center justify-center font-black text-xs",
-                                                    log.actor === 'SYSTEM' ? 'bg-indigo-50 text-indigo-600' :
-                                                    log.actor === 'ADMIN' ? 'bg-rose-50 text-rose-600' :
-                                                    'bg-slate-100 text-slate-600'
-                                                )}>
-                                                    {log.actorName?.charAt(0) || <Activity size={14} />}
+                                                <div className="h-9 w-9 rounded-xl bg-slate-100 flex items-center justify-center border border-slate-100 group-hover:bg-white transition-colors">
+                                                    {log.actor === 'SYSTEM' ? <Terminal size={14} className="text-blue-500" /> : <User size={14} className="text-slate-400" />}
                                                 </div>
                                                 <div>
-                                                    <p className="text-[10px] font-black text-slate-900 uppercase tracking-tight leading-none mb-1">{log.actorName || 'RoadPulse System'}</p>
-                                                    <div className="flex items-center gap-1">
-                                                        <Shield size={8} className="text-slate-300" />
-                                                        <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">{log.actor.replace('_', ' ')}</span>
-                                                    </div>
+                                                    <p className="text-[11px] font-black text-slate-900 tracking-tight leading-none mb-1">{log.actorName || 'AI Engine'}</p>
+                                                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{log.actor}</span>
                                                 </div>
                                             </div>
                                         </td>
-                                        <td className="px-6 py-6">
-                                            {log.newStatus ? (
-                                                <div className="flex items-center gap-2">
-                                                    {log.oldStatus && (
-                                                        <>
-                                                            <span className="text-[9px] font-black text-slate-400 line-through decoration-slate-300">{log.oldStatus}</span>
-                                                            <ArrowRight size={10} className="text-slate-300" />
-                                                        </>
-                                                    )}
-                                                    <span className={cn(
-                                                        "px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest",
-                                                        log.newStatus === 'Completed' ? 'bg-emerald-50 text-emerald-600' :
-                                                        log.newStatus === 'Rejected' ? 'bg-rose-50 text-rose-600' :
-                                                        'bg-blue-50 text-blue-600'
-                                                    )}>
-                                                        {log.newStatus}
-                                                    </span>
-                                                </div>
-                                            ) : (
-                                                <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest italic">No Change</span>
-                                            )}
+                                        <td>
+                                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                                {log.province ? getProvinceShortName(log.province as any) : 'Global'}
+                                            </span>
                                         </td>
-                                        <td className="px-8 py-6">
-                                            <div className="flex flex-col gap-1">
-                                                <p className="text-[10px] font-bold text-slate-600 leading-tight line-clamp-2">{log.details}</p>
-                                                {log.province && (
-                                                    <div className="flex items-center gap-1">
-                                                        <MapPin size={8} className="text-slate-300" />
-                                                        <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">{log.province}</span>
+                                        <td>
+                                            <div className="max-w-md">
+                                                <p className="text-[11px] font-bold text-slate-500 leading-relaxed uppercase tracking-tight group-hover:text-slate-900 transition-colors">
+                                                    {log.details}
+                                                </p>
+                                                {log.oldStatus && log.newStatus && (
+                                                    <div className="flex items-center gap-2 mt-2">
+                                                        <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">{log.oldStatus}</span>
+                                                        <ArrowRight size={10} className="text-slate-300" />
+                                                        <span className="px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded text-[8px] font-black uppercase tracking-widest">{log.newStatus}</span>
                                                     </div>
                                                 )}
                                             </div>
+                                        </td>
+                                        <td className="text-right px-8">
+                                            <span className="text-[10px] font-black text-blue-600 uppercase bg-blue-50 px-2.5 py-1 rounded-xl border border-blue-100 shadow-sm">
+                                                {log.entityId.split('-')[1] || log.entityId}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                ))
+                            ) : loading ? (
+                                Array.from({ length: 10 }).map((_, i) => (
+                                    <tr key={i}>
+                                        <td colSpan={6} className="px-8 py-5">
+                                            <div className="h-6 w-full bg-slate-50 animate-pulse rounded-xl" />
                                         </td>
                                     </tr>
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan={5} className="px-8 py-20 text-center">
+                                    <td colSpan={6} className="px-8 py-32 text-center">
                                         <div className="flex flex-col items-center">
-                                            <div className="w-16 h-16 bg-slate-50 rounded-3xl flex items-center justify-center text-slate-200 mb-4">
-                                                <Terminal size={32} />
+                                            <div className="w-16 h-16 bg-slate-50 rounded-3xl flex items-center justify-center text-slate-200 mb-6">
+                                                <FileClock size={32} />
                                             </div>
-                                            <h4 className="text-sm font-black text-slate-900 uppercase tracking-tight">Zero system events logged</h4>
-                                            <p className="text-xs font-bold text-slate-400 mt-1">Try relaxing your filters to see more history</p>
+                                            <h4 className="text-lg font-black text-slate-900 uppercase tracking-tight">Trail Fragmented or Empty</h4>
+                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-2">No system activity matches current audit criteria</p>
                                         </div>
                                     </td>
                                 </tr>
@@ -287,17 +265,10 @@ const AuditLogs = () => {
                         </tbody>
                     </table>
                 </div>
-            </div>
 
-            {/* Footer Status */}
-            <div className="flex items-center justify-between p-6 bg-slate-50 rounded-[2rem] border border-slate-100">
-                <div className="flex items-center gap-3">
-                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                    <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Logging Engine Active</span>
+                <div className="p-6 bg-slate-50/50 border-t border-slate-50 flex items-center justify-center">
+                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em]">Protocol Log v2.4 Integrity Verified</p>
                 </div>
-                <button className="flex items-center gap-1.5 text-[9px] font-black text-slate-400 uppercase tracking-widest hover:text-slate-900 transition-colors">
-                    Export Immutable Logs <ArrowUpRight size={12} />
-                </button>
             </div>
         </div>
     );

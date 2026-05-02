@@ -12,13 +12,11 @@ import { Link } from 'react-router-dom';
 import {
     AlertCircle,
     Filter,
-    HardHat,
     Layers,
     MapPin,
     Search,
     X,
     ChevronRight,
-    Wrench,
     CheckCircle,
     Play
 } from 'lucide-react';
