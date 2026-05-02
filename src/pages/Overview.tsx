@@ -2,463 +2,405 @@ import { useMemo, useState, useEffect } from 'react';
 import {
     AlertTriangle,
     Clock,
-    TrendingUp,
     FileText,
-    Calendar,
-    Target,
+    Users,
+    CheckCircle2,
+    Wrench,
     XCircle,
     HardHat,
-    Hammer,
-    Inbox,
-    Database,
-    MapPin
+    ArrowRight,
+    MapPin,
+    ShieldAlert,
+    History,
+    Zap,
+    TrendingUp,
+    ChevronRight,
+    Settings,
+    UserPlus
 } from 'lucide-react';
-import { getProvinceShortName, PROVINCIAL_COUNCILS } from '../lib/provinceResolver';
-import type { ProvincialCouncil } from '../types';
-import {
-    XAxis,
-    YAxis,
-    CartesianGrid,
-    Tooltip,
-    ResponsiveContainer,
-    PieChart,
-    Pie,
-    Cell,
-    LineChart,
-    Line,
-    BarChart,
-    Bar
-} from 'recharts';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
-import * as L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
-import { potholesApi, reportsApi, checkBackendHealth } from '../lib/api';
+import { Link } from 'react-router-dom';
+import { PROVINCIAL_COUNCILS, getProvinceShortName } from '../lib/provinceResolver';
+import { potholesApi, reportsApi, authApi, auditLogsApi } from '../lib/api';
 import { Skeleton } from '../components/Skeleton';
-import { subDays, isAfter, format } from 'date-fns';
+import { formatDistanceToNow, isAfter, subDays } from 'date-fns';
 import { cn } from '../lib/utils';
+import type { CitizenReport, PotholeEvent, AuditLog } from '../types';
 
-// Fix leaflet icon issue
-import icon from 'leaflet/dist/images/marker-icon.png';
-import iconShadow from 'leaflet/dist/images/marker-shadow.png';
-
-let DefaultIcon = L.icon({
-    iconUrl: icon,
-    shadowUrl: iconShadow,
-    iconSize: [25, 41],
-    iconAnchor: [12, 41]
-});
-
-L.Marker.prototype.options.icon = DefaultIcon;
-
-const STATUS_COLORS = {
-    New: '#2563EB',
-    Confirmed: '#F59E0B',
-    Scheduled: '#A855F7',
-    Fixed: '#10B981',
-    Rejected: '#F43F5E',
-};
-
-const StatCard = ({ title, value, icon: Icon, trend, colorClass = "text-slate-900 bg-slate-900", loading }: any) => {
+const StatCard = ({ title, value, icon: Icon, colorClass, loading }: { title: string, value: string | number, icon: any, colorClass: string, loading: boolean }) => {
     if (loading) return (
-        <div className="card-premium p-6 flex items-start justify-between">
-            <div className="flex-1">
-                <Skeleton variant="text" className="w-20 mb-3" />
-                <Skeleton variant="text" className="w-12 h-8 mb-4" />
-                <Skeleton variant="text" className="w-24 h-4" />
+        <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm flex items-start justify-between">
+            <div className="space-y-3">
+                <Skeleton variant="text" className="w-20" />
+                <Skeleton variant="text" className="w-12 h-8" />
             </div>
-            <Skeleton variant="circle" className="w-12 h-12" />
+            <Skeleton variant="circle" className="w-10 h-10" />
         </div>
     );
 
-    const isPositiveTrend = trend && (trend.includes('+') || trend.includes('High'));
-    const isNegativeTrend = trend && (trend.includes('-') || trend.includes('Low'));
-
     return (
-        <div className="card-premium p-6 flex items-start justify-between hover-lift">
-            <div>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">{title}</p>
-                <h3 className="text-3xl font-black text-slate-900 tracking-tight">{value}</h3>
-                {trend && (
-                    <div className="flex items-center gap-1 mt-3">
-                        <div className={cn("flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider",
-                            isPositiveTrend ? "bg-emerald-50 text-emerald-700" :
-                                isNegativeTrend ? "bg-rose-50 text-rose-700" : "bg-slate-50 text-slate-600"
-                        )}>
-                            {isPositiveTrend && <TrendingUp size={10} />}
-                            <span>{trend.split(' ')[0]}</span>
-                        </div>
-                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{trend.split(' ').slice(1).join(' ')}</span>
-                    </div>
-                )}
-            </div>
-            <div className={cn(`p-3 rounded-2xl text-white shadow-lg shadow-slate-900/10 group-hover:scale-110 transition-transform`, colorClass)}>
-                <Icon size={20} />
+        <div className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-slate-200/50 transition-all duration-300 group">
+            <div className="flex items-start justify-between">
+                <div>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">{title}</p>
+                    <h3 className="text-3xl font-black text-slate-900 tracking-tight">{value}</h3>
+                </div>
+                <div className={cn("p-3 rounded-2xl text-white shadow-lg transition-transform group-hover:scale-110", colorClass)}>
+                    <Icon size={20} />
+                </div>
             </div>
         </div>
     );
 };
 
 const Overview = () => {
-    const [potholes, setPotholes] = useState<any[]>([]);
-    const [reports, setReports] = useState<any[]>([]);
+    const [potholes, setPotholes] = useState<PotholeEvent[]>([]);
+    const [reports, setReports] = useState<CitizenReport[]>([]);
+    const [users, setUsers] = useState<any[]>([]);
+    const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-    const [currentTime, setCurrentTime] = useState(new Date());
-    const [isBackendHealthy, setIsBackendHealthy] = useState<boolean>(false);
-    const [provinceFilter, setProvinceFilter] = useState<ProvincialCouncil | 'All'>('All');
 
-    useEffect(() => {
-        const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-        return () => clearInterval(timer);
-    }, []);
-
-    useEffect(() => {
-        const checkHealth = () => checkBackendHealth().then(setIsBackendHealthy);
-        checkHealth();
-        const healthTimer = setInterval(checkHealth, 30000);
-        return () => clearInterval(healthTimer);
-    }, []);
-
-    useEffect(() => {
+    const loadData = async () => {
         setLoading(true);
-        setError(null);
-        Promise.all([
-            potholesApi.list(),
-            reportsApi.list()
-        ]).then(([pData, rData]) => {
+        try {
+            const [pData, rData, uData, aData] = await Promise.all([
+                potholesApi.list(),
+                reportsApi.list(),
+                authApi.listUsers(),
+                auditLogsApi.list()
+            ]);
             setPotholes(pData);
             setReports(rData);
-        }).catch(err => {
-            console.error("Failed to load overview data:", err);
-            setError("Failed to load overview data. Please try again later.");
-        }).finally(() => {
+            setUsers(uData);
+            setAuditLogs(aData);
+        } catch (error) {
+            console.error("Failed to load overview data", error);
+        } finally {
             setLoading(false);
-        });
+        }
+    };
+
+    useEffect(() => {
+        loadData();
     }, []);
 
-    const { stats, statusData, weeklyTrendData, repairProgressData, filteredPotholes } = useMemo(() => {
-        const fPotholes = provinceFilter === 'All' ? potholes : potholes.filter(p => p.provincialCouncil === provinceFilter);
-        const fReports = provinceFilter === 'All' ? reports : reports.filter(r => r.provincialCouncil === provinceFilter);
+    const isOverdue = (item: CitizenReport | PotholeEvent) => {
+        const dateStr = 'createdAt' in item ? item.createdAt : (item as PotholeEvent).timestamp;
+        if (!dateStr) return false;
+        const createdDate = new Date(dateStr);
+        return ['New', 'Verified', 'Confirmed'].includes(item.status) && isAfter(subDays(new Date(), 14), createdDate);
+    };
 
-        const totalReports = fReports.length;
-        const pendingReview = fReports.filter(r => r.aiStatus === 'PENDING').length;
-        const rejectedSubmissions = fReports.filter(r => r.aiStatus === 'REJECTED').length;
+    const stats = useMemo(() => {
+        return {
+            totalReports: reports.length,
+            verifiedReports: reports.filter(r => r.aiStatus === 'ACCEPTED').length,
+            manualReview: reports.filter(r => r.aiStatus === 'PENDING').length,
+            inProgress: potholes.filter(p => p.status === 'In Progress').length,
+            completed: potholes.filter(p => ['Completed', 'Fixed'].includes(p.status)).length,
+            rejected: reports.filter(r => r.aiStatus === 'REJECTED').length,
+            overdue: [...reports, ...potholes].filter(isOverdue).length,
+            activeOfficers: users.filter(u => u.role === 'MAINTENANCE_OFFICER').length
+        };
+    }, [reports, potholes, users]);
 
-        const reportsThisWeekCount = fReports.filter(r => isAfter(new Date(r.createdAt), subDays(new Date(), 7))).length;
+    const provinceSummary = useMemo(() => {
+        return PROVINCIAL_COUNCILS.map(pc => {
+            const pReports = reports.filter(r => r.provincialCouncil === pc);
+            const pPotholes = potholes.filter(p => p.provincialCouncil === pc);
+            return {
+                name: pc,
+                total: pReports.length + pPotholes.length,
+                pending: pReports.filter(r => r.aiStatus === 'PENDING').length,
+                active: pPotholes.filter(p => ['In Progress', 'Scheduled'].includes(p.status)).length
+            };
+        }).sort((a, b) => b.total - a.total);
+    }, [reports, potholes]);
 
-        const aiReportsWithConf = fReports.filter(r => r.aiConfidence !== undefined);
-        const avgAiConfidence = aiReportsWithConf.length > 0
-            ? aiReportsWithConf.reduce((acc, r) => acc + (r.aiConfidence || 0), 0) / aiReportsWithConf.length
-            : 0;
-
-        const confirmedPotholes = fPotholes.filter(p => p.status === 'Confirmed').length;
-        const scheduledRepairs = fPotholes.filter(p => p.status === 'Scheduled').length;
-        const fixedPotholes = fPotholes.filter(p => p.status === 'Fixed').length;
-
-        const calculatedStats = [
-            { title: 'Total Reports', value: totalReports, icon: FileText, trend: `${fReports.filter(r => isAfter(new Date(r.createdAt), subDays(new Date(), 30))).length} this month`, colorClass: 'bg-blue-600' },
-            { title: 'Pending Review', value: pendingReview, icon: Clock, trend: 'Action Required', colorClass: 'bg-amber-500' },
-            { title: 'Avg AI Confidence', value: `${(avgAiConfidence * 100).toFixed(1)}%`, icon: Target, trend: 'Detection quality', colorClass: 'bg-slate-900' },
-            { title: 'Reports This Week', value: reportsThisWeekCount, icon: Calendar, trend: 'Last 7 days', colorClass: 'bg-indigo-500' },
-            { title: 'Confirmed Nodes', value: confirmedPotholes, icon: AlertTriangle, trend: 'Awaiting Schedule', colorClass: 'bg-orange-500' },
-            { title: 'Scheduled Repairs', value: scheduledRepairs, icon: HardHat, trend: 'In Pipeline', colorClass: 'bg-purple-500' },
-            { title: 'Fixed Surface', value: fixedPotholes, icon: Hammer, trend: 'Resolved issues', colorClass: 'bg-emerald-500' },
-            { title: 'Rejected Submissions', value: rejectedSubmissions, icon: XCircle, trend: 'Low priority', colorClass: 'bg-rose-500' },
-        ];
-
-        // Group all reports by day of week
-        const today = new Date();
-        const last7Days = Array.from({ length: 7 }).map((_, i) => format(subDays(today, 6 - i), 'EEE'));
-
-        const trendData = last7Days.map(dayName => ({ name: dayName, count: 0 }));
-        fReports.forEach(r => {
-            const rDate = new Date(r.createdAt);
-            if (isAfter(rDate, subDays(today, 7))) {
-                const dName = format(rDate, 'EEE');
-                const dayEntry = trendData.find(d => d.name === dName);
-                if (dayEntry) dayEntry.count++;
-            }
-        });
-
-        const statusCounts = [
-            { name: 'New', value: fPotholes.filter(p => p.status === 'New').length },
-            { name: 'Confirmed', value: fPotholes.filter(p => p.status === 'Confirmed').length },
-            { name: 'Scheduled', value: fPotholes.filter(p => p.status === 'Scheduled').length },
-            { name: 'Fixed', value: fPotholes.filter(p => p.status === 'Fixed').length },
-            { name: 'Rejected', value: fPotholes.filter(p => p.status === 'Rejected').length },
-        ].filter(d => d.value > 0);
-
-        const repairData = [
-            { stage: 'New', count: fPotholes.filter(p => p.status === 'New').length },
-            { stage: 'Confirmed', count: fPotholes.filter(p => p.status === 'Confirmed').length },
-            { stage: 'Scheduled', count: fPotholes.filter(p => p.status === 'Scheduled').length },
-            { stage: 'Fixed', count: fPotholes.filter(p => p.status === 'Fixed').length },
-        ];
-
-        return { stats: calculatedStats, statusData: statusCounts, weeklyTrendData: trendData, repairProgressData: repairData, filteredPotholes: fPotholes };
-    }, [potholes, reports, provinceFilter]);
-
-    if (error) {
-        return (
-            <div className="space-y-8 animate-fade-in-up pb-12">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div>
-                        <h1 className="section-heading mb-1">Municipality Overview</h1>
-                        <p className="text-slate-500 font-bold text-sm">Real-time telemetry and infrastructure tracking dashboard.</p>
-                    </div>
-                </div>
-                <div className="flex flex-col items-center justify-center py-20 text-center bg-white rounded-3xl border border-slate-100 shadow-sm">
-                    <div className="w-16 h-16 bg-rose-50 rounded-full flex items-center justify-center mb-4">
-                        <XCircle className="text-rose-500 w-8 h-8" />
-                    </div>
-                    <h2 className="text-xl font-black text-slate-900 mb-2 tracking-tight uppercase">Failed to load data</h2>
-                    <p className="text-slate-500 font-bold">{error}</p>
-                </div>
-            </div>
-        );
-    }
-
-    if (!loading && potholes.length === 0 && reports.length === 0) {
-        return (
-            <div className="space-y-8 animate-fade-in-up pb-12">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div>
-                        <h1 className="section-heading mb-1">Municipality Overview</h1>
-                        <p className="text-slate-500 font-bold text-sm">Real-time telemetry and infrastructure tracking dashboard.</p>
-                    </div>
-                </div>
-                <div className="flex flex-col items-center justify-center py-20 text-center bg-white rounded-3xl border border-slate-100 shadow-sm">
-                    <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
-                        <Inbox className="text-slate-400 w-8 h-8" />
-                    </div>
-                    <h2 className="text-xl font-black text-slate-900 mb-2 tracking-tight uppercase">No Data Available</h2>
-                    <p className="text-slate-500 font-bold">There are currently no reports or potholes in the system.</p>
-                </div>
-            </div>
-        );
-    }
+    const attentionReports = useMemo(() => {
+        return reports.filter(r => r.aiStatus === 'PENDING').slice(0, 5);
+    }, [reports]);
 
     return (
-        <div className="space-y-8 animate-fade-in-up pb-12">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="space-y-10 pb-12 animate-in fade-in duration-700">
+            {/* Page Header */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div>
-                    <h1 className="section-heading mb-1">Municipality Overview</h1>
-                    <p className="text-slate-500 font-bold text-sm">Real-time telemetry and infrastructure tracking dashboard.</p>
+                    <h1 className="text-3xl font-black text-slate-900 tracking-tight uppercase">System Governance</h1>
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Global infrastructure oversight and operations</p>
                 </div>
-                <div className="flex flex-col sm:flex-row items-end sm:items-center gap-3">
-                    <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white p-1.5 shadow-sm">
-                        <MapPin size={14} className="ml-2 text-slate-400" />
-                        <select
-                            value={provinceFilter}
-                            onChange={e => setProvinceFilter(e.target.value as any)}
-                            className="rounded-lg bg-slate-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-slate-700 outline-none border-none"
-                        >
-                            <option value="All">All Provinces</option>
-                            {PROVINCIAL_COUNCILS.map(pc => (
-                                <option key={pc} value={pc}>{pc}</option>
-                            ))}
-                        </select>
-                    </div>
-                    <div className={cn(
-                        "flex items-center gap-2 px-3 py-2 rounded-xl border shadow-sm transition-colors",
-                        isBackendHealthy ? "bg-emerald-50 border-emerald-100" : "bg-rose-50 border-rose-100"
-                    )}>
-                        <Database size={14} className={isBackendHealthy ? "text-emerald-500" : "text-rose-500"} />
-                        <span className={cn(
-                            "text-[9px] font-black uppercase tracking-widest",
-                            isBackendHealthy ? "text-emerald-700" : "text-rose-700"
-                        )}>
-                            {isBackendHealthy ? "Backend Connected" : "Backend Unavailable (Mock Data)"}
-                        </span>
-                    </div>
-
-                    <div className="flex items-center gap-3 px-4 py-2 bg-white rounded-xl border border-slate-200 shadow-sm">
+                <div className="flex items-center gap-3">
+                    <div className="h-10 px-4 bg-white rounded-xl border border-slate-100 shadow-sm flex items-center gap-3">
                         <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                        <span className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Live Sync Active</span>
-                        <span className="text-[10px] font-bold text-slate-400 border-l border-slate-200 pl-3">{currentTime.toLocaleTimeString()}</span>
+                        <span className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Sys Operational</span>
                     </div>
+                    <button 
+                        onClick={loadData}
+                        className="h-10 w-10 flex items-center justify-center bg-white rounded-xl border border-slate-100 shadow-sm text-slate-400 hover:text-blue-600 transition-colors"
+                        title="Refresh Data"
+                    >
+                        <Zap size={18} />
+                    </button>
                 </div>
             </div>
 
-            {/* KPI Grid */}
+            {/* Stats Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                {stats.map((stat, i) => (
-                    <StatCard key={i} {...stat} loading={loading} />
-                ))}
+                <StatCard 
+                    title="Total Reports" 
+                    value={stats.totalReports} 
+                    icon={FileText} 
+                    colorClass="bg-blue-600 shadow-blue-600/20" 
+                    loading={loading} 
+                />
+                <StatCard 
+                    title="Verified Issues" 
+                    value={stats.verifiedReports} 
+                    icon={CheckCircle2} 
+                    colorClass="bg-emerald-500 shadow-emerald-500/20" 
+                    loading={loading} 
+                />
+                <StatCard 
+                    title="Needs Review" 
+                    value={stats.manualReview} 
+                    icon={Clock} 
+                    colorClass="bg-amber-500 shadow-amber-500/20" 
+                    loading={loading} 
+                />
+                <StatCard 
+                    title="In Progress" 
+                    value={stats.inProgress} 
+                    icon={Wrench} 
+                    colorClass="bg-indigo-500 shadow-indigo-500/20" 
+                    loading={loading} 
+                />
+                <StatCard 
+                    title="Completed" 
+                    value={stats.completed} 
+                    icon={HardHat} 
+                    colorClass="bg-slate-900 shadow-slate-900/20" 
+                    loading={loading} 
+                />
+                <StatCard 
+                    title="Rejected" 
+                    value={stats.rejected} 
+                    icon={XCircle} 
+                    colorClass="bg-slate-400 shadow-slate-400/20" 
+                    loading={loading} 
+                />
+                <StatCard 
+                    title="Overdue" 
+                    value={stats.overdue} 
+                    icon={AlertTriangle} 
+                    colorClass="bg-rose-500 shadow-rose-500/20" 
+                    loading={loading} 
+                />
+                <StatCard 
+                    title="Active Officers" 
+                    value={stats.activeOfficers} 
+                    icon={Users} 
+                    colorClass="bg-blue-400 shadow-blue-400/20" 
+                    loading={loading} 
+                />
             </div>
 
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-                {/* Main Trend Chart */}
-                <div className="xl:col-span-2 card-premium p-8">
-                    <div className="flex items-center justify-between mb-8">
-                        <div>
-                            <h4 className="text-lg font-black text-slate-900 tracking-tight uppercase">Weekly Report Submissions</h4>
-                            <p className="text-xs font-bold text-slate-400">Trend of incoming citizen reports over the last 7 days</p>
-                        </div>
-                        <div className="px-3 py-1 bg-slate-50 rounded-lg text-[10px] font-black text-slate-500 uppercase tracking-widest border border-slate-100">
-                            Last 7 Days
-                        </div>
-                    </div>
-                    <div className="h-[320px]">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <LineChart data={weeklyTrendData}>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
-                                <XAxis
-                                    dataKey="name"
-                                    axisLine={false}
-                                    tickLine={false}
-                                    tick={{ fontSize: 10, fill: '#94A3B8', fontWeight: 900 }}
-                                    dy={10}
-                                />
-                                <YAxis
-                                    axisLine={false}
-                                    tickLine={false}
-                                    tick={{ fontSize: 10, fill: '#94A3B8', fontWeight: 900 }}
-                                />
-                                <Tooltip
-                                    contentStyle={{
-                                        backgroundColor: '#0F172A',
-                                        borderRadius: '16px',
-                                        border: 'none',
-                                        color: '#fff',
-                                        boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.2)'
-                                    }}
-                                    itemStyle={{ fontSize: '11px', fontWeight: 900, color: '#fff', textTransform: 'uppercase' }}
-                                />
-                                <Line
-                                    type="monotone"
-                                    dataKey="count"
-                                    stroke="#3B82F6"
-                                    strokeWidth={4}
-                                    dot={{ r: 4, strokeWidth: 2, fill: '#fff', stroke: '#3B82F6' }}
-                                    activeDot={{ r: 8, fill: '#2563EB', strokeWidth: 4, stroke: '#fff' }}
-                                    name="Reports Submitted"
-                                />
-                            </LineChart>
-                        </ResponsiveContainer>
-                    </div>
-                </div>
-
-                {/* Status Breakdown */}
-                <div className="card-premium p-8 flex flex-col">
-                    <h4 className="text-lg font-black text-slate-900 tracking-tight mb-1 uppercase">Defect Status</h4>
-                    <p className="text-xs font-bold text-slate-400 mb-8">Distribution of all logged infrastructure defects</p>
-                    <div className="h-[220px] flex-shrink-0">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                                <Pie
-                                    data={statusData}
-                                    cx="50%"
-                                    cy="50%"
-                                    innerRadius={60}
-                                    outerRadius={80}
-                                    paddingAngle={8}
-                                    dataKey="value"
-                                    stroke="none"
-                                >
-                                    {statusData.map((entry, index) => (
-                                        <Cell
-                                            key={`cell-${index}`}
-                                            fill={STATUS_COLORS[entry.name as keyof typeof STATUS_COLORS] || '#CBD5E1'}
-                                            className="hover:opacity-80 transition-opacity outline-none"
-                                        />
-                                    ))}
-                                </Pie>
-                                <Tooltip
-                                    contentStyle={{
-                                        backgroundColor: '#0F172A',
-                                        borderRadius: '12px',
-                                        border: 'none',
-                                        boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.2)'
-                                    }}
-                                    itemStyle={{ fontSize: '10px', fontWeight: 900, color: '#fff', textTransform: 'uppercase' }}
-                                />
-                            </PieChart>
-                        </ResponsiveContainer>
-                    </div>
-                    <div className="mt-auto space-y-3 pt-6">
-                        {statusData.map((s) => (
-                            <div key={s.name} className="flex items-center justify-between group">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-2.5 h-2.5 rounded-full ring-4 ring-white shadow-sm" style={{ backgroundColor: STATUS_COLORS[s.name as keyof typeof STATUS_COLORS] || '#CBD5E1' }} />
-                                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{s.name}</span>
-                                </div>
-                                <span className="text-xs font-black text-slate-900 bg-slate-50 px-2.5 py-1 rounded-lg min-w-[32px] text-center tracking-tight border border-slate-100">{s.value}</span>
+                {/* Province Summary */}
+                <div className="xl:col-span-2 space-y-8">
+                    <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-premium overflow-hidden">
+                        <div className="p-8 border-b border-slate-50 flex items-center justify-between">
+                            <div>
+                                <h4 className="text-lg font-black text-slate-900 tracking-tight uppercase">Provincial Jurisdictions</h4>
+                                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-0.5">Operational load per region</p>
                             </div>
-                        ))}
-                    </div>
-                </div>
-            </div>
-
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-                {/* Repair Progress Bar Chart */}
-                <div className="card-premium p-8">
-                    <div className="flex items-center justify-between mb-8">
-                        <div>
-                            <h4 className="text-lg font-black text-slate-900 tracking-tight uppercase">Repair Progress Pipeline</h4>
-                            <p className="text-xs font-bold text-slate-400">Current stages of active maintenance requests</p>
+                            <MapPin size={20} className="text-slate-300" />
                         </div>
-                    </div>
-                    <div className="h-[280px]">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={repairProgressData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
-                                <XAxis
-                                    dataKey="stage"
-                                    axisLine={false}
-                                    tickLine={false}
-                                    tick={{ fontSize: 10, fill: '#94A3B8', fontWeight: 900 }}
-                                    dy={10}
-                                />
-                                <YAxis
-                                    axisLine={false}
-                                    tickLine={false}
-                                    tick={{ fontSize: 10, fill: '#94A3B8', fontWeight: 900 }}
-                                />
-                                <Tooltip
-                                    cursor={{ fill: '#F8FAFC' }}
-                                    contentStyle={{
-                                        backgroundColor: '#0F172A',
-                                        borderRadius: '12px',
-                                        border: 'none',
-                                        color: '#fff',
-                                        boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)'
-                                    }}
-                                    itemStyle={{ fontSize: '10px', fontWeight: 900, color: '#fff', textTransform: 'uppercase' }}
-                                />
-                                <Bar dataKey="count" radius={[6, 6, 0, 0]} barSize={40}>
-                                    {repairProgressData.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={STATUS_COLORS[entry.stage as keyof typeof STATUS_COLORS] || '#94A3B8'} />
+                        <div className="overflow-x-auto">
+                            <table className="w-full">
+                                <thead>
+                                    <tr className="bg-slate-50/50">
+                                        <th className="px-8 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Province</th>
+                                        <th className="px-8 py-4 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Reports</th>
+                                        <th className="px-8 py-4 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest">Needs Review</th>
+                                        <th className="px-8 py-4 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest">Active Repairs</th>
+                                        <th className="px-8 py-4 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-50">
+                                    {provinceSummary.map((p) => (
+                                        <tr key={p.name} className="hover:bg-slate-50/30 transition-colors">
+                                            <td className="px-8 py-5">
+                                                <div className="flex flex-col">
+                                                    <span className="text-sm font-black text-slate-900">{p.name}</span>
+                                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">{getProvinceShortName(p.name)} Unit</span>
+                                                </div>
+                                            </td>
+                                            <td className="px-8 py-5 text-center font-bold text-slate-900">{p.total}</td>
+                                            <td className="px-8 py-5 text-center">
+                                                <span className={cn(
+                                                    "px-3 py-1 rounded-full text-[10px] font-black",
+                                                    p.pending > 0 ? "bg-amber-50 text-amber-600" : "bg-slate-50 text-slate-400"
+                                                )}>
+                                                    {p.pending}
+                                                </span>
+                                            </td>
+                                            <td className="px-8 py-5 text-center font-bold text-blue-600">{p.active}</td>
+                                            <td className="px-8 py-5 text-right">
+                                                <div className="flex items-center justify-end gap-2">
+                                                    <div className={cn("w-2 h-2 rounded-full", p.pending > 5 ? "bg-rose-500" : p.pending > 0 ? "bg-amber-500" : "bg-emerald-500")} />
+                                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                                        {p.pending > 5 ? "Critical" : p.pending > 0 ? "Active" : "Clear"}
+                                                    </span>
+                                                </div>
+                                            </td>
+                                        </tr>
                                     ))}
-                                </Bar>
-                            </BarChart>
-                        </ResponsiveContainer>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    {/* Attention List */}
+                    <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-premium overflow-hidden">
+                        <div className="p-8 border-b border-slate-50 flex items-center justify-between">
+                            <div>
+                                <h4 className="text-lg font-black text-slate-900 tracking-tight uppercase">Awaiting Authorization</h4>
+                                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-0.5">High-priority reports requiring manual validation</p>
+                            </div>
+                            <ShieldAlert size={20} className="text-amber-500" />
+                        </div>
+                        <div className="divide-y divide-slate-50">
+                            {attentionReports.length > 0 ? attentionReports.map((report) => (
+                                <div key={report.id} className="p-6 flex items-center justify-between hover:bg-slate-50/30 transition-all group">
+                                    <div className="flex items-center gap-6">
+                                        <div className="h-14 w-14 rounded-2xl overflow-hidden shadow-sm border border-slate-100 shrink-0">
+                                            <img src={report.imageUrl} alt="Damage" className="h-full w-full object-cover" />
+                                        </div>
+                                        <div>
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest">#{report.id.split('-')[0]}</span>
+                                                <span className="text-[10px] font-bold text-slate-300">•</span>
+                                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{formatDistanceToNow(new Date(report.createdAt), { addSuffix: true })}</span>
+                                            </div>
+                                            <h5 className="text-sm font-black text-slate-900 leading-none truncate max-w-md">{report.description || 'No description provided'}</h5>
+                                        </div>
+                                    </div>
+                                    <Link 
+                                        to={`/admin/reports`}
+                                        className="h-10 px-4 flex items-center gap-2 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-black transition-all shadow-lg shadow-slate-900/10 active:scale-95"
+                                    >
+                                        Review <ChevronRight size={14} />
+                                    </Link>
+                                </div>
+                            )) : (
+                                <div className="p-12 text-center">
+                                    <CheckCircle2 size={32} className="mx-auto text-emerald-500 mb-4" />
+                                    <p className="text-sm font-black text-slate-900 uppercase tracking-widest">Queue is Clear</p>
+                                    <p className="text-xs font-bold text-slate-400 mt-1">No reports currently require manual attention.</p>
+                                </div>
+                            )}
+                        </div>
+                        {attentionReports.length > 0 && (
+                            <div className="p-4 bg-slate-50/50 border-t border-slate-50">
+                                <Link to="/admin/reports" className="flex items-center justify-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-slate-900 transition-colors">
+                                    View full verification queue <ArrowRight size={12} />
+                                </Link>
+                            </div>
+                        )}
                     </div>
                 </div>
 
-                {/* Map View */}
-                <div className="card-premium h-[420px] overflow-hidden flex flex-col">
-                    <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50 shrink-0">
-                        <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest">Active Geographical Hotspots</h4>
-                        <div className="flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Live Map Tracking</span>
+                {/* Sidebar Column */}
+                <div className="space-y-8">
+                    {/* Recent Activity */}
+                    <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-premium overflow-hidden">
+                        <div className="p-8 border-b border-slate-50 flex items-center justify-between">
+                            <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest">Operational Audit</h4>
+                            <History size={16} className="text-slate-300" />
+                        </div>
+                        <div className="p-8 space-y-8">
+                            {auditLogs.slice(0, 6).map((log, i) => (
+                                <div key={log.id} className="flex gap-4 relative">
+                                    {i !== 5 && <div className="absolute left-[7px] top-4 w-[2px] h-12 bg-slate-100" />}
+                                    <div className={cn(
+                                        "w-4 h-4 rounded-full mt-1 border-2 border-white shadow-sm shrink-0 z-10",
+                                        log.action.includes('ACCEPTED') ? "bg-emerald-500" :
+                                        log.action.includes('REJECTED') ? "bg-rose-500" : "bg-blue-500"
+                                    )} />
+                                    <div className="space-y-1">
+                                        <p className="text-xs font-bold text-slate-800 leading-tight">
+                                            <span className="font-black text-slate-900">{log.actorName}</span> {log.details}
+                                        </p>
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">
+                                            {formatDistanceToNow(new Date(log.timestamp), { addSuffix: true })}
+                                        </p>
+                                    </div>
+                                </div>
+                            ))}
+                            <Link to="/admin/audit-logs" className="block text-center text-[10px] font-black text-blue-600 uppercase tracking-widest hover:underline pt-4">
+                                View Security Logs
+                            </Link>
                         </div>
                     </div>
-                    <div className="flex-1 relative z-0">
-                        <MapContainer center={[6.9271, 79.8612]} zoom={10} style={{ height: '100%', width: '100%' }}>
-                            <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                            {filteredPotholes.slice(0, 15).map((p) => (
-                                <Marker key={p.id} position={[p.lat, p.lon]}>
-                                    <Popup>
-                                        <div className="p-1">
-                                            <p className="text-[10px] font-black text-slate-900 uppercase mb-1">#{p.id.split('-')[0]}</p>
-                                            <p className="text-[11px] font-bold text-slate-500">{p.roadName}</p>
-                                        </div>
-                                    </Popup>
-                                </Marker>
-                            ))}
-                        </MapContainer>
+
+                    {/* Quick Actions */}
+                    <div className="bg-[#0f172a] rounded-[2.5rem] p-8 shadow-2xl shadow-slate-900/20 text-white">
+                        <h4 className="text-sm font-black uppercase tracking-widest mb-6 flex items-center gap-2">
+                            <Zap size={14} className="text-blue-400" />
+                            Tactical Actions
+                        </h4>
+                        <div className="grid grid-cols-1 gap-3">
+                            <Link to="/admin/reports" className="flex items-center justify-between p-4 bg-white/5 hover:bg-white/10 rounded-2xl border border-white/5 transition-all group">
+                                <div className="flex items-center gap-3">
+                                    <CheckCircle2 size={18} className="text-blue-400" />
+                                    <span className="text-xs font-bold">Mass Verify Reports</span>
+                                </div>
+                                <ChevronRight size={14} className="text-white/20 group-hover:text-white" />
+                            </Link>
+                            <Link to="/admin/users" className="flex items-center justify-between p-4 bg-white/5 hover:bg-white/10 rounded-2xl border border-white/5 transition-all group">
+                                <div className="flex items-center gap-3">
+                                    <UserPlus size={18} className="text-blue-400" />
+                                    <span className="text-xs font-bold">Add Field Personnel</span>
+                                </div>
+                                <ChevronRight size={14} className="text-white/20 group-hover:text-white" />
+                            </Link>
+                            <Link to="/admin/settings" className="flex items-center justify-between p-4 bg-white/5 hover:bg-white/10 rounded-2xl border border-white/5 transition-all group">
+                                <div className="flex items-center gap-3">
+                                    <Settings size={18} className="text-blue-400" />
+                                    <span className="text-xs font-bold">System Configuration</span>
+                                </div>
+                                <ChevronRight size={14} className="text-white/20 group-hover:text-white" />
+                            </Link>
+                        </div>
+                    </div>
+
+                    {/* System Info */}
+                    <div className="p-8 bg-slate-50 rounded-[2.5rem] border border-slate-100">
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="p-2 bg-white rounded-xl shadow-sm">
+                                <TrendingUp size={16} className="text-slate-400" />
+                            </div>
+                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Global Stats</span>
+                        </div>
+                        <div className="space-y-4">
+                            <div>
+                                <div className="flex justify-between mb-1">
+                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Repair Efficiency</span>
+                                    <span className="text-[10px] font-black text-slate-900">84%</span>
+                                </div>
+                                <div className="h-1.5 w-full bg-slate-200 rounded-full overflow-hidden">
+                                    <div className="h-full bg-blue-600 rounded-full w-[84%]" />
+                                </div>
+                            </div>
+                            <div>
+                                <div className="flex justify-between mb-1">
+                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">System Load</span>
+                                    <span className="text-[10px] font-black text-slate-900">22%</span>
+                                </div>
+                                <div className="h-1.5 w-full bg-slate-200 rounded-full overflow-hidden">
+                                    <div className="h-full bg-slate-900 rounded-full w-[22%]" />
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
