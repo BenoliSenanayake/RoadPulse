@@ -89,6 +89,7 @@ export const MOCK_REPORTS: CitizenReport[] = [
         imageUrl: 'https://picsum.photos/seed/cr101/800/600',
         aiStatus: 'PENDING',
         provincialCouncil: 'Western Provincial Council',
+        district: 'Colombo',
         provinceDetectionMethod: 'GPS_BOUNDARY',
         status: 'New',
         createdAt: subDays(new Date(), 1).toISOString()
@@ -104,6 +105,7 @@ export const MOCK_REPORTS: CitizenReport[] = [
         aiStatus: 'ACCEPTED',
         aiConfidence: 0.92,
         provincialCouncil: 'Central Provincial Council',
+        district: 'Kandy',
         provinceDetectionMethod: 'GPS_BOUNDARY',
         status: 'New',
         createdAt: subDays(new Date(), 3).toISOString()
@@ -118,6 +120,7 @@ export const MOCK_REPORTS: CitizenReport[] = [
         imageUrl: 'https://picsum.photos/seed/cr103/800/600',
         aiStatus: 'PENDING',
         provincialCouncil: 'Southern Provincial Council',
+        district: 'Galle',
         provinceDetectionMethod: 'GPS_BOUNDARY',
         status: 'New',
         createdAt: subDays(new Date(), 2).toISOString()
@@ -133,6 +136,7 @@ export const MOCK_REPORTS: CitizenReport[] = [
         aiStatus: 'REJECTED',
         aiReason: 'Image quality too low for verification.',
         provincialCouncil: 'Western Provincial Council',
+        district: 'Gampaha',
         provinceDetectionMethod: 'GPS_BOUNDARY',
         status: 'Discarded',
         createdAt: subDays(new Date(), 5).toISOString()
