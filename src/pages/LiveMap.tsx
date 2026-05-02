@@ -19,7 +19,8 @@ import {
     X,
     ChevronRight,
     Wrench,
-    CheckCircle
+    CheckCircle,
+    Play
 } from 'lucide-react';
 import { subDays, isAfter } from 'date-fns';
 import { potholesApi } from '../lib/api';
@@ -27,11 +28,11 @@ import type { PotholeEvent, PotholeStatus, RepairPriority } from '../types';
 import { StatusPill } from '../components/StatusPill';
 import { cn } from '../lib/utils';
 import { useAuth } from '../context/AuthContext';
-import { getProvinceShortName } from '../lib/provinceResolver';
+import { getProvinceShortName, PROVINCE_DISTRICTS } from '../lib/provinceResolver';
 import 'leaflet/dist/leaflet.css';
 
 const PRIORITIES: RepairPriority[] = ['Low', 'Medium', 'High', 'Urgent'];
-const STATUSES: Array<PotholeStatus | 'All'> = ['All', 'Verified', 'In Progress', 'Completed'];
+const STATUSES: Array<PotholeStatus | 'All'> = ['All', 'Verified', 'In Progress'];
 
 const MapController = ({ center }: { center: [number, number] | null }) => {
     const map = useMap();
@@ -42,29 +43,28 @@ const MapController = ({ center }: { center: [number, number] | null }) => {
 };
 
 const getMarkerIcon = (pothole: PotholeEvent) => {
-    // Verified = Amber, In Progress = Blue, Completed = Emerald, Default = Slate
-    const statusColor = pothole.status === 'Verified' ? '#F59E0B' 
+    // Verified = Green, In Progress = Blue
+    const statusColor = pothole.status === 'Verified' ? '#10B981' 
         : pothole.status === 'In Progress' ? '#2563EB'
-        : ['Completed', 'Fixed'].includes(pothole.status) ? '#10B981'
         : '#64748B';
 
     const html = `
         <div style="
             background-color: ${statusColor};
-            width: 26px;
-            height: 26px;
+            width: 24px;
+            height: 24px;
             border-radius: 999px;
             border: 3px solid white;
-            box-shadow: 0 8px 18px rgba(15, 23, 42, 0.28);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         "></div>
     `;
 
     return L.divIcon({
         html,
         className: 'roadpulse-marker',
-        iconSize: [26, 26],
-        iconAnchor: [13, 13],
-        popupAnchor: [0, -12],
+        iconSize: [24, 24],
+        iconAnchor: [12, 12],
+        popupAnchor: [0, -10],
     });
 };
 
@@ -88,9 +88,15 @@ const LiveMap = () => {
         setError('');
         try {
             let data = await potholesApi.list();
+            
+            // Access Control: Province-based visibility
             if (province && province !== 'Unassigned') {
                 data = data.filter(p => p.provincialCouncil === province);
             }
+
+            // Status Restriction: Only Verified and In Progress
+            data = data.filter(p => ['Verified', 'Confirmed', 'In Progress'].includes(p.status));
+            
             setPotholes(data);
         } catch {
             setError('Failed to load map data. Please try again later.');
@@ -104,9 +110,14 @@ const LiveMap = () => {
     }, [province]);
 
     const districts = useMemo(() => {
+        if (province && province !== 'Unassigned') {
+            // Use canonical districts for the province
+            const provinceDistricts = PROVINCE_DISTRICTS[province] || [];
+            return ['All', ...provinceDistricts];
+        }
         const values = new Set(potholes.map(p => p.district).filter(Boolean));
         return ['All', ...Array.from(values)] as string[];
-    }, [potholes]);
+    }, [potholes, province]);
 
     const filtered = useMemo(() => {
         return potholes.filter(p => {
@@ -114,8 +125,8 @@ const LiveMap = () => {
                 || p.roadName?.toLowerCase().includes(searchTerm.toLowerCase())
                 || p.district?.toLowerCase().includes(searchTerm.toLowerCase());
             
-            const normalizedStatus = ['Fixed', 'Completed'].includes(p.status) ? 'Completed' : p.status;
-            const matchesStatus = statusFilter === 'All' || normalizedStatus === statusFilter;
+            // Only Verified and In Progress are allowed on this map
+            const matchesStatus = statusFilter === 'All' || p.status === statusFilter;
             const matchesPriority = priorityFilter === 'All' || p.priority === priorityFilter;
             const matchesDistrict = areaFilter === 'All' || p.district === areaFilter;
 
@@ -138,7 +149,12 @@ const LiveMap = () => {
         if (!selected) return;
         await potholesApi.updateStatus(selected.id, status, `Field update from live map by ${user?.name || 'officer'}.`, user?.name);
         await loadMapData();
-        setSelected(prev => prev ? { ...prev, status, repairStatus: status } : prev);
+        // If it becomes completed, it should disappear from the map
+        if (status === 'Completed') {
+            setSelected(null);
+        } else {
+            setSelected(prev => prev ? { ...prev, status, repairStatus: status } : prev);
+        }
     };
 
     if (loading) {
@@ -196,6 +212,20 @@ const LiveMap = () => {
                         )}
                     </div>
                     <p className="text-sm font-black">{filtered.length} visible points</p>
+                </div>
+
+                <div className="absolute left-4 bottom-10 z-[1000] rounded-2xl bg-white/95 p-4 shadow-xl border border-slate-100 backdrop-blur min-w-[140px]">
+                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-3 border-b border-slate-50 pb-2">Map Legend</p>
+                    <div className="space-y-2.5">
+                        <div className="flex items-center gap-2.5">
+                            <div className="w-3 h-3 rounded-full bg-[#10B981] ring-4 ring-emerald-500/10" />
+                            <span className="text-[10px] font-black text-slate-700 uppercase tracking-tight">Verified</span>
+                        </div>
+                        <div className="flex items-center gap-2.5">
+                            <div className="w-3 h-3 rounded-full bg-[#2563EB] ring-4 ring-blue-500/10" />
+                            <span className="text-[10px] font-black text-slate-700 uppercase tracking-tight">In Progress</span>
+                        </div>
+                    </div>
                 </div>
 
                 <div className="absolute right-4 top-4 z-[1000] flex flex-col gap-2">
@@ -277,35 +307,37 @@ const LiveMap = () => {
 
                             <div className="grid grid-cols-2 gap-3">
                                 <Detail label="Discovery Date" value={new Date(selected.createdAt || selected.timestamp).toLocaleDateString()} />
+                                <Detail label="Last Update" value={selected.updatedAt ? new Date(selected.updatedAt).toLocaleDateString() : 'Initial Discovery'} />
                                 <Detail label="GPS Lat/Lon" value={`${selected.lat.toFixed(4)}, ${selected.lon.toFixed(4)}`} />
+                                <Detail label="Record ID" value={`#${selected.id.split('-')[0]}`} />
                             </div>
 
                             {selected.maintenanceNotes && (
                                 <div className="rounded-2xl bg-slate-50 p-5 border border-slate-100/50">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Field Maintenance Rationale</p>
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Maintenance Observations</p>
                                     <p className="text-xs font-bold leading-relaxed text-slate-600 italic">"{selected.maintenanceNotes}"</p>
                                 </div>
                             )}
 
                             <div className="space-y-3 pt-4 border-t border-slate-50">
-                                <div className="grid grid-cols-2 gap-3">
+                                {selected.status === 'Verified' && (
                                     <button 
                                         onClick={() => updateStatus('In Progress')} 
-                                        disabled={selected.status === 'In Progress' || ['Completed', 'Fixed'].includes(selected.status)}
-                                        className="flex items-center justify-center gap-2 rounded-xl bg-blue-50 py-3 text-[10px] font-black uppercase tracking-widest text-blue-700 hover:bg-blue-100 transition-colors disabled:opacity-40"
+                                        className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 py-4 text-[10px] font-black uppercase tracking-widest text-white shadow-xl shadow-blue-600/20 hover:bg-blue-700 transition-all"
                                     >
-                                        <Play size={14} /> Start Repair
+                                        <Play size={14} /> Initialize Repair
                                     </button>
+                                )}
+                                {selected.status === 'In Progress' && (
                                     <button 
                                         onClick={() => updateStatus('Completed')} 
-                                        disabled={['Completed', 'Fixed'].includes(selected.status)}
-                                        className="flex items-center justify-center gap-2 rounded-xl bg-emerald-50 py-3 text-[10px] font-black uppercase tracking-widest text-emerald-700 hover:bg-emerald-100 transition-colors disabled:opacity-40"
+                                        className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 py-4 text-[10px] font-black uppercase tracking-widest text-white shadow-xl shadow-emerald-600/20 hover:bg-emerald-700 transition-all"
                                     >
-                                        <CheckCircle size={14} /> Mark Fixed
+                                        <CheckCircle size={14} /> Finalize Maintenance
                                     </button>
-                                </div>
+                                )}
                                 <Link to={`/potholes/${selected.id}`} className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 py-4 text-[10px] font-black uppercase tracking-widest text-white shadow-xl shadow-slate-900/20 hover:bg-black transition-all">
-                                    Open Full Records <ChevronRight size={14} />
+                                    Open Record Details <ChevronRight size={14} />
                                 </Link>
                             </div>
                         </div>
@@ -317,7 +349,7 @@ const LiveMap = () => {
                 <div className="fixed inset-0 z-[3000] bg-slate-950/50 backdrop-blur-sm md:hidden">
                     <div className="absolute inset-y-0 right-0 w-[86%] max-w-sm overflow-y-auto bg-white p-6 shadow-2xl">
                         <div className="mb-6 flex items-center justify-between border-b border-slate-100 pb-5">
-                            <h3 className="text-sm font-black text-slate-950 uppercase tracking-tight">Map Intelligence Filters</h3>
+                            <h3 className="text-sm font-black text-slate-950 uppercase tracking-tight">Geospatial Intelligence</h3>
                             <button onClick={() => setIsFilterDrawerOpen(false)} className="rounded-xl bg-slate-50 p-2 text-slate-500">
                                 <X size={18} />
                             </button>
@@ -336,7 +368,7 @@ const LiveMap = () => {
                             districts={districts}
                         />
                         <button onClick={() => setIsFilterDrawerOpen(false)} className="mt-6 w-full rounded-xl bg-slate-900 py-4 text-xs font-black uppercase tracking-widest text-white shadow-xl">
-                            Update View
+                            Close & Sync
                         </button>
                     </div>
                 </div>
@@ -374,16 +406,16 @@ const FilterPanel = ({
 }: FilterPanelProps) => (
     <div className="rounded-[2rem] border border-slate-100 bg-white p-6 shadow-sm">
         <h2 className="mb-6 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
-            <Filter size={13} /> Geospatial Filters
+            <Filter size={13} /> Map Configuration
         </h2>
         <div className="space-y-6">
             <div className="relative">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
-                <input value={searchTerm} onChange={event => setSearchTerm(event.target.value)} placeholder="Search location or ID..." className="w-full rounded-2xl bg-slate-50 py-3.5 pl-11 pr-4 text-xs font-bold text-slate-900 outline-none border border-transparent focus:border-slate-200 transition-all" />
+                <input value={searchTerm} onChange={event => setSearchTerm(event.target.value)} placeholder="Search road or ID..." className="w-full rounded-2xl bg-slate-50 py-3.5 pl-11 pr-4 text-xs font-bold text-slate-900 outline-none border border-transparent focus:border-slate-200 transition-all" />
             </div>
-            <Select label="Status" value={statusFilter} onChange={value => setStatusFilter(value as PotholeStatus | 'All')} options={STATUSES} />
-            <Select label="Priority" value={priorityFilter} onChange={value => setPriorityFilter(value as RepairPriority | 'All')} options={['All', ...PRIORITIES]} />
             <Select label="District Sector" value={areaFilter} onChange={setAreaFilter} options={districts} />
+            <Select label="Maintenance Status" value={statusFilter} onChange={value => setStatusFilter(value as PotholeStatus | 'All')} options={STATUSES} />
+            <Select label="Operational Priority" value={priorityFilter} onChange={value => setPriorityFilter(value as RepairPriority | 'All')} options={['All', ...PRIORITIES]} />
             <Select label="Discovery Timeline" value={dateFilter} onChange={setDateFilter} options={['All', 'Last 24h', 'Last 7 Days', 'Last 30 Days']} />
         </div>
     </div>
