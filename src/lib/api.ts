@@ -8,7 +8,7 @@ import {
     getSystemSettings,
     MOCK_USERS
 } from '../mockData';
-import type { CitizenReport, PotholeEvent, PotholeStatus, RepairScheduleInput } from '../types';
+import type { CitizenReport, PotholeEvent, PotholeStatus, RepairScheduleInput, User } from '../types';
 import { simulateYoloDetection, type DetectionResult } from './aiValidationService';
 
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
@@ -75,7 +75,7 @@ export const authApi = {
     login: async (email: string, password?: string) => {
         return withFallback(
             () => apiClient.post('/auth/login', { email, password }),
-            () => ({ token: 'mock-token', user: { id: 'u1', name: 'Admin', role: 'admin' } })
+            () => ({ token: 'mock-token', user: { id: 'u1', name: 'Admin Hub', role: 'ADMIN' } })
         );
     },
     logout: async () => {
@@ -105,7 +105,27 @@ export const authApi = {
     listUsers: async () => {
         return withFallback(
             () => apiClient.get('/users'),
-            () => MOCK_USERS
+            async () => {
+                const stored = localStorage.getItem('rp_users');
+                if (stored) return JSON.parse(stored);
+                localStorage.setItem('rp_users', JSON.stringify(MOCK_USERS));
+                return MOCK_USERS;
+            }
+        );
+    },
+    updateUserStatus: async (userId: string, status: 'ACTIVE' | 'DISABLED') => {
+        return withFallback(
+            () => apiClient.patch(`/users/${userId}/status`, { status }),
+            async () => {
+                const stored = localStorage.getItem('rp_users');
+                const users = stored ? JSON.parse(stored) : [...MOCK_USERS];
+                const index = users.findIndex((u: any) => u.id === userId);
+                if (index !== -1) {
+                    users[index].status = status;
+                    localStorage.setItem('rp_users', JSON.stringify(users));
+                }
+                return { success: true };
+            }
         );
     }
 };
@@ -278,8 +298,6 @@ export const settingsApi = {
 
 // ==========================================
 // LEGACY COMPATIBILITY EXPORTS
-// To avoid breaking the entire app instantly, we temporarily export synchronous versions 
-// that bypass the new async flow. The pages will be incrementally updated.
 // ==========================================
 export const listCitizenReports = (filters?: { status?: string; citizenId?: string }) => {
     let reports = mockGetReports();

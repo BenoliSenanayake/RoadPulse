@@ -72,10 +72,12 @@ const generatePotholes = (count: number): PotholeEvent[] => {
 };
 
 export const MOCK_USERS: User[] = [
-    { id: 'u1', name: 'Admin Hub', email: 'admin@roadpulse.lk', role: 'ADMIN' },
-    { id: 'u2', name: 'Western Officer', email: 'western@roadpulse.lk', role: 'MAINTENANCE_OFFICER' },
-    { id: 'u4', name: 'Central Officer', email: 'central@roadpulse.lk', role: 'MAINTENANCE_OFFICER' },
-    { id: 'u3', name: 'Citizen Reporter', email: 'citizen@roadpulse.lk', role: 'CITIZEN' },
+    { id: 'u1', name: 'Admin Hub', email: 'admin@roadpulse.lk', role: 'ADMIN', status: 'ACTIVE', createdAt: subDays(new Date(), 30).toISOString(), lastLogin: new Date().toISOString() },
+    { id: 'u2', name: 'Western Officer', email: 'western@roadpulse.lk', role: 'MAINTENANCE_OFFICER', status: 'ACTIVE', createdAt: subDays(new Date(), 25).toISOString(), lastLogin: subDays(new Date(), 1).toISOString(), provincialCouncil: 'Western Provincial Council' },
+    { id: 'u4', name: 'Central Officer', email: 'central@roadpulse.lk', role: 'MAINTENANCE_OFFICER', status: 'ACTIVE', createdAt: subDays(new Date(), 20).toISOString(), lastLogin: subDays(new Date(), 2).toISOString(), provincialCouncil: 'Central Provincial Council' },
+    { id: 'u3', name: 'Citizen Reporter', email: 'citizen@roadpulse.lk', role: 'CITIZEN', status: 'ACTIVE', createdAt: subDays(new Date(), 15).toISOString(), lastLogin: subDays(new Date(), 3).toISOString() },
+    { id: 'u5', name: 'Jaffna Officer', email: 'jaffna@roadpulse.lk', role: 'MAINTENANCE_OFFICER', status: 'DISABLED', createdAt: subDays(new Date(), 40).toISOString(), lastLogin: subDays(new Date(), 10).toISOString(), provincialCouncil: 'Northern Provincial Council' },
+    { id: 'u6', name: 'Test User', email: 'test@roadpulse.lk', role: 'CITIZEN', status: 'ACTIVE', createdAt: subDays(new Date(), 5).toISOString() },
 ];
 
 export const MOCK_REPORTS: CitizenReport[] = [

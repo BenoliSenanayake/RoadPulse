@@ -22,6 +22,7 @@ const ReportMaintenanceHistory = lazy(() => import('./pages/ReportMaintenanceHis
 const Admin = lazy(() => import('./pages/Admin'));
 const AdminReports = lazy(() => import('./pages/AdminReports'));
 const ProvinceMonitoring = lazy(() => import('./pages/ProvinceMonitoring'));
+const Users = lazy(() => import('./pages/Users'));
 const Settings = lazy(() => import('./pages/Settings'));
 const AuditLogs = lazy(() => import('./pages/AuditLogs'));
 
@@ -133,7 +134,7 @@ function App() {
 
             <Route path="/admin/users" element={
               <ProtectedRoute allowedRoles={['ADMIN']}>
-                <AdminLayout><Admin /></AdminLayout>
+                <AdminLayout><Users /></AdminLayout>
               </ProtectedRoute>
             } />
 

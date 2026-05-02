@@ -43,6 +43,9 @@ export interface User {
     role: UserRole;
     email: string;
     provincialCouncil?: ProvincialCouncil; // For MAINTENANCE_OFFICER
+    status: 'ACTIVE' | 'DISABLED';
+    createdAt: string;
+    lastLogin?: string;
 }
 
 export interface PotholeEvent {
