@@ -40,7 +40,10 @@ const Loading = () => (
 );
 
 const RootRedirect = () => {
-  const { getHomePath } = useAuth();
+  const { getHomePath, isAuthenticated, user } = useAuth();
+  if (!user || !isAuthenticated) {
+      return <Navigate to="/citizen" replace />;
+  }
   return <Navigate to={getHomePath()} replace />;
 };
 
@@ -54,7 +57,7 @@ function App() {
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
-            <Route path="/staff-login" element={<StaffLogin />} />
+            <Route path="/staff/login" element={<StaffLogin />} />
 
             {/* Citizen Routes */}
             <Route path="/citizen" element={

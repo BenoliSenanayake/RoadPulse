@@ -12,9 +12,10 @@ export const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) 
     const { user, isAuthenticated, hasRole, getHomePath } = useAuth();
     const location = useLocation();
 
-    // User check (redundant but safe)
+    // User check
     if (!user || !isAuthenticated) {
-        return <Navigate to="/login" state={{ from: location }} replace />;
+        const isStaffPath = location.pathname.startsWith('/staff') || location.pathname.startsWith('/admin');
+        return <Navigate to={isStaffPath ? "/staff/login" : "/login"} state={{ from: location }} replace />;
     }
 
     if (allowedRoles && !hasRole(allowedRoles)) {

@@ -109,6 +109,7 @@ export interface CitizenReport {
     linkedPotholeId?: string;
     provincialCouncil?: ProvincialCouncil;
     provinceDetectionMethod?: 'GPS_BOUNDARY' | 'MANUAL' | 'UNKNOWN';
+    district?: string;
     status: 'New' | 'Discarded'; // Mapping from assignment
     createdAt: string; // Keep as submittedAt alias
 }

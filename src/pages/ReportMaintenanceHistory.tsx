@@ -147,7 +147,7 @@ const ReportMaintenanceHistory = () => {
                 inProgress: '—',
                 completed: '—',
                 overdue: false,
-                status: r.aiStatus === 'PENDING' ? 'Needs Review' : r.aiStatus,
+                status: r.aiStatus === 'PENDING' ? 'PENDING' : r.aiStatus,
                 priority: 'Low',
                 notes: r.description || '',
                 lastUpdated: r.createdAt,
@@ -184,7 +184,7 @@ const ReportMaintenanceHistory = () => {
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                     <input 
                         type="text" 
-                        placeholder="Search by ID or Road..."
+                        placeholder="Search by ID..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-bold text-slate-900 focus:outline-none focus:ring-4 focus:ring-emerald-500/5 focus:border-emerald-400 transition-all"
@@ -196,9 +196,11 @@ const ReportMaintenanceHistory = () => {
                         <select 
                             value={districtFilter}
                             onChange={(e) => setDistrictFilter(e.target.value)}
-                            className="bg-transparent text-xs font-black uppercase tracking-widest outline-none cursor-pointer"
+                            className="bg-transparent text-[10px] font-black uppercase tracking-widest outline-none cursor-pointer"
                         >
-                            {districts.map(d => <option key={d} value={d}>{d}</option>)}
+                            {districts.map(d => (
+                                <option key={d} value={d}>{d === 'All' ? 'All Districts' : d}</option>
+                            ))}
                         </select>
                     </div>
                     <div className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl">
@@ -206,13 +208,13 @@ const ReportMaintenanceHistory = () => {
                         <select 
                             value={statusFilter}
                             onChange={(e) => setStatusFilter(e.target.value)}
-                            className="bg-transparent text-xs font-black uppercase tracking-widest outline-none cursor-pointer"
+                            className="bg-transparent text-[10px] font-black uppercase tracking-widest outline-none cursor-pointer"
                         >
                             <option value="All">All Statuses</option>
                             <option value="Verified">Verified</option>
                             <option value="In Progress">In Progress</option>
                             <option value="Completed">Completed</option>
-                            <option value="Needs Review">Needs Review</option>
+                            <option value="PENDING">Manual Review</option>
                             <option value="REJECTED">Rejected</option>
                         </select>
                     </div>
