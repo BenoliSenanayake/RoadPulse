@@ -44,6 +44,13 @@ class CitizenReport(Base):
     ai_confidence = Column(Float)
     ai_reason = Column(Text)
     bbox = Column(String) # JSON string [x, y, w, h]
+    ai_classification = Column(String)
+    prediction_count = Column(Integer, default=0)
+    detection_model = Column(String)
+    detection_timestamp = Column(DateTime)
+    detection_status = Column(String)
+    province = Column(String)
+    maintenance_notes = Column(Text)
     linked_pothole_id = Column(String, ForeignKey("potholes.id"))
     status = Column(String, default="New")
     created_at = Column(DateTime, default=datetime.utcnow)

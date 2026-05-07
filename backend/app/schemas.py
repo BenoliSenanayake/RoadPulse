@@ -34,6 +34,13 @@ class ReportResponse(BaseModel):
     aiConfidence: Optional[float]
     aiReason: Optional[str]
     bbox: Optional[List[float]]
+    aiClassification: Optional[str] = None
+    predictionCount: Optional[int] = None
+    detectionModel: Optional[str] = None
+    detectionTimestamp: Optional[datetime] = None
+    detectionStatus: Optional[str] = None
+    province: Optional[str] = None
+    maintenanceNotes: Optional[str] = None
     status: str
     createdAt: datetime
     class Config:
@@ -42,8 +49,9 @@ class ReportResponse(BaseModel):
 
 class DetectionResult(BaseModel):
     detected: bool
-    aiStatus: str
-    confidence: float
-    message: str
+    aiClassification: str
+    aiConfidence: float
+    predictionCount: int
     bbox: Optional[List[float]] = None
-    modelVersion: str
+    predictions: Optional[List[Any]] = None
+    raw_response: Optional[Any] = None

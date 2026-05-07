@@ -105,6 +105,11 @@ export interface CitizenReport {
     aiStatus: 'PENDING' | 'ACCEPTED' | 'REJECTED';
     aiConfidence?: number;
     aiReason?: string;
+    aiClassification?: string;
+    predictionCount?: number;
+    detectionModel?: string;
+    detectionTimestamp?: string;
+    detectionStatus?: string;
     modelName?: string;
     modelVersion?: string;
     inferenceTimeMs?: number;
