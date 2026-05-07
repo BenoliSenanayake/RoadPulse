@@ -1,46 +1,36 @@
-# RoadPulse FastAPI Backend
+# RoadPulse Backend API
 
-This is the Python backend for the RoadPulse application, responsible for data persistence, authentication, and serving as the AI inference endpoint for YOLO pothole detection.
-
-## Prerequisites
-- Python 3.9+
-- PostgreSQL
+The backend is built with FastAPI, PostgreSQL, and SQLAlchemy, and integrates with Roboflow for AI pothole detection.
 
 ## Setup Instructions
 
-1. **Create Virtual Environment**
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows use: venv\Scripts\activate
-   ```
+### 1. Configure PostgreSQL
+- Ensure you have PostgreSQL installed and running on your local machine.
+- Create a database named `roadpulse`. You can do this by running `psql -U postgres` and then `CREATE DATABASE roadpulse;`.
 
-2. **Install Dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
+### 2. Configure .env
+Create a `.env` file in this `backend` directory (if it doesn't exist already) and add your environment variables:
+```env
+DATABASE_URL=postgresql://postgres:YOURPASSWORD@localhost:5432/roadpulse
+ROBOFLOW_API_KEY=YOUR_ROBOFLOW_API_KEY
+SECRET_KEY=roadpulse_secret_key
+ENVIRONMENT=development
+```
 
-3. **Configure Database**
-   By default, the application connects to a local PostgreSQL database via the `DATABASE_URL` environment variable:
-   `postgresql://postgres:postgres@localhost:5432/roadpulse`
-   
-   Ensure PostgreSQL is running and you have created a database named `roadpulse`.
-   If your credentials differ, export the correct URL:
-   ```bash
-   # Windows PowerShell
-   $env:DATABASE_URL="postgresql://user:pass@localhost:5432/roadpulse"
-   ```
+### 3. Initialize Tables & Seed Data
+You can initialize the database tables by running the init script:
+```bash
+python app/init_db.py
+```
+To populate the database with mock admin, citizens, and reports, run the seed script from the root:
+```bash
+python backend/seed_db.py
+```
 
-4. **Run the Server**
-   ```bash
-   uvicorn app.main:app --reload --port 8000
-   ```
-   
-   The backend will be available at `http://localhost:8000`.
-   Interactive API documentation (Swagger) is available at `http://localhost:8000/docs`.
+### 4. Start the Backend
+Run the FastAPI application with Uvicorn:
+```bash
+uvicorn app.main:app --reload --port 8000
+```
 
-## Structure
-- `/app/models.py`: SQLAlchemy ORM definitions for Postgres.
-- `/app/schemas.py`: Pydantic models for request validation.
-- `/app/routers/`: API endpoints (Auth, Reports, AI inference).
-- `/app/services/ai_service.py`: Placeholder simulation for the YOLO AI detection pipeline.
-- `/uploads/`: Directory where submitted citizen images are stored locally.
+The API will be available at `http://localhost:8000`. You can view the Swagger documentation at `http://localhost:8000/docs`.

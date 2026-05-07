@@ -1,57 +1,105 @@
-from pydantic import BaseModel, Field
-from typing import Optional, List, Any
+from pydantic import BaseModel
+from typing import Optional, List, Dict, Any
 from datetime import datetime
-from enum import Enum
 
 class UserBase(BaseModel):
     name: str
     email: str
     role: str
+    provincial_council: Optional[str] = None
+    account_status: str = "ACTIVE"
 
 class UserCreate(UserBase):
     password: str
 
-class UserResponse(UserBase):
+class UserRead(UserBase):
     id: str
-    created_at: datetime
+    created_at: Optional[datetime] = None
+    
     class Config:
         from_attributes = True
 
-class ReportCreate(BaseModel):
-    citizenId: str
-    lat: float
-    lon: float
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+class CitizenReportBase(BaseModel):
     description: Optional[str] = None
+    latitude: float
+    longitude: float
 
-class ReportResponse(BaseModel):
+class CitizenReportCreate(CitizenReportBase):
+    citizen_id: str
+
+class DetectionResultRead(BaseModel):
     id: str
-    citizenId: str
-    lat: float
-    lon: float
-    description: Optional[str]
-    imageUrl: str
-    aiStatus: str
-    aiConfidence: Optional[float]
-    aiReason: Optional[str]
-    bbox: Optional[List[float]]
-    aiClassification: Optional[str] = None
-    predictionCount: Optional[int] = None
-    detectionModel: Optional[str] = None
-    detectionTimestamp: Optional[datetime] = None
-    detectionStatus: Optional[str] = None
-    province: Optional[str] = None
-    maintenanceNotes: Optional[str] = None
-    status: str
-    createdAt: datetime
+    report_id: str
+    detected: bool
+    confidence: Optional[float] = None
+    classification: Optional[str] = None
+    prediction_count: int
+    bbox: Optional[List[float]] = None
+    raw_response: Optional[Dict[str, Any]] = None
+    model_id: Optional[str] = None
+    created_at: Optional[datetime] = None
+    
     class Config:
         from_attributes = True
-        populate_by_name = True
 
-class DetectionResult(BaseModel):
-    detected: bool
-    aiClassification: str
-    aiConfidence: float
-    predictionCount: int
+class CitizenReportRead(CitizenReportBase):
+    id: str
+    citizen_id: str
+    image_url: str
+    address: Optional[str] = None
+    district: Optional[str] = None
+    provincial_council: Optional[str] = None
+    status: str
+    priority: Optional[str] = None
+    ai_classification: Optional[str] = None
+    ai_confidence: Optional[float] = None
+    prediction_count: int = 0
     bbox: Optional[List[float]] = None
-    predictions: Optional[List[Any]] = None
-    raw_response: Optional[Any] = None
+    detection_model: Optional[str] = None
+    detection_timestamp: Optional[datetime] = None
+    maintenance_notes: Optional[str] = None
+    submitted_at: Optional[datetime] = None
+    last_status_updated_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+    
+    class Config:
+        from_attributes = True
+
+class CitizenReportUpdate(BaseModel):
+    status: Optional[str] = None
+    priority: Optional[str] = None
+    maintenance_notes: Optional[str] = None
+
+class AuditLogRead(BaseModel):
+    id: str
+    report_id: Optional[str] = None
+    user_id: str
+    action: str
+    old_status: Optional[str] = None
+    new_status: Optional[str] = None
+    notes: Optional[str] = None
+    created_at: Optional[datetime] = None
+    
+    class Config:
+        from_attributes = True
+
+class StatusUpdateCreate(BaseModel):
+    status: str
+    priority: Optional[str] = None
+    notes: Optional[str] = None
+
+class StatusUpdateRead(BaseModel):
+    id: str
+    report_id: str
+    officer_id: str
+    status: str
+    priority: Optional[str] = None
+    notes: Optional[str] = None
+    created_at: Optional[datetime] = None
+    
+    class Config:
+        from_attributes = True

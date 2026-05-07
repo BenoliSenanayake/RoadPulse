@@ -170,7 +170,13 @@ export const reportsApi = {
     },
     review: async (id: string, action: 'accept' | 'reject' | 'request_info', reason?: string): Promise<void> => {
         return withFallback(
-            () => apiClient.post(`/reports/${id}/review`, { action, reason }),
+            () => {
+                let status = 'New';
+                if (action === 'accept') status = 'Verified';
+                else if (action === 'reject') status = 'Rejected';
+                else if (action === 'request_info') status = 'Discarded';
+                return apiClient.patch(`/reports/${id}/status`, { status, notes: reason });
+            },
             async () => {
                 await new Promise(r => setTimeout(r, 300));
                 return mockProcessReport(id, action, reason);
@@ -262,7 +268,7 @@ export const repairsApi = {
 export const auditLogsApi = {
     list: async (entityId?: string) => {
         return withFallback(
-            () => apiClient.get(`/audit-logs${entityId ? `?entityId=${entityId}` : ''}`),
+            () => apiClient.get('/reports/history'),
             async () => {
                 await new Promise(r => setTimeout(r, 200));
                 const logs = JSON.parse(localStorage.getItem('rp_audit_logs') || '[]');

@@ -1,30 +1,36 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from sqlalchemy.orm import Session
-from typing import Optional
+from typing import Optional, List
 import os
 import uuid
-import json
-from .. import schemas, models
-from ..database import get_db
-from ..services.roboflow_service import analyze_pothole_image
 from datetime import datetime
+from app.database import get_db
+from app import schemas, models, crud
+from app.services.roboflow_service import analyze_pothole_image
 
 router = APIRouter(prefix="/reports", tags=["reports"])
 
 UPLOAD_DIR = "uploads"
 
-@router.post("", response_model=schemas.ReportResponse)
+# Helper for resolving province roughly based on lat/lon
+def detect_province(lat: float, lon: float):
+    # In real world, use reverse geocoding API. Stubbed here.
+    if lat > 7.5: return "North Central Province"
+    elif lat < 6.5: return "Southern Province"
+    return "Western Province"
+
+@router.post("", response_model=schemas.CitizenReportRead)
 async def create_report(
-    citizenId: str = Form(...),
-    lat: float = Form(...),
-    lon: float = Form(...),
+    citizen_id: str = Form(...),
+    latitude: float = Form(...),
+    longitude: float = Form(...),
     description: Optional[str] = Form(None),
+    address: Optional[str] = Form(None),
     image: UploadFile = File(...),
     db: Session = Depends(get_db)
 ):
-    # 1. Save Image
     os.makedirs(UPLOAD_DIR, exist_ok=True)
-    ext = image.filename.split(".")[-1]
+    ext = image.filename.split(".")[-1] if "." in image.filename else "jpg"
     filename = f"{uuid.uuid4()}.{ext}"
     file_path = os.path.join(UPLOAD_DIR, filename)
     
@@ -34,116 +40,98 @@ async def create_report(
         
     image_url = f"http://localhost:8000/static/{filename}"
     
-    # 2. Call Roboflow Service
+    # Analyze Image via Roboflow
     detection = await analyze_pothole_image(file_path)
     
-    # 3. Create Report record (Mock ID generation)
-    report_id = f"rep-{uuid.uuid4().hex[:8]}"
-    db_report = models.CitizenReport(
-        id=report_id,
-        citizen_id=citizenId,
-        lat=lat,
-        lon=lon,
+    # Classifications
+    classification = detection.get("aiClassification", "NEEDS_MANUAL_REVIEW")
+    initial_status = "Verified" if classification == "VERIFIED_POTHOLE" else ("Rejected" if classification == "REJECTED" else "New")
+
+    # Save CitizenReport
+    report_in = schemas.CitizenReportCreate(
+        citizen_id=citizen_id,
+        latitude=latitude,
+        longitude=longitude,
         description=description,
+    )
+    
+    db_report = crud.create_report(
+        db=db,
+        report=report_in,
         image_url=image_url,
-        
-        # Original fields mapped
-        ai_status=models.AIStatus("PENDING"),  # Kept for backwards compatibility if needed
-        ai_confidence=detection["aiConfidence"],
-        ai_reason="AI Classified",
-        bbox=json.dumps(detection["bbox"]) if detection["bbox"] else None,
-        
-        # New AI fields
-        ai_classification=detection["aiClassification"],
-        prediction_count=detection["predictionCount"],
-        detection_model="pothole-voxrl/1",
-        detection_timestamp=datetime.utcnow(),
-        detection_status="COMPLETED" if detection["detected"] else "NO_DETECTION",
-        province=None,  # Or parse from lat/lon if required later
-        
-        status="New"
+        address=address,
+        district="Colombo", # Mock district
+        provincial_council=detect_province(latitude, longitude),
+        status=initial_status,
+        ai_classification=classification,
+        ai_confidence=detection.get("aiConfidence"),
+        prediction_count=detection.get("predictionCount", 0),
+        bbox=detection.get("bbox"),
+        detection_model=detection.get("detectionModel"),
+        detection_timestamp=datetime.utcnow()
     )
-    db.add(db_report)
     
-    # Create Audit Log
-    log_id = f"log-{uuid.uuid4().hex[:8]}"
-    db_log = models.AuditLog(
-        id=log_id,
-        entity_id=report_id,
-        entity_type="REPORT",
-        action="SUBMITTED",
-        actor="CITIZEN",
-        actor_name=citizenId,
-        details="Citizen submitted a new report"
+    # Save DetectionResult
+    crud.create_detection_result(db, detection, db_report.id)
+    
+    # Save AuditLog
+    crud.create_audit_log(
+        db=db,
+        report_id=db_report.id,
+        user_id=citizen_id,
+        action="REPORT_SUBMITTED",
+        new_status=initial_status,
+        notes="Citizen submitted a new report"
     )
-    db.add(db_log)
     
-    db.commit()
-    db.refresh(db_report)
-    
-    let_status = db_report.ai_status.value
-    if db_report.ai_classification == 'VERIFIED_POTHOLE':
-        let_status = 'ACCEPTED'
-    elif db_report.ai_classification == 'NEEDS_MANUAL_REVIEW':
-        let_status = 'PENDING'
-    elif db_report.ai_classification == 'REJECTED':
-        let_status = 'REJECTED'
+    return db_report
 
-    # Convert back for pydantic
-    response_data = {
-        "id": db_report.id,
-        "citizenId": db_report.citizen_id,
-        "lat": db_report.lat,
-        "lon": db_report.lon,
-        "description": db_report.description,
-        "imageUrl": db_report.image_url,
-        "aiStatus": let_status,
-        "aiConfidence": db_report.ai_confidence,
-        "aiReason": db_report.ai_reason,
-        "bbox": json.loads(db_report.bbox) if db_report.bbox else None,
-        "aiClassification": db_report.ai_classification,
-        "predictionCount": db_report.prediction_count,
-        "detectionModel": db_report.detection_model,
-        "detectionTimestamp": db_report.detection_timestamp,
-        "detectionStatus": db_report.detection_status,
-        "province": db_report.province,
-        "status": db_report.status,
-        "createdAt": db_report.created_at
-    }
-    
-    return response_data
+@router.get("", response_model=List[schemas.CitizenReportRead])
+def get_reports(province: Optional[str] = None, db: Session = Depends(get_db)):
+    if province:
+        return crud.list_reports_by_province(db, province)
+    return crud.list_reports(db)
 
-@router.get("", response_model=list[schemas.ReportResponse])
-def get_reports(db: Session = Depends(get_db)):
-    reports = db.query(models.CitizenReport).all()
-    result = []
-    for db_report in reports:
-        let_status = db_report.ai_status.value
-        if db_report.ai_classification == 'VERIFIED_POTHOLE':
-            let_status = 'ACCEPTED'
-        elif db_report.ai_classification == 'NEEDS_MANUAL_REVIEW':
-            let_status = 'PENDING'
-        elif db_report.ai_classification == 'REJECTED':
-            let_status = 'REJECTED'
-            
-        result.append({
-            "id": db_report.id,
-            "citizenId": db_report.citizen_id,
-            "lat": db_report.lat,
-            "lon": db_report.lon,
-            "description": db_report.description,
-            "imageUrl": db_report.image_url,
-            "aiStatus": let_status,
-            "aiConfidence": db_report.ai_confidence,
-            "aiReason": db_report.ai_reason,
-            "bbox": json.loads(db_report.bbox) if db_report.bbox else None,
-            "aiClassification": db_report.ai_classification,
-            "predictionCount": db_report.prediction_count,
-            "detectionModel": db_report.detection_model,
-            "detectionTimestamp": db_report.detection_timestamp,
-            "detectionStatus": db_report.detection_status,
-            "province": db_report.province,
-            "status": db_report.status,
-            "createdAt": db_report.created_at
-        })
-    return result
+@router.get("/history", response_model=List[schemas.AuditLogRead])
+def get_reports_history(db: Session = Depends(get_db)):
+    return crud.list_audit_logs(db)
+
+@router.get("/{report_id}", response_model=schemas.CitizenReportRead)
+def get_report(report_id: str, db: Session = Depends(get_db)):
+    report = crud.get_report_by_id(db, report_id)
+    if not report:
+        raise HTTPException(status_code=404, detail="Report not found")
+    return report
+
+@router.patch("/{report_id}/status", response_model=schemas.CitizenReportRead)
+def update_status(report_id: str, update: schemas.StatusUpdateCreate, officer_id: str = "sys-admin", db: Session = Depends(get_db)):
+    report = crud.get_report_by_id(db, report_id)
+    if not report:
+        raise HTTPException(status_code=404, detail="Report not found")
+        
+    old_status = report.status
+    crud.update_report_status(db, report_id, update.status)
+    if update.priority:
+        crud.update_report_priority(db, report_id, update.priority)
+        
+    crud.create_status_update(db, update, report_id, officer_id)
+    
+    crud.create_audit_log(
+        db=db,
+        report_id=report_id,
+        user_id=officer_id,
+        action="STATUS_UPDATED",
+        old_status=old_status,
+        new_status=update.status,
+        notes=update.notes
+    )
+    
+    return crud.get_report_by_id(db, report_id)
+
+@router.patch("/{report_id}/notes", response_model=schemas.CitizenReportRead)
+def update_notes(report_id: str, notes: str, db: Session = Depends(get_db)):
+    return crud.update_report_notes(db, report_id, notes)
+
+@router.patch("/{report_id}/priority", response_model=schemas.CitizenReportRead)
+def update_priority(report_id: str, priority: str, db: Session = Depends(get_db)):
+    return crud.update_report_priority(db, report_id, priority)

@@ -1,99 +1,104 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Text, Enum
+from sqlalchemy import Column, String, Float, Integer, Boolean, DateTime, ForeignKey, JSON
 from sqlalchemy.orm import relationship
-import enum
-from datetime import datetime
-from .database import Base
+from sqlalchemy.sql import func
+from app.database import Base
+import uuid
 
-class UserRole(enum.Enum):
-    CITIZEN = "CITIZEN"
-    MAINTENANCE_OFFICER = "MAINTENANCE_OFFICER"
-    ADMIN = "ADMIN"
-
-class PotholeStatus(enum.Enum):
-    NEW = "New"
-    CONFIRMED = "Confirmed"
-    SCHEDULED = "Scheduled"
-    FIXED = "Fixed"
-    REJECTED = "Rejected"
-
-class AIStatus(enum.Enum):
-    PENDING = "PENDING"
-    ACCEPTED = "ACCEPTED"
-    REJECTED = "REJECTED"
+def generate_uuid(prefix: str):
+    return f"{prefix}-{uuid.uuid4().hex[:8]}"
 
 class User(Base):
     __tablename__ = "users"
-    id = Column(String, primary_key=True, index=True)
+    
+    id = Column(String, primary_key=True, default=lambda: generate_uuid("usr"))
     name = Column(String, nullable=False)
     email = Column(String, unique=True, index=True, nullable=False)
-    role = Column(Enum(UserRole), default=UserRole.CITIZEN)
-    password_hash = Column(String)
-    phone = Column(String)
-    district = Column(String)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    password_hash = Column(String, nullable=False)
+    role = Column(String, nullable=False) # CITIZEN, MAINTENANCE_OFFICER, ADMIN
+    provincial_council = Column(String, nullable=True)
+    account_status = Column(String, default="ACTIVE")
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    
+    reports = relationship("CitizenReport", back_populates="citizen")
+    audit_logs = relationship("AuditLog", back_populates="user")
+    status_updates = relationship("StatusUpdate", back_populates="officer")
 
 class CitizenReport(Base):
     __tablename__ = "citizen_reports"
-    id = Column(String, primary_key=True, index=True)
-    citizen_id = Column(String, ForeignKey("users.id"))
-    lat = Column(Float, nullable=False)
-    lon = Column(Float, nullable=False)
-    description = Column(Text)
+    
+    id = Column(String, primary_key=True, default=lambda: generate_uuid("rep"))
+    citizen_id = Column(String, ForeignKey("users.id"), nullable=False)
     image_url = Column(String, nullable=False)
-    ai_status = Column(Enum(AIStatus), default=AIStatus.PENDING)
-    ai_confidence = Column(Float)
-    ai_reason = Column(Text)
-    bbox = Column(String) # JSON string [x, y, w, h]
-    ai_classification = Column(String)
+    description = Column(String, nullable=True)
+    latitude = Column(Float, nullable=False)
+    longitude = Column(Float, nullable=False)
+    address = Column(String, nullable=True)
+    district = Column(String, nullable=True)
+    provincial_council = Column(String, nullable=True)
+    
+    status = Column(String, default="New") # New, Verified, In Progress, Completed, Rejected
+    priority = Column(String, nullable=True) # Low, Medium, High, Urgent
+    
+    # AI Fields
+    ai_classification = Column(String, nullable=True)
+    ai_confidence = Column(Float, nullable=True)
     prediction_count = Column(Integer, default=0)
-    detection_model = Column(String)
-    detection_timestamp = Column(DateTime)
-    detection_status = Column(String)
-    province = Column(String)
-    maintenance_notes = Column(Text)
-    linked_pothole_id = Column(String, ForeignKey("potholes.id"))
-    status = Column(String, default="New")
-    created_at = Column(DateTime, default=datetime.utcnow)
+    bbox = Column(JSON, nullable=True)
+    detection_model = Column(String, nullable=True)
+    detection_timestamp = Column(DateTime(timezone=True), nullable=True)
+    
+    maintenance_notes = Column(String, nullable=True)
+    submitted_at = Column(DateTime(timezone=True), server_default=func.now())
+    last_status_updated_at = Column(DateTime(timezone=True), nullable=True)
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    
+    citizen = relationship("User", back_populates="reports")
+    detection_results = relationship("DetectionResult", back_populates="report", cascade="all, delete-orphan")
+    audit_logs = relationship("AuditLog", back_populates="report", cascade="all, delete-orphan")
+    status_updates = relationship("StatusUpdate", back_populates="report", cascade="all, delete-orphan")
 
-    user = relationship("User")
-    linked_pothole = relationship("PotholeEvent", back_populates="reports", foreign_keys=[linked_pothole_id])
-
-class PotholeEvent(Base):
-    __tablename__ = "potholes"
-    id = Column(String, primary_key=True, index=True)
-    lat = Column(Float, nullable=False)
-    lon = Column(Float, nullable=False)
-    confidence = Column(Float)
-    status = Column(Enum(PotholeStatus), default=PotholeStatus.NEW)
-    road_name = Column(String)
-    district = Column(String)
-    image_url = Column(String)
-    source = Column(String) # SYSTEM | CITIZEN_REPORT
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    reports = relationship("CitizenReport", back_populates="linked_pothole", foreign_keys="[CitizenReport.linked_pothole_id]")
-    repairs = relationship("RepairUpdate", back_populates="pothole")
-
-class RepairUpdate(Base):
-    __tablename__ = "repair_updates"
-    id = Column(String, primary_key=True, index=True)
-    pothole_id = Column(String, ForeignKey("potholes.id"))
-    status = Column(Enum(PotholeStatus))
-    note = Column(Text)
-    updated_by = Column(String, ForeignKey("users.id"))
-    updated_at = Column(DateTime, default=datetime.utcnow)
-
-    pothole = relationship("PotholeEvent", back_populates="repairs")
-    user = relationship("User")
+class DetectionResult(Base):
+    __tablename__ = "detection_results"
+    
+    id = Column(String, primary_key=True, default=lambda: generate_uuid("det"))
+    report_id = Column(String, ForeignKey("citizen_reports.id"), nullable=False)
+    detected = Column(Boolean, default=False)
+    confidence = Column(Float, nullable=True)
+    classification = Column(String, nullable=True)
+    prediction_count = Column(Integer, default=0)
+    bbox = Column(JSON, nullable=True)
+    raw_response = Column(JSON, nullable=True)
+    model_id = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    report = relationship("CitizenReport", back_populates="detection_results")
 
 class AuditLog(Base):
     __tablename__ = "audit_logs"
-    id = Column(String, primary_key=True, index=True)
-    timestamp = Column(DateTime, default=datetime.utcnow)
-    entity_id = Column(String, index=True)
-    entity_type = Column(String) # POTHOLE or REPORT
-    action = Column(String)
-    actor = Column(String) # CITIZEN, SYSTEM, MAINTENANCE_OFFICER, ADMIN
-    actor_name = Column(String)
-    details = Column(Text)
+    
+    id = Column(String, primary_key=True, default=lambda: generate_uuid("aud"))
+    report_id = Column(String, ForeignKey("citizen_reports.id"), nullable=True)
+    user_id = Column(String, ForeignKey("users.id"), nullable=False)
+    action = Column(String, nullable=False)
+    old_status = Column(String, nullable=True)
+    new_status = Column(String, nullable=True)
+    notes = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    report = relationship("CitizenReport", back_populates="audit_logs")
+    user = relationship("User", back_populates="audit_logs")
+
+class StatusUpdate(Base):
+    __tablename__ = "status_updates"
+    
+    id = Column(String, primary_key=True, default=lambda: generate_uuid("upd"))
+    report_id = Column(String, ForeignKey("citizen_reports.id"), nullable=False)
+    officer_id = Column(String, ForeignKey("users.id"), nullable=False)
+    status = Column(String, nullable=False)
+    priority = Column(String, nullable=True)
+    notes = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    report = relationship("CitizenReport", back_populates="status_updates")
+    officer = relationship("User", back_populates="status_updates")
