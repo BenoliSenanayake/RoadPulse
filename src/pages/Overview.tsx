@@ -91,18 +91,18 @@ const Overview = () => {
     const stats = useMemo(() => {
         return {
             totalReports: reports.length,
-            verifiedReports: reports.filter(r => r.aiStatus === 'ACCEPTED').length,
-            manualReview: reports.filter(r => r.aiStatus === 'PENDING').length,
+            verifiedReports: reports.filter(r => r.aiClassification === 'VERIFIED_POTHOLE').length,
+            manualReview: reports.filter(r => !r.aiClassification || r.aiClassification === 'NEEDS_MANUAL_REVIEW').length,
             inProgress: potholes.filter(p => p.status === 'In Progress').length,
             completed: potholes.filter(p => ['Completed', 'Fixed'].includes(p.status)).length,
-            rejected: reports.filter(r => r.aiStatus === 'REJECTED').length,
+            rejected: reports.filter(r => r.aiClassification === 'REJECTED').length,
             overdue: [...reports, ...potholes].filter(isOverdue).length,
             activeOfficers: users.filter(u => u.role === 'MAINTENANCE_OFFICER' && u.status === 'ACTIVE').length,
         };
     }, [reports, potholes, users]);
 
     const attentionRequired = useMemo(() => {
-        return reports.filter(r => r.aiStatus === 'PENDING').slice(0, 4);
+        return reports.filter(r => !r.aiClassification || r.aiClassification === 'NEEDS_MANUAL_REVIEW').slice(0, 4);
     }, [reports]);
 
     const recentActivity = useMemo(() => {

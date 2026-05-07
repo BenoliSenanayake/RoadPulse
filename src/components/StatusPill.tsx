@@ -2,7 +2,7 @@ import React from 'react';
 import { cn } from '../lib/utils';
 import { AlertCircle, CheckCircle2, XCircle, Info, Wrench, ShieldAlert } from 'lucide-react';
 
-export type StatusType = 'New' | 'Confirmed' | 'Verified' | 'Scheduled' | 'In Progress' | 'Fixed' | 'Completed' | 'Rejected' | 'Unable to Repair' | 'Discarded' | 'PENDING' | 'ACCEPTED' | 'REJECTED';
+export type StatusType = 'New' | 'Confirmed' | 'Verified' | 'Scheduled' | 'In Progress' | 'Fixed' | 'Completed' | 'Rejected' | 'Unable to Repair' | 'Discarded' | 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'VERIFIED_POTHOLE' | 'NEEDS_MANUAL_REVIEW';
 
 interface StatusConfig {
     class: string;
@@ -75,6 +75,16 @@ const statusConfig: Record<StatusType, StatusConfig> = {
         class: 'bg-slate-100 text-slate-500 border-slate-200',
         icon: <XCircle size={12} />,
         label: 'Rejected'
+    },
+    'VERIFIED_POTHOLE': {
+        class: 'bg-emerald-50 text-emerald-700 border-emerald-100',
+        icon: <CheckCircle2 size={12} />,
+        label: 'Verified Pothole'
+    },
+    'NEEDS_MANUAL_REVIEW': {
+        class: 'bg-amber-50 text-amber-700 border-amber-100',
+        icon: <ShieldAlert size={12} />,
+        label: 'Needs Manual Review'
     }
 };
 

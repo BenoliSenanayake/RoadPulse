@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import type { PotholeStatus } from '../types';
+import { useAuth } from '../context/AuthContext';
 
 interface EvidenceViewerProps {
     imageUrl?: string;
@@ -41,6 +42,8 @@ export const EvidenceViewer: React.FC<EvidenceViewerProps> = ({
     const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
     const [isFullscreen, setIsFullscreen] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
+    const { user } = useAuth();
+    const isCitizen = user?.role === 'CITIZEN';
 
     // Clamp scale between 1 and 4
     const updateScale = (delta: number) => {
@@ -139,7 +142,7 @@ export const EvidenceViewer: React.FC<EvidenceViewerProps> = ({
                             className="block w-full h-auto max-h-[80vh] pointer-events-none select-none rounded-sm"
                         />
                         {/* Bounding Box Overlay */}
-                        {metadata.bbox && (
+                        {!isCitizen && metadata.bbox && (
                             <div
                                 className="absolute border-2 border-primary bg-primary/20 shadow-[0_0_15px_rgba(37,99,235,0.5)] z-10"
                                 style={{
@@ -159,17 +162,19 @@ export const EvidenceViewer: React.FC<EvidenceViewerProps> = ({
 
                 {/* Badges Overlay */}
                 <div className="absolute top-6 left-6 flex flex-col gap-3 pointer-events-none">
-                    <div className="flex items-center gap-2">
-                        <div className="bg-black/40 backdrop-blur-xl border border-white/10 px-4 py-2 rounded-2xl flex items-center gap-3">
-                            <div className="p-1.5 bg-emerald-500 rounded-lg text-white">
-                                <BarChart size={16} />
-                            </div>
-                            <div>
-                                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">Confidence</p>
-                                <p className="text-lg font-black text-white leading-none">{(badges.confidence * 100).toFixed(1)}%</p>
+                    {!isCitizen && (
+                        <div className="flex items-center gap-2">
+                            <div className="bg-black/40 backdrop-blur-xl border border-white/10 px-4 py-2 rounded-2xl flex items-center gap-3">
+                                <div className="p-1.5 bg-emerald-500 rounded-lg text-white">
+                                    <BarChart size={16} />
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">Confidence</p>
+                                    <p className="text-lg font-black text-white leading-none">{(badges.confidence * 100).toFixed(1)}%</p>
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    )}
 
 
                     <div className="flex items-center gap-2">
@@ -254,12 +259,12 @@ export const EvidenceViewer: React.FC<EvidenceViewerProps> = ({
                             </div>
                         </div>
 
-                        {metadata.modelName && (
+                        {!isCitizen && metadata.modelName && (
                             <div className="flex items-start gap-4">
                                 <div className="p-2 bg-white/5 rounded-lg text-white/40"><BarChart size={18} /></div>
                                 <div>
                                     <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">ML Pipeline</p>
-                                    <p className="text-sm font-bold text-white/90 tabular-nums">Model: {metadata.modelName} ({metadata.modelVersion})</p>
+                                    <p className="text-sm font-bold text-white/90 tabular-nums">Model: {metadata.modelName} ({metadata.modelVersion || '1.0'})</p>
                                     {metadata.inferenceTimeMs && <p className="text-xs text-gray-500">Inference: {metadata.inferenceTimeMs}ms</p>}
                                 </div>
                             </div>

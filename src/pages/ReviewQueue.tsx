@@ -64,9 +64,10 @@ const ReviewQueue = () => {
 
     const filteredReports = useMemo(() => {
         return reports.filter(r => {
-            if (activeTab === 'AI_VERIFIED') return r.aiStatus === 'ACCEPTED';
-            if (activeTab === 'NEEDS_REVIEW') return r.aiStatus === 'PENDING';
-            if (activeTab === 'REJECTED') return r.aiStatus === 'REJECTED';
+            const cls = r.aiClassification || 'NEEDS_MANUAL_REVIEW';
+            if (activeTab === 'AI_VERIFIED') return cls === 'VERIFIED_POTHOLE';
+            if (activeTab === 'NEEDS_REVIEW') return cls === 'NEEDS_MANUAL_REVIEW';
+            if (activeTab === 'REJECTED') return cls === 'REJECTED';
             return false;
         });
     }, [reports, activeTab]);
@@ -134,7 +135,7 @@ const ReviewQueue = () => {
             className: 'text-center',
             render: (report: CitizenReport) => (
                 <div className="flex flex-col items-center gap-1.5">
-                    <StatusPill status={report.aiStatus as any} />
+                    <StatusPill status={(report.aiClassification as any) || 'NEEDS_MANUAL_REVIEW'} />
                 </div>
             )
         }
@@ -152,7 +153,7 @@ const ReviewQueue = () => {
                     </span>
                     <h3 className="text-sm font-black tracking-tight">#{report.id.split('-')[0]}</h3>
                 </div>
-                <StatusPill status={report.aiStatus as any} />
+                <StatusPill status={(report.aiClassification as any) || 'NEEDS_MANUAL_REVIEW'} />
             </div>
 
             <div className="flex items-center justify-between">
@@ -186,7 +187,7 @@ const ReviewQueue = () => {
                         onClick={() => { setActiveTab('NEEDS_REVIEW'); setSelectedReport(null); }}
                         className={cn("px-4 py-2 text-[11px] font-black uppercase tracking-widest rounded-xl transition-all", activeTab === 'NEEDS_REVIEW' ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700")}
                     >
-                        Needs Officer Review
+                        Manual Review Required
                     </button>
                     <button
                         onClick={() => { setActiveTab('REJECTED'); setSelectedReport(null); }}

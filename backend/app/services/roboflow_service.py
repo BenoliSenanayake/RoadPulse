@@ -59,13 +59,24 @@ async def analyze_pothole_image(image_path: str) -> dict:
             result["detected"] = True
             result["aiConfidence"] = float(confidence)
             
-            # 5. Convert bbox into frontend-compatible format for EvidenceViewer
-            # Roboflow returns x (center), y (center), width, height
+            image_info = response.get("image", {})
+            img_w = image_info.get("width", 1)
+            img_h = image_info.get("height", 1)
+            
+            # Convert center x,y to top-left x,y and normalize to 0-1
             x = best_prediction.get("x", 0)
             y = best_prediction.get("y", 0)
             w = best_prediction.get("width", 0)
             h = best_prediction.get("height", 0)
-            result["bbox"] = [x, y, w, h]
+            
+            if img_w > 1 and img_h > 1:
+                norm_w = w / img_w
+                norm_h = h / img_h
+                norm_x = (x - w / 2) / img_w
+                norm_y = (y - h / 2) / img_h
+                result["bbox"] = [norm_x, norm_y, norm_w, norm_h]
+            else:
+                result["bbox"] = [x, y, w, h]
             
             # 3. CLASSIFICATION LOGIC
             if confidence >= 0.75:

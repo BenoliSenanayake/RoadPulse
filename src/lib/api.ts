@@ -9,7 +9,6 @@ import {
     MOCK_USERS
 } from '../mockData';
 import type { CitizenReport, PotholeEvent, PotholeStatus, RepairScheduleInput } from '../types';
-import { simulateYoloDetection, type DetectionResult } from './aiValidationService';
 
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 export const USE_MOCK = false; // Changed to false to use backend
@@ -269,22 +268,6 @@ export const auditLogsApi = {
                 const logs = JSON.parse(localStorage.getItem('rp_audit_logs') || '[]');
                 if (entityId) return logs.filter((l: any) => l.entityId === entityId);
                 return logs;
-            }
-        );
-    }
-};
-
-export const aiApi = {
-    verifyImage: async (imageFile: File): Promise<DetectionResult> => {
-        return withFallback(
-            () => {
-                const formData = new FormData();
-                formData.append('image', imageFile);
-                return apiClient.post('/api/ai/analyze', formData);
-            },
-            () => {
-                const objectUrl = URL.createObjectURL(imageFile);
-                return simulateYoloDetection(objectUrl);
             }
         );
     }

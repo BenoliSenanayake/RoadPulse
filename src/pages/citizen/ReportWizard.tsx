@@ -13,7 +13,7 @@ import iconShadow from 'leaflet/dist/images/marker-shadow.png';
 import { reportsApi, aiApi } from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
 import { cn } from '../../lib/utils';
-import type { DetectionResult } from '../../lib/aiValidationService';
+import { cn } from '../../lib/utils';
 
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -75,8 +75,8 @@ const ReportWizard = () => {
 
     const [error, setError] = useState('');
     const [isMapModalOpen, setIsMapModalOpen] = useState(false);
-    // AI runs silently in background — result used for backend only, never shown
-    const [detectionResult, setDetectionResult] = useState<DetectionResult | null>(null);
+    const [error, setError] = useState('');
+    const [isMapModalOpen, setIsMapModalOpen] = useState(false);
 
     const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         setError('');
@@ -88,8 +88,6 @@ const ReportWizard = () => {
         const compressed = await compressImage(file);
         setPreviewUrl(compressed);
         setStep('LOCATION');
-        // Silently kick off AI analysis — never expose result to user
-        aiApi.verifyImage(file).then(setDetectionResult).catch(() => null);
     };
 
     const handleGetLocation = () => {
@@ -117,11 +115,7 @@ const ReportWizard = () => {
             const fullDesc = `${roadName ? `[${roadName}] ` : ''}${description}`.trim();
             if (fullDesc) formData.append('description', fullDesc);
             if (imageFile) formData.append('image', imageFile);
-            // Silently attach AI result if available
-            if (detectionResult) {
-                formData.append('aiStatus', detectionResult.aiStatus);
-                formData.append('aiConfidence', String(detectionResult.confidence));
-            }
+            if (imageFile) formData.append('image', imageFile);
             const report = await reportsApi.submit(formData);
             navigate(`/citizen/status/${report.id}`);
         } catch {
@@ -132,12 +126,11 @@ const ReportWizard = () => {
 
     const stepIndex = STEPS_INFO.findIndex(s => s.id === step);
 
-    // ── Submitting overlay ──
     if (step === 'SUBMITTING') return (
         <div className="min-h-[60vh] flex flex-col items-center justify-center text-center p-8">
             <div className="w-16 h-16 border-4 border-slate-200 border-t-slate-900 rounded-full animate-spin mb-6" />
-            <h2 className="text-xl font-bold text-slate-900 mb-1">Submitting your report…</h2>
-            <p className="text-sm text-slate-400">This will only take a moment.</p>
+            <h2 className="text-xl font-bold text-slate-900 mb-1">Analyzing pothole image...</h2>
+            <p className="text-sm text-slate-400">Please wait while our AI processes your report.</p>
         </div>
     );
 
