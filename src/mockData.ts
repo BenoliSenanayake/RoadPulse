@@ -73,11 +73,24 @@ const generatePotholes = (count: number): PotholeEvent[] => {
 
 export const MOCK_USERS: User[] = [
     { id: 'u1', name: 'Admin Hub', email: 'admin@roadpulse.lk', role: 'ADMIN', status: 'ACTIVE', createdAt: subDays(new Date(), 30).toISOString(), lastLogin: new Date().toISOString() },
-    { id: 'u2', name: 'Western Officer', email: 'western@roadpulse.lk', role: 'MAINTENANCE_OFFICER', status: 'ACTIVE', createdAt: subDays(new Date(), 25).toISOString(), lastLogin: subDays(new Date(), 1).toISOString(), provincialCouncil: 'Western Provincial Council' },
-    { id: 'u4', name: 'Central Officer', email: 'central@roadpulse.lk', role: 'MAINTENANCE_OFFICER', status: 'ACTIVE', createdAt: subDays(new Date(), 20).toISOString(), lastLogin: subDays(new Date(), 2).toISOString(), provincialCouncil: 'Central Provincial Council' },
+    
+    // Provincial Officers
+    { id: 'w1', name: 'Western Officer', email: 'western.officer@roadpulse.lk', role: 'MAINTENANCE_OFFICER', status: 'ACTIVE', createdAt: subDays(new Date(), 25).toISOString(), provincialCouncil: 'Western Provincial Council' },
+    { id: 'c1', name: 'Central Officer', email: 'central.officer@roadpulse.lk', role: 'MAINTENANCE_OFFICER', status: 'ACTIVE', createdAt: subDays(new Date(), 20).toISOString(), provincialCouncil: 'Central Provincial Council' },
+    { id: 's1', name: 'Southern Officer', email: 'southern.officer@roadpulse.lk', role: 'MAINTENANCE_OFFICER', status: 'ACTIVE', createdAt: subDays(new Date(), 25).toISOString(), provincialCouncil: 'Southern Provincial Council' },
+    { id: 'n1', name: 'Northern Officer', email: 'northern.officer@roadpulse.lk', role: 'MAINTENANCE_OFFICER', status: 'ACTIVE', createdAt: subDays(new Date(), 25).toISOString(), provincialCouncil: 'Northern Provincial Council' },
+    { id: 'e1', name: 'Eastern Officer', email: 'eastern.officer@roadpulse.lk', role: 'MAINTENANCE_OFFICER', status: 'ACTIVE', createdAt: subDays(new Date(), 25).toISOString(), provincialCouncil: 'Eastern Provincial Council' },
+    { id: 'nw1', name: 'North Western Officer', email: 'northwestern.officer@roadpulse.lk', role: 'MAINTENANCE_OFFICER', status: 'ACTIVE', createdAt: subDays(new Date(), 25).toISOString(), provincialCouncil: 'North Western Provincial Council' },
+    { id: 'nc1', name: 'North Central Officer', email: 'northcentral.officer@roadpulse.lk', role: 'MAINTENANCE_OFFICER', status: 'ACTIVE', createdAt: subDays(new Date(), 25).toISOString(), provincialCouncil: 'North Central Provincial Council' },
+    { id: 'u11', name: 'Uva Officer', email: 'uva.officer@roadpulse.lk', role: 'MAINTENANCE_OFFICER', status: 'ACTIVE', createdAt: subDays(new Date(), 25).toISOString(), provincialCouncil: 'Uva Provincial Council' },
+    { id: 'sb1', name: 'Sabaragamuwa Officer', email: 'sabaragamuwa.officer@roadpulse.lk', role: 'MAINTENANCE_OFFICER', status: 'ACTIVE', createdAt: subDays(new Date(), 25).toISOString(), provincialCouncil: 'Sabaragamuwa Provincial Council' },
+
+    // Citizens
     { id: 'u3', name: 'Citizen Reporter', email: 'citizen@roadpulse.lk', role: 'CITIZEN', status: 'ACTIVE', createdAt: subDays(new Date(), 15).toISOString(), lastLogin: subDays(new Date(), 3).toISOString() },
-    { id: 'u5', name: 'Jaffna Officer', email: 'jaffna@roadpulse.lk', role: 'MAINTENANCE_OFFICER', status: 'DISABLED', createdAt: subDays(new Date(), 40).toISOString(), lastLogin: subDays(new Date(), 10).toISOString(), provincialCouncil: 'Northern Provincial Council' },
     { id: 'u6', name: 'Test User', email: 'test@roadpulse.lk', role: 'CITIZEN', status: 'ACTIVE', createdAt: subDays(new Date(), 5).toISOString() },
+    
+    // Legacy support for older tests
+    { id: 'u2', name: 'Western Officer (Legacy)', email: 'western@roadpulse.lk', role: 'MAINTENANCE_OFFICER', status: 'ACTIVE', createdAt: subDays(new Date(), 25).toISOString(), provincialCouncil: 'Western Provincial Council' },
 ];
 
 export const MOCK_REPORTS: CitizenReport[] = [

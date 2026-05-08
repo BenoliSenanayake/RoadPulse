@@ -13,33 +13,26 @@ export const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) 
     const location = useLocation();
     const currentPath = `${location.pathname}${location.search}`;
 
+    const portalMode = import.meta.env.VITE_PORTAL_MODE || 'citizen';
+
     // User check
     if (!user || !isAuthenticated) {
-        const isStaffPath = location.pathname.startsWith('/staff') || location.pathname.startsWith('/admin') || location.pathname.startsWith('/potholes');
-        const loginPath = isStaffPath
-            ? "/staff/login"
-            : `/login?returnTo=${encodeURIComponent(currentPath)}`;
+        const loginPath = portalMode === 'staff' ? "/staff/login" : portalMode === 'admin' ? "/admin/login" : "/login";
         return <Navigate to={loginPath} state={{ from: location }} replace />;
     }
 
-    // Role-based route guards (Firewall)
-    const isStaffRoute = location.pathname.startsWith('/staff') || location.pathname.startsWith('/admin') || location.pathname.startsWith('/potholes');
-    const isCitizenRoute = location.pathname.startsWith('/citizen');
-
-    if (user.role === 'CITIZEN' && isStaffRoute) {
-        console.warn('Citizen attempted to access staff route, redirecting to /citizen');
-        return <Navigate to="/citizen" replace />;
+    // Portal Firewall: Ensure user role matches the running portal mode
+    if (portalMode === 'citizen' && user.role !== 'CITIZEN') {
+        return <div className="min-h-screen flex items-center justify-center bg-slate-50 p-6 text-center font-black uppercase tracking-widest text-slate-400">Portal Restricted to Citizens</div>;
+    }
+    if (portalMode === 'staff' && user.role !== 'MAINTENANCE_OFFICER') {
+        return <div className="min-h-screen flex items-center justify-center bg-slate-50 p-6 text-center font-black uppercase tracking-widest text-slate-400">Portal Restricted to Maintenance Officers</div>;
+    }
+    if (portalMode === 'admin' && user.role !== 'ADMIN') {
+        return <div className="min-h-screen flex items-center justify-center bg-slate-50 p-6 text-center font-black uppercase tracking-widest text-slate-400">Portal Restricted to Administrators</div>;
     }
 
-    if (user.role === 'MAINTENANCE_OFFICER' && (isCitizenRoute || location.pathname.startsWith('/admin'))) {
-        return <Navigate to="/staff/overview" replace />;
-    }
-
-    if (user.role === 'ADMIN' && isCitizenRoute) {
-        return <Navigate to="/admin/overview" replace />;
-    }
-
-    // Explicit role check for the specific route
+    // Specific route permission check
     if (allowedRoles && !hasRole(allowedRoles)) {
         return <Navigate to={getHomePath()} state={{ unauthorized: true, from: location.pathname }} replace />;
     }

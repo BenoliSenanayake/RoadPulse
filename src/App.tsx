@@ -1,5 +1,5 @@
 import { Suspense, lazy } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { CitizenLayout } from './components/CitizenLayout';
@@ -44,6 +44,16 @@ const Loading = () => (
 
 const RootRedirect = () => {
   const { getHomePath, isAuthenticated, user } = useAuth();
+  const { search } = useLocation();
+  
+  // URL Param Overrides (e.g. /?staff or /?admin)
+  if (search.includes('staff')) {
+      return <Navigate to="/staff/overview" replace />;
+  }
+  if (search.includes('admin')) {
+      return <Navigate to="/admin/overview" replace />;
+  }
+
   if (!user || !isAuthenticated) {
       return <Navigate to="/citizen" replace />;
   }
@@ -53,129 +63,131 @@ const RootRedirect = () => {
 
 
 function App() {
+  const portalMode = import.meta.env.VITE_PORTAL_MODE || 'citizen';
+
   return (
     <AuthProvider>
       <BrowserRouter>
         <Suspense fallback={<Loading />}>
           <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<Signup />} />
-            <Route path="/staff/login" element={<StaffLogin />} />
+            {/* Citizen Portal Mode */}
+            {portalMode === 'citizen' && (
+              <>
+                <Route path="/login" element={<Login />} />
+                <Route path="/signup" element={<Signup />} />
+                <Route path="/citizen" element={
+                    <CitizenLayout hideFooter><CitizenHome /></CitizenLayout>
+                } />
+                <Route path="/citizen/report" element={
+                  <ProtectedRoute allowedRoles={['CITIZEN']}>
+                    <CitizenLayout><ReportWizard /></CitizenLayout>
+                  </ProtectedRoute>
+                } />
+                <Route path="/citizen/my-reports" element={
+                  <ProtectedRoute allowedRoles={['CITIZEN']}>
+                    <CitizenLayout><MyReports /></CitizenLayout>
+                  </ProtectedRoute>
+                } />
+                <Route path="/citizen/status/:id" element={
+                  <ProtectedRoute allowedRoles={['CITIZEN']}>
+                    <CitizenLayout><ReportStatus /></CitizenLayout>
+                  </ProtectedRoute>
+                } />
+                <Route path="/" element={<Navigate to="/citizen" replace />} />
+                <Route path="/citizen/*" element={<Navigate to="/citizen" replace />} />
+              </>
+            )}
 
-            {/* Citizen Routes */}
-            <Route path="/citizen" element={
-                <CitizenLayout hideFooter><CitizenHome /></CitizenLayout>
-            } />
-            <Route path="/citizen/report" element={
-              <ProtectedRoute allowedRoles={['CITIZEN']}>
-                <CitizenLayout><ReportWizard /></CitizenLayout>
-              </ProtectedRoute>
-            } />
-            <Route path="/citizen/my-reports" element={
-              <ProtectedRoute allowedRoles={['CITIZEN']}>
-                <CitizenLayout><MyReports /></CitizenLayout>
-              </ProtectedRoute>
-            } />
-            <Route path="/citizen/status/:id" element={
-              <ProtectedRoute allowedRoles={['CITIZEN']}>
-                <CitizenLayout><ReportStatus /></CitizenLayout>
-              </ProtectedRoute>
-            } />
+            {/* Staff Portal Mode */}
+            {portalMode === 'staff' && (
+              <>
+                <Route path="/staff/login" element={<StaffLogin />} />
+                <Route path="/staff/overview" element={
+                  <ProtectedRoute allowedRoles={['MAINTENANCE_OFFICER']}>
+                    <StaffLayout><MaintenanceOverview /></StaffLayout>
+                  </ProtectedRoute>
+                } />
+                <Route path="/staff/map" element={
+                  <ProtectedRoute allowedRoles={['MAINTENANCE_OFFICER']}>
+                    <StaffLayout><LiveMap /></StaffLayout>
+                  </ProtectedRoute>
+                } />
+                <Route path="/staff/review-queue" element={
+                  <ProtectedRoute allowedRoles={['MAINTENANCE_OFFICER']}>
+                    <StaffLayout><ReviewQueue /></StaffLayout>
+                  </ProtectedRoute>
+                } />
+                <Route path="/staff/repairs" element={
+                  <ProtectedRoute allowedRoles={['MAINTENANCE_OFFICER']}>
+                    <StaffLayout><Repairs /></StaffLayout>
+                  </ProtectedRoute>
+                } />
+                <Route path="/staff/reports/:filter" element={
+                  <ProtectedRoute allowedRoles={['MAINTENANCE_OFFICER', 'ADMIN']}>
+                    <StaffLayout><FilteredReportList /></StaffLayout>
+                  </ProtectedRoute>
+                } />
+                <Route path="/staff/report-history" element={
+                  <ProtectedRoute allowedRoles={['MAINTENANCE_OFFICER', 'ADMIN']}>
+                    <StaffLayout><ReportMaintenanceHistory /></StaffLayout>
+                  </ProtectedRoute>
+                } />
+                <Route path="/potholes/:id" element={
+                  <ProtectedRoute allowedRoles={['MAINTENANCE_OFFICER', 'ADMIN']}>
+                    <StaffLayout><PotholeDetail /></StaffLayout>
+                  </ProtectedRoute>
+                } />
+                <Route path="/" element={<Navigate to="/staff/login" replace />} />
+                <Route path="/staff/*" element={<Navigate to="/staff/overview" replace />} />
+              </>
+            )}
 
-            {/* Staff Routes */}
-            <Route path="/staff/overview" element={
-              <ProtectedRoute allowedRoles={['MAINTENANCE_OFFICER']}>
-                <StaffLayout><MaintenanceOverview /></StaffLayout>
-              </ProtectedRoute>
-            } />
-
-            <Route path="/staff/map" element={
-              <ProtectedRoute allowedRoles={['MAINTENANCE_OFFICER']}>
-                <StaffLayout><LiveMap /></StaffLayout>
-              </ProtectedRoute>
-            } />
-
-            <Route path="/staff/review-queue" element={
-              <ProtectedRoute allowedRoles={['MAINTENANCE_OFFICER']}>
-                <StaffLayout><ReviewQueue /></StaffLayout>
-              </ProtectedRoute>
-            } />
-
-            <Route path="/staff/repairs" element={
-              <ProtectedRoute allowedRoles={['MAINTENANCE_OFFICER']}>
-                <StaffLayout><Repairs /></StaffLayout>
-              </ProtectedRoute>
-            } />
-            
-            <Route path="/staff/reports/:filter" element={
-              <ProtectedRoute allowedRoles={['MAINTENANCE_OFFICER', 'ADMIN']}>
-                <StaffLayout><FilteredReportList /></StaffLayout>
-              </ProtectedRoute>
-            } />
-
-            <Route path="/staff/report-history" element={
-              <ProtectedRoute allowedRoles={['MAINTENANCE_OFFICER', 'ADMIN']}>
-                <StaffLayout><ReportMaintenanceHistory /></StaffLayout>
-              </ProtectedRoute>
-            } />
-
-            <Route path="/potholes/:id" element={
-              <ProtectedRoute allowedRoles={['MAINTENANCE_OFFICER', 'ADMIN']}>
-                <StaffLayout><PotholeDetail /></StaffLayout>
-              </ProtectedRoute>
-            } />
-
-            {/* Admin Routes */}
-            <Route path="/admin/overview" element={
-              <ProtectedRoute allowedRoles={['ADMIN']}>
-                <AdminLayout><Overview /></AdminLayout>
-              </ProtectedRoute>
-            } />
-
-            <Route path="/admin/users" element={
-              <ProtectedRoute allowedRoles={['ADMIN']}>
-                <AdminLayout><Users /></AdminLayout>
-              </ProtectedRoute>
-            } />
-
-            <Route path="/admin/reports" element={
-              <ProtectedRoute allowedRoles={['ADMIN']}>
-                <AdminLayout><AdminReports /></AdminLayout>
-              </ProtectedRoute>
-            } />
-
-            <Route path="/admin/reports/:id" element={
-              <ProtectedRoute allowedRoles={['ADMIN']}>
-                <AdminLayout><AdminReportDetail /></AdminLayout>
-              </ProtectedRoute>
-            } />
-
-            <Route path="/admin/provinces" element={
-              <ProtectedRoute allowedRoles={['ADMIN']}>
-                <AdminLayout><ProvinceMonitoring /></AdminLayout>
-              </ProtectedRoute>
-            } />
-
-            <Route path="/admin/audit-logs" element={
-              <ProtectedRoute allowedRoles={['ADMIN']}>
-                <AdminLayout><AuditLogs /></AdminLayout>
-              </ProtectedRoute>
-            } />
-
-            <Route path="/admin/settings" element={
-              <ProtectedRoute allowedRoles={['ADMIN']}>
-                <AdminLayout><Settings /></AdminLayout>
-              </ProtectedRoute>
-            } />
-
-            {/* Root Redirect Logic */}
-            <Route path="/" element={
-              <RootRedirect />
-            } />
+            {/* Admin Portal Mode */}
+            {portalMode === 'admin' && (
+              <>
+                {/* Reusing Login but configured via props/env in its implementation */}
+                <Route path="/admin/login" element={<Login />} /> 
+                <Route path="/admin/overview" element={
+                  <ProtectedRoute allowedRoles={['ADMIN']}>
+                    <AdminLayout><Overview /></AdminLayout>
+                  </ProtectedRoute>
+                } />
+                <Route path="/admin/users" element={
+                  <ProtectedRoute allowedRoles={['ADMIN']}>
+                    <AdminLayout><Users /></AdminLayout>
+                  </ProtectedRoute>
+                } />
+                <Route path="/admin/reports" element={
+                  <ProtectedRoute allowedRoles={['ADMIN']}>
+                    <AdminLayout><AdminReports /></AdminLayout>
+                  </ProtectedRoute>
+                } />
+                <Route path="/admin/reports/:id" element={
+                  <ProtectedRoute allowedRoles={['ADMIN']}>
+                    <AdminLayout><AdminReportDetail /></AdminLayout>
+                  </ProtectedRoute>
+                } />
+                <Route path="/admin/provinces" element={
+                  <ProtectedRoute allowedRoles={['ADMIN']}>
+                    <AdminLayout><ProvinceMonitoring /></AdminLayout>
+                  </ProtectedRoute>
+                } />
+                <Route path="/admin/audit-logs" element={
+                  <ProtectedRoute allowedRoles={['ADMIN']}>
+                    <AdminLayout><AuditLogs /></AdminLayout>
+                  </ProtectedRoute>
+                } />
+                <Route path="/admin/settings" element={
+                  <ProtectedRoute allowedRoles={['ADMIN']}>
+                    <AdminLayout><Settings /></AdminLayout>
+                  </ProtectedRoute>
+                } />
+                <Route path="/" element={<Navigate to="/admin/login" replace />} />
+                <Route path="/admin/*" element={<Navigate to="/admin/overview" replace />} />
+              </>
+            )}
 
             <Route path="/offline" element={<Offline />} />
-
-            {/* fallback */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Suspense>

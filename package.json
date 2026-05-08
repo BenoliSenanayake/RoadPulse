@@ -5,6 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:citizen": "vite --mode citizen",
+    "dev:staff": "vite --mode staff",
+    "dev:admin": "vite --mode admin",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview"

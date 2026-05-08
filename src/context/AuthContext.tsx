@@ -45,43 +45,71 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }, [citizenAccounts]);
 
     const login = async (email: string, password?: string, provincialCouncil?: ProvincialCouncil) => {
-        // Staff/admin login is only allowed from the staff login flow.
-        if (provincialCouncil) {
+        const portalMode = import.meta.env.VITE_PORTAL_MODE || 'citizen';
+
+        // Staff login logic (requires provincialCouncil match)
+        if (portalMode === 'staff') {
+            if (!provincialCouncil) {
+                return { success: false, error: 'Please select your Provincial Council.' };
+            }
+
             const staffUser = await authApi.verifyStaff(email);
             if (!staffUser) {
-                return { success: false, error: 'Staff account not found or unauthorized for this province.' };
+                return { success: false, error: 'Staff account not found.' };
+            }
+
+            if (staffUser.role !== 'MAINTENANCE_OFFICER') {
+                return { success: false, error: 'Unauthorized: This portal is only for Maintenance Officers.' };
+            }
+
+            if (staffUser.provincialCouncil !== provincialCouncil) {
+                return { success: false, error: 'Selected province does not match this officer account.' };
             }
 
             const sessionUser: User = {
                 ...staffUser,
-                provincialCouncil: staffUser.role === 'MAINTENANCE_OFFICER' ? provincialCouncil : undefined,
+                provincialCouncil: provincialCouncil,
             };
             setUser(sessionUser);
             localStorage.setItem(USER_KEY, JSON.stringify(sessionUser));
             return { success: true, user: sessionUser };
         }
 
-        // Citizen login never checks or creates a staff/admin session.
-        const citizen = citizenAccounts.find(u => u.email === email);
-        if (citizen) {
-            // Simple credential check
-            if (citizen.passwordHash === password) {
-                const sessionUser: User = {
-                    id: citizen.id,
-                    name: citizen.name,
-                    email: citizen.email,
-                    role: 'CITIZEN',
-                    status: 'ACTIVE',
-                    createdAt: new Date().toISOString()
-                };
-                setUser(sessionUser);
-                localStorage.setItem(USER_KEY, JSON.stringify(sessionUser));
-                return { success: true, user: sessionUser };
+        // Admin login logic
+        if (portalMode === 'admin') {
+            const adminUser = await authApi.verifyStaff(email); // Reusing verifyStaff for backend check
+            if (!adminUser || adminUser.role !== 'ADMIN') {
+                return { success: false, error: 'Unauthorized: This portal is only for administrators.' };
             }
-            return { success: false, error: 'Invalid password' };
+
+            setUser(adminUser);
+            localStorage.setItem(USER_KEY, JSON.stringify(adminUser));
+            return { success: true, user: adminUser };
         }
 
-        return { success: false, error: 'Account not found' };
+        // Citizen login logic
+        if (portalMode === 'citizen') {
+            const citizen = citizenAccounts.find(u => u.email === email);
+            if (citizen) {
+                if (citizen.passwordHash === password) {
+                    const sessionUser: User = {
+                        id: citizen.id,
+                        name: citizen.name,
+                        email: citizen.email,
+                        role: 'CITIZEN',
+                        status: 'ACTIVE',
+                        createdAt: new Date().toISOString()
+                    };
+                    setUser(sessionUser);
+                    localStorage.setItem(USER_KEY, JSON.stringify(sessionUser));
+                    return { success: true, user: sessionUser };
+                }
+                return { success: false, error: 'Invalid password' };
+            }
+            return { success: false, error: 'Account not found' };
+        }
+
+        return { success: false, error: 'Unknown portal mode' };
     };
 
     const signup = async (data: Omit<CitizenAccount, 'id' | 'role' | 'createdAt'>) => {

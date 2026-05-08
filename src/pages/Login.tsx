@@ -6,6 +6,7 @@ import { Alert, type AlertType } from '../components/Alert';
 import { AuthInput } from '../components/AuthInput';
 import type { UserRole } from '../types';
 import logo from '../assets/logo.png';
+import { cn } from '../lib/utils';
 
 const LoginPage = () => {
     const [email, setEmail] = useState(() => localStorage.getItem('rp_remember_email') || '');
@@ -36,7 +37,6 @@ const LoginPage = () => {
             return fallback;
         }
 
-        // CITIZEN Firewall: Never allow a citizen to be redirected to staff/admin areas
         if (activeRole === 'CITIZEN') {
             const isRestrictedPath = intendedPath.startsWith('/staff') || 
                                    intendedPath.startsWith('/admin') || 
@@ -44,7 +44,6 @@ const LoginPage = () => {
             return isRestrictedPath ? '/citizen' : intendedPath;
         }
 
-        // STAFF/ADMIN Firewall: Ensure they go to their intended area or fallback to their home
         if (activeRole === 'MAINTENANCE_OFFICER') {
             return (intendedPath.startsWith('/staff') || intendedPath.startsWith('/potholes'))
                 ? intendedPath
@@ -77,6 +76,11 @@ const LoginPage = () => {
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
+
+    const portalMode = import.meta.env.VITE_PORTAL_MODE || 'citizen';
+    const isCitizen = portalMode === 'citizen';
+    const isAdmin = portalMode === 'admin';
+    const portalTitle = isAdmin ? 'Admin Sign In' : 'Citizen Sign In';
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -131,12 +135,22 @@ const LoginPage = () => {
             <div className="max-w-[400px] w-full relative z-10 flex flex-col gap-8">
                 {/* Brand Header */}
                 <div className="flex flex-col items-center">
-                    <div className="w-16 h-16 bg-white rounded-2xl shadow-premium border border-slate-100 flex items-center justify-center mb-4 group hover:scale-105 transition-all duration-500">
-                        <img src={logo} alt="RP" className="w-10 h-10 object-contain group-hover:rotate-12 transition-transform duration-500" />
+                    <div className={cn(
+                        "w-16 h-16 rounded-2xl shadow-premium border flex items-center justify-center mb-4 group hover:scale-105 transition-all duration-500",
+                        isAdmin ? "bg-slate-900 border-white/10" : "bg-white border-slate-100"
+                    )}>
+                        <img 
+                            src={logo} 
+                            alt="RP" 
+                            className={cn(
+                                "w-10 h-10 object-contain group-hover:rotate-12 transition-transform duration-500",
+                                isAdmin && "brightness-0 invert opacity-90"
+                            )} 
+                        />
                     </div>
                     <div className="text-center">
                         <h1 className="text-2xl font-black text-slate-900 tracking-tighter uppercase leading-none mb-1">RoadPulse</h1>
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] leading-none">Citizen Sign In</p>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] leading-none">{portalTitle}</p>
                     </div>
                 </div>
 
@@ -211,13 +225,23 @@ const LoginPage = () => {
                         </button>
                     </form>
 
-                    <div className="mt-8 pt-6 border-t border-slate-50 text-center">
-                        <p className="text-[11px] font-bold text-slate-400">
-                            New Citizen? <Link to="/signup" state={{ from: location.state?.from }} className="text-slate-900 font-black hover:underline underline-offset-4 flex items-center justify-center gap-1.5 mt-1 text-xs uppercase tracking-widest">
-                                <UserPlus size={14} /> Create Account
-                            </Link>
-                        </p>
-                    </div>
+                    {isCitizen && (
+                        <div className="mt-8 pt-6 border-t border-slate-50 text-center">
+                            <p className="text-[11px] font-bold text-slate-400">
+                                New Citizen? <Link to="/signup" state={{ from: location.state?.from }} className="text-slate-900 font-black hover:underline underline-offset-4 flex items-center justify-center gap-1.5 mt-1 text-xs uppercase tracking-widest">
+                                    <UserPlus size={14} /> Create Account
+                                </Link>
+                            </p>
+                        </div>
+                    )}
+
+                    {isAdmin && (
+                        <div className="mt-8 pt-6 border-t border-slate-50 text-center">
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-relaxed">
+                                Restricted Access Area
+                            </p>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

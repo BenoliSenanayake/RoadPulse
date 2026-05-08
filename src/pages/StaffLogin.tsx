@@ -91,8 +91,8 @@ const StaffLogin = () => {
                         <img src={logo} alt="RP" className="w-10 h-10 object-contain brightness-0 invert opacity-90 group-hover:scale-110 transition-transform duration-500" />
                     </div>
                     <div className="text-center">
-                        <h1 className="text-xl font-black text-slate-900 tracking-[0.15em] uppercase leading-none mb-2">Staff Portal</h1>
-                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.4em] leading-none">Maintenance & Administration</p>
+                        <h1 className="text-xl font-black text-slate-900 tracking-[0.15em] uppercase leading-none mb-2">Officer Sign In</h1>
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.4em] leading-none">Maintenance Portal</p>
                     </div>
                 </div>
 
@@ -126,6 +126,7 @@ const StaffLogin = () => {
                                     onChange={(e) => setSelectedProvince(e.target.value as ProvincialCouncil)}
                                     className="w-full pl-11 pr-4 py-3.5 bg-slate-50/60 border border-slate-200 rounded-2xl text-sm font-bold text-slate-900 appearance-none focus:outline-none focus:ring-2 focus:ring-slate-300 focus:border-transparent transition-all cursor-pointer"
                                 >
+                                    <option value="" disabled>Select Province</option>
                                     {PROVINCIAL_COUNCILS.map(pc => (
                                         <option key={pc} value={pc}>{pc}</option>
                                     ))}
@@ -135,7 +136,7 @@ const StaffLogin = () => {
                                 </div>
                             </div>
                             <p className="text-[9px] font-medium text-slate-400 pl-1">
-                                You will only see reports from this province
+                                You will only see reports from your assigned province
                             </p>
                         </div>
 
@@ -171,12 +172,9 @@ const StaffLogin = () => {
                 </div>
 
                 <div className="flex flex-col items-center gap-4">
-                    <Link to="/citizen" className="text-[10px] font-black text-slate-500 uppercase tracking-widest hover:text-slate-900 transition-colors flex items-center gap-2 group">
-                        <ChevronLeft size={14} className="group-hover:-translate-x-1 transition-transform" /> Return to Citizen Portal
-                    </Link>
                     <div className="flex items-center gap-2">
                         <div className="w-1 h-1 bg-slate-200 rounded-full" />
-                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-none">RoadPulse Staff Access</span>
+                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-none">RoadPulse Official Portal</span>
                     </div>
                 </div>
             </div>
