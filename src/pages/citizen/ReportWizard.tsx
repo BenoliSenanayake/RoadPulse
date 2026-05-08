@@ -10,11 +10,11 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import icon from 'leaflet/dist/images/marker-icon.png';
 import iconShadow from 'leaflet/dist/images/marker-shadow.png';
-import { reportsApi, aiApi } from '../../lib/api';
+import { reportsApi } from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
 import { cn } from '../../lib/utils';
 
-delete (L.Icon.Default.prototype as any)._getIconUrl;
+delete (L.Icon.Default.prototype as { _getIconUrl?: unknown })._getIconUrl;
 L.Icon.Default.mergeOptions({
     iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
     iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
@@ -32,7 +32,7 @@ function MapController({ center }: { center: [number, number] }) {
     return null;
 }
 
-type Step = 'PHOTO' | 'LOCATION' | 'DETAILS' | 'REVIEW' | 'AUTH' | 'SUBMITTING';
+type Step = 'PHOTO' | 'LOCATION' | 'DETAILS' | 'REVIEW' | 'AUTH' | 'SUBMITTING' | 'SUCCESS';
 
 const compressImage = (file: File): Promise<string> => new Promise(resolve => {
     const reader = new FileReader();
@@ -71,6 +71,7 @@ const ReportWizard = () => {
     const [lon, setLon] = useState(79.8612);
     const [roadName, setRoadName] = useState('');
     const [description, setDescription] = useState('');
+    const [submittedReportId, setSubmittedReportId] = useState('');
 
     const [error, setError] = useState('');
     const [isMapModalOpen, setIsMapModalOpen] = useState(false);
@@ -106,14 +107,15 @@ const ReportWizard = () => {
         setStep('SUBMITTING');
         try {
             const formData = new FormData();
-            formData.append('citizenId', user.id);
-            formData.append('lat', lat.toString());
-            formData.append('lon', lon.toString());
+            formData.append('citizen_id', user.id);
+            formData.append('latitude', lat.toString());
+            formData.append('longitude', lon.toString());
             const fullDesc = `${roadName ? `[${roadName}] ` : ''}${description}`.trim();
             if (fullDesc) formData.append('description', fullDesc);
             if (imageFile) formData.append('image', imageFile);
             const report = await reportsApi.submit(formData);
-            navigate(`/citizen/status/${report.id}`);
+            setSubmittedReportId(report.id);
+            navigate(report.id ? `/citizen/status/${report.id}` : '/citizen/my-reports', { replace: true });
         } catch {
             setError('Submission failed. Please check your connection and try again.');
             setStep('REVIEW');
@@ -127,6 +129,32 @@ const ReportWizard = () => {
             <div className="w-16 h-16 border-4 border-slate-200 border-t-slate-900 rounded-full animate-spin mb-6" />
             <h2 className="text-xl font-bold text-slate-900 mb-1">Analyzing pothole image...</h2>
             <p className="text-sm text-slate-400">Please wait while our AI processes your report.</p>
+        </div>
+    );
+
+    if (step === 'SUCCESS') return (
+        <div className="min-h-[60vh] flex flex-col items-center justify-center text-center p-8">
+            <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-6 shadow-sm">
+                <CheckCircle2 size={40} />
+            </div>
+            <h2 className="text-2xl font-bold text-slate-900 mb-3">Report Submitted!</h2>
+            <p className="text-slate-500 mb-8 max-w-md leading-relaxed">
+                Your report has been submitted successfully and will be reviewed by maintenance officers.
+            </p>
+            <div className="flex gap-4">
+                <button
+                    onClick={() => navigate(`/citizen/status/${submittedReportId}`)}
+                    className="px-6 py-3 bg-slate-900 text-white rounded-xl font-semibold shadow-lg hover:bg-slate-800 transition-colors"
+                >
+                    Track Status
+                </button>
+                <button
+                    onClick={() => navigate('/citizen')}
+                    className="px-6 py-3 bg-white text-slate-700 border border-slate-200 rounded-xl font-semibold hover:bg-slate-50 transition-colors"
+                >
+                    Back to Dashboard
+                </button>
+            </div>
         </div>
     );
 

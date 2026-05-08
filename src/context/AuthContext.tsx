@@ -12,7 +12,7 @@ export interface CitizenAccount extends User {
 
 interface AuthContextType {
     user: User | null;
-    login: (email: string, password?: string, provincialCouncil?: ProvincialCouncil) => Promise<{ success: boolean; error?: string }>;
+    login: (email: string, password?: string, provincialCouncil?: ProvincialCouncil) => Promise<{ success: boolean; error?: string; user?: User }>;
     signup: (data: Omit<CitizenAccount, 'id' | 'role' | 'createdAt'>) => Promise<{ success: boolean; error?: string }>;
     logout: () => void;
     isAuthenticated: boolean;
@@ -45,25 +45,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }, [citizenAccounts]);
 
     const login = async (email: string, password?: string, provincialCouncil?: ProvincialCouncil) => {
-        // 1. Check Mock Staff Accounts (Admin/Officer)
-        const staffUser = await authApi.verifyStaff(email);
-        if (staffUser) {
-            // Attach provincial council if the user is a maintenance officer
+        // Staff/admin login is only allowed from the staff login flow.
+        if (provincialCouncil) {
+            const staffUser = await authApi.verifyStaff(email);
+            if (!staffUser) {
+                return { success: false, error: 'Staff account not found or unauthorized for this province.' };
+            }
+
             const sessionUser: User = {
                 ...staffUser,
                 provincialCouncil: staffUser.role === 'MAINTENANCE_OFFICER' ? provincialCouncil : undefined,
             };
             setUser(sessionUser);
             localStorage.setItem(USER_KEY, JSON.stringify(sessionUser));
-            return { success: true };
+            return { success: true, user: sessionUser };
         }
 
-        // If we are in the staff login flow (provincialCouncil provided) and no staff found, fail immediately
-        if (provincialCouncil) {
-            return { success: false, error: 'Staff account not found or unauthorized for this province.' };
-        }
-
-        // 2. Check Citizen Accounts
+        // Citizen login never checks or creates a staff/admin session.
         const citizen = citizenAccounts.find(u => u.email === email);
         if (citizen) {
             // Simple credential check
@@ -78,7 +76,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 };
                 setUser(sessionUser);
                 localStorage.setItem(USER_KEY, JSON.stringify(sessionUser));
-                return { success: true };
+                return { success: true, user: sessionUser };
             }
             return { success: false, error: 'Invalid password' };
         }
@@ -87,10 +85,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
 
     const signup = async (data: Omit<CitizenAccount, 'id' | 'role' | 'createdAt'>) => {
-        // Check if email taken
+        // 1. Check if email is a reserved staff email pattern
+        if (data.email.endsWith('@roadpulse.lk')) {
+            return { success: false, error: 'Staff emails cannot be used for citizen registration.' };
+        }
+
+        // 2. Check if email already taken in mock staff or existing accounts
         const emailExists = await authApi.checkEmailExists(data.email);
         if (citizenAccounts.some(u => u.email === data.email) || emailExists) {
-            return { success: false, error: 'Email already registered' };
+            return { success: false, error: 'Email identity already registered in the network.' };
         }
 
         const newCitizen: CitizenAccount = {
@@ -128,6 +131,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const getHomePath = (forcedRole?: UserRole): string => {
         const role = forcedRole || user?.role;
+        if (!role) return '/citizen';
+
         switch (role) {
             case 'ADMIN': return '/admin/overview';
             case 'MAINTENANCE_OFFICER': return '/staff/overview';

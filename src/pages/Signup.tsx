@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { Mail, Lock, User, MapPin, ArrowRight, CheckCircle2, Phone, Loader2, ChevronLeft } from 'lucide-react';
+import { Mail, Lock, User, ArrowRight, CheckCircle2, Loader2, ChevronLeft } from 'lucide-react';
 import { Alert, type AlertType } from '../components/Alert';
 import { AuthInput } from '../components/AuthInput';
 import { useAuth } from '../context/AuthContext';
@@ -14,10 +14,8 @@ const Signup = () => {
     const [formData, setFormData] = useState({
         name: '',
         email: '',
-        phone: '',
         password: '',
-        confirmPassword: '',
-        district: ''
+        confirmPassword: ''
     });
 
     const [errors, setErrors] = useState<Record<string, string>>({});
@@ -29,7 +27,15 @@ const Signup = () => {
         ? `${fromLocation.pathname}${fromLocation.search ?? ''}`
         : getHomePath('CITIZEN');
 
-    const districts = ['Colombo', 'Kandy', 'Gampaha', 'Galle', 'Jaffna', 'Matara'];
+    const getRedirectTarget = () => {
+        // Enforce role separation
+        if (from.startsWith('/staff') || from.startsWith('/admin')) {
+            return getHomePath('CITIZEN');
+        }
+        return from;
+    };
+
+
 
     const validateStep = () => {
         const newErrors: Record<string, string> = {};
@@ -37,13 +43,12 @@ const Signup = () => {
             if (formData.name.length < 2) newErrors.name = 'Name must be at least 2 chars';
             if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) newErrors.email = 'Invalid email identity';
         } else if (step === 2) {
-            if (!formData.district) newErrors.district = 'Regional sector required';
-            if (formData.phone && !/^(?:\+94|0)7\d{8}$/.test(formData.phone)) {
-                newErrors.phone = 'Invalid Sri Lanka format';
-            }
-        } else if (step === 3) {
-            if (formData.password.length < 8 || !/\d/.test(formData.password)) {
-                newErrors.password = 'Security key must be 8+ chars with 1+ number';
+            const hasLetter = /[a-zA-Z]/.test(formData.password);
+            const hasNumber = /\d/.test(formData.password);
+            const hasSpecial = /[^a-zA-Z0-9]/.test(formData.password);
+            
+            if (formData.password.length < 8 || !hasLetter || !hasNumber || !hasSpecial) {
+                newErrors.password = 'Security key must be 8+ chars with letters, numbers, and 1+ special character';
             }
             if (formData.password !== formData.confirmPassword) {
                 newErrors.confirmPassword = 'Security keys do not match';
@@ -58,11 +63,10 @@ const Signup = () => {
             return formData.name.length >= 2 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email);
         }
         if (step === 2) {
-            const phoneValid = !formData.phone || /^(?:\+94|0)7\d{8}$/.test(formData.phone);
-            return !!formData.district && phoneValid;
-        }
-        if (step === 3) {
-            return formData.password.length >= 8 && /\d/.test(formData.password) && formData.password === formData.confirmPassword;
+            const hasLetter = /[a-zA-Z]/.test(formData.password);
+            const hasNumber = /\d/.test(formData.password);
+            const hasSpecial = /[^a-zA-Z0-9]/.test(formData.password);
+            return formData.password.length >= 8 && hasLetter && hasNumber && hasSpecial && formData.password === formData.confirmPassword;
         }
         return false;
     }, [step, formData]);
@@ -84,8 +88,6 @@ const Signup = () => {
             name: formData.name,
             email: formData.email,
             passwordHash: formData.password,
-            phone: formData.phone,
-            district: formData.district,
             status: 'ACTIVE'
         });
 
@@ -97,7 +99,7 @@ const Signup = () => {
                 message: 'Identity Verified',
                 description: 'Welcome to the RoadPulse network, Citizen.'
             });
-            setTimeout(() => navigate(from, { replace: true }), 2000);
+            setTimeout(() => navigate(getRedirectTarget(), { replace: true }), 2000);
         } else {
             setFeedback({
                 type: 'error',
@@ -134,7 +136,7 @@ const Signup = () => {
                 <div className="card-premium p-8 sm:p-10 border-none shadow-2xl shadow-slate-900/10 relative overflow-hidden">
                     {/* Stepper */}
                     <div className="flex gap-2 mb-8 px-1">
-                        {[1, 2, 3].map((s) => (
+                        {[1, 2].map((s) => (
                             <div
                                 key={s}
                                 className={cn(
@@ -187,74 +189,14 @@ const Signup = () => {
                             </div>
                         )}
 
+
+
                         {step === 2 && (
-                            <div className="space-y-5 animate-fade-in-up">
-                                <div className="space-y-2">
-                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 lowercase first-letter:uppercase">Local District</label>
-                                    <div className="relative group">
-                                        <div className={cn(
-                                            "absolute left-4 top-1/2 -translate-y-1/2 transition-colors duration-300",
-                                            errors.district ? "text-rose-400" : "text-slate-300 group-focus-within:text-slate-900"
-                                        )}>
-                                            <MapPin size={18} />
-                                        </div>
-                                        <select
-                                            className={cn(
-                                                "w-full pl-12 pr-4 py-4 bg-slate-50/50 border rounded-2xl focus:outline-none focus:ring-4 transition-all text-sm font-bold appearance-none cursor-pointer",
-                                                errors.district ? "border-rose-200 focus:ring-rose-500/10" : "border-slate-100 focus:ring-slate-900/5"
-                                            )}
-                                            value={formData.district}
-                                            onChange={e => {
-                                                setFormData({ ...formData, district: e.target.value });
-                                                if (errors.district) setErrors({ ...errors, district: '' });
-                                            }}
-                                        >
-                                            <option value="">Select District</option>
-                                            {districts.map(d => <option key={d} value={d}>{d}</option>)}
-                                        </select>
-                                    </div>
-                                    {errors.district && <p className="text-[10px] text-rose-500 font-bold mt-1.5 ml-2 uppercase tracking-wide">{errors.district}</p>}
-                                </div>
-
-                                <AuthInput
-                                    label="Phone Number"
-                                    type="tel"
-                                    placeholder="e.g. 0771234567"
-                                    icon={<Phone />}
-                                    value={formData.phone}
-                                    onChange={e => {
-                                        setFormData({ ...formData, phone: e.target.value });
-                                        if (errors.phone) setErrors({ ...errors, phone: '' });
-                                    }}
-                                    error={errors.phone}
-                                />
-
-                                <div className="flex gap-4 mt-2">
-                                    <button
-                                        type="button"
-                                        onClick={handleBack}
-                                        className="flex-1 py-4 bg-white text-slate-500 border border-slate-100 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-50 transition-all flex items-center justify-center gap-2"
-                                    >
-                                        <ChevronLeft size={16} /> Back
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={handleNext}
-                                        disabled={!isStepValid}
-                                        className="flex-[2] py-4 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-slate-900/20 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:scale-100 transition-all flex items-center justify-center gap-2"
-                                    >
-                                        Secure Key <ArrowRight size={16} />
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-
-                        {step === 3 && (
                             <div className="space-y-5 animate-fade-in-up">
                                 <AuthInput
                                     label="Security Key"
                                     type="password"
-                                    placeholder="At least 8 chars"
+                                    placeholder="8+ chars, letters, numbers, symbols"
                                     icon={<Lock />}
                                     showPasswordToggle
                                     value={formData.password}

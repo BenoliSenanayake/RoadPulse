@@ -128,13 +128,59 @@ export const authApi = {
         );
     }
 };
+    
+const mapBackendReportToFrontend = (data: any): CitizenReport => {
+    if (!data) return data;
+    return {
+        ...data,
+        id: data.id,
+        citizenId: data.citizen_id || data.citizenId,
+        lat: data.latitude || data.lat,
+        lon: data.longitude || data.lon,
+        imageUrl: data.image_url || data.imageUrl,
+        aiClassification: data.ai_classification || data.aiClassification,
+        aiConfidence: data.ai_confidence || data.aiConfidence,
+        predictionCount: data.prediction_count || data.predictionCount,
+        detectionModel: data.detection_model || data.detectionModel,
+        detectionTimestamp: data.detection_timestamp || data.detectionTimestamp,
+        createdAt: data.submitted_at || data.createdAt || new Date().toISOString(),
+        provincialCouncil: data.provincial_council || data.provincialCouncil,
+    };
+};
+
+const mapReportToPotholeEvent = (data: any): PotholeEvent => {
+    if (!data) return data;
+    const cr = mapBackendReportToFrontend(data);
+    return {
+        id: cr.id,
+        lat: cr.lat,
+        lon: cr.lon,
+        timestamp: cr.createdAt || new Date().toISOString(),
+        confidence: cr.aiConfidence ?? 0.9,
+        status: (cr.status as PotholeStatus) || 'New',
+        imageUrl: cr.imageUrl,
+        source: 'CITIZEN_REPORT',
+        reportId: cr.id,
+        bbox: cr.bbox,
+        provincialCouncil: cr.provincialCouncil,
+        district: cr.district,
+        createdAt: cr.createdAt || new Date().toISOString(),
+        updatedAt: cr.createdAt || new Date().toISOString(),
+        priority: data.priority,
+        assignedTeam: data.assigned_team || data.assignedTeam,
+        scheduledDate: data.scheduled_date || data.scheduledDate,
+        maintenanceNotes: data.maintenance_notes || data.maintenanceNotes,
+        repairStatus: data.repair_status || data.repairStatus || cr.status,
+    };
+};
 
 export const reportsApi = {
     list: async (filters?: { status?: string; citizenId?: string }): Promise<CitizenReport[]> => {
         return withFallback(
-            () => {
+            async () => {
                 const query = new URLSearchParams(filters as any).toString();
-                return apiClient.get(`/reports?${query}`);
+                const res = await apiClient.get(`/reports?${query}`);
+                return Array.isArray(res) ? res.map(mapBackendReportToFrontend) : [];
             },
             async () => {
                 await new Promise(r => setTimeout(r, 400));
@@ -147,15 +193,18 @@ export const reportsApi = {
     },
     submit: async (data: any): Promise<CitizenReport> => {
         return withFallback(
-            () => apiClient.post('/reports', data),
+            async () => {
+                const res = await apiClient.post('/reports', data);
+                return mapBackendReportToFrontend(res);
+            },
             async () => {
                 await new Promise(r => setTimeout(r, 600));
                 let payload = data;
                 if (data instanceof FormData) {
                     payload = {
-                        citizenId: data.get('citizenId') as string,
-                        lat: parseFloat(data.get('lat') as string),
-                        lon: parseFloat(data.get('lon') as string),
+                        citizenId: (data.get('citizen_id') || data.get('citizenId')) as string,
+                        lat: parseFloat((data.get('latitude') || data.get('lat')) as string),
+                        lon: parseFloat((data.get('longitude') || data.get('lon')) as string),
                         description: data.get('description') as string,
                         imageUrl: data.get('image') instanceof File ? URL.createObjectURL(data.get('image') as File) : 'https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?auto=format&fit=crop&q=80',
                         aiStatus: 'PENDING'
@@ -185,7 +234,10 @@ export const reportsApi = {
     },
     getById: async (id: string): Promise<CitizenReport | null> => {
         return withFallback(
-            () => apiClient.get(`/reports/${id}`),
+            async () => {
+                const res = await apiClient.get(`/reports/${id}`);
+                return mapBackendReportToFrontend(res);
+            },
             async () => {
                 await new Promise(r => setTimeout(r, 300));
                 return mockGetReports().find(r => r.id === id) || null;
@@ -194,7 +246,12 @@ export const reportsApi = {
     },
     update: async (id: string, updates: Partial<CitizenReport>): Promise<CitizenReport | null> => {
         return withFallback(
-            () => apiClient.patch(`/reports/${id}`, updates),
+            async () => {
+                // Map frontend updates back to backend if needed (e.g. notes)
+                const payload: any = { ...updates };
+                const res = await apiClient.patch(`/reports/${id}`, payload);
+                return mapBackendReportToFrontend(res);
+            },
             async () => {
                 const { updateReportDetails } = await import('../mockData');
                 return updateReportDetails(id, updates);
@@ -206,9 +263,10 @@ export const reportsApi = {
 export const potholesApi = {
     list: async (filters?: { status?: PotholeStatus }): Promise<PotholeEvent[]> => {
         return withFallback(
-            () => {
+            async () => {
                 const query = new URLSearchParams(filters as any).toString();
-                return apiClient.get(`/potholes?${query}`);
+                const res = await apiClient.get(`/reports?${query}`);
+                return Array.isArray(res) ? res.map(mapReportToPotholeEvent) : [];
             },
             async () => {
                 await new Promise(r => setTimeout(r, 400));
@@ -220,7 +278,10 @@ export const potholesApi = {
     },
     getById: async (id: string): Promise<PotholeEvent | null> => {
         return withFallback(
-            () => apiClient.get(`/potholes/${id}`),
+            async () => {
+                const res = await apiClient.get(`/reports/${id}`);
+                return mapReportToPotholeEvent(res);
+            },
             async () => {
                 await new Promise(r => setTimeout(r, 200));
                 return mockGetPotholes().find(p => p.id === id) || null;
@@ -229,7 +290,9 @@ export const potholesApi = {
     },
     updateStatus: async (id: string, status: PotholeStatus, note: string, updatedBy?: string): Promise<void> => {
         return withFallback(
-            () => apiClient.patch(`/potholes/${id}/status`, { status, note, updatedBy }),
+            async () => {
+                await apiClient.patch(`/reports/${id}/status`, { status, notes: note });
+            },
             async () => {
                 await new Promise(r => setTimeout(r, 300));
                 return mockUpdatePotholeStatus(id, status, note, updatedBy || 'System');
@@ -238,7 +301,15 @@ export const potholesApi = {
     },
     scheduleRepair: async (id: string, data: RepairScheduleInput, updatedBy?: string): Promise<PotholeEvent | null> => {
         return withFallback(
-            () => apiClient.post(`/potholes/${id}/schedule`, { ...data, updatedBy }),
+            async () => {
+                const payload = {
+                    status: data.repairStatus,
+                    priority: data.priority,
+                    notes: `Scheduled for ${data.scheduledDate} with ${data.assignedTeam}. ${data.maintenanceNotes}`
+                };
+                const res = await apiClient.patch(`/reports/${id}/status`, payload);
+                return mapReportToPotholeEvent(res);
+            },
             async () => {
                 await new Promise(r => setTimeout(r, 300));
                 return mockSchedulePotholeRepair(id, data, updatedBy || 'Maintenance Officer');
@@ -250,7 +321,13 @@ export const potholesApi = {
 export const repairsApi = {
     schedule: async (potholeId: string, teamId: string, scheduledDate: string) => {
         return withFallback(
-            () => apiClient.post(`/repairs`, { potholeId, teamId, scheduledDate }),
+            async () => {
+                const payload = {
+                    status: 'Scheduled',
+                    notes: `Scheduled repair with ${teamId} on ${scheduledDate}`
+                };
+                return apiClient.patch(`/reports/${potholeId}/status`, payload);
+            },
             async () => {
                 await new Promise(r => setTimeout(r, 300));
                 return mockSchedulePotholeRepair(potholeId, {

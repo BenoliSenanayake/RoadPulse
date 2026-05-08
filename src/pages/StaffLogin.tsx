@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useCallback, useEffect, useState } from 'react';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Shield, Lock, Mail, ChevronLeft, Loader2, MapPin } from 'lucide-react';
 import { AuthInput } from '../components/AuthInput';
 import { Alert, type AlertType } from '../components/Alert';
 import { PROVINCIAL_COUNCILS, type ProvincialCouncil } from '../types';
+import type { UserRole } from '../types';
 import logo from '../assets/logo.png';
 
 const StaffLogin = () => {
@@ -17,11 +18,30 @@ const StaffLogin = () => {
 
     const { login, isAuthenticated, user, getHomePath } = useAuth();
     const navigate = useNavigate();
+    const location = useLocation();
 
-    // Only redirect if already authenticated as a Staff member
-    if (isAuthenticated && user?.role !== 'CITIZEN') {
-        navigate(getHomePath());
-    }
+    const fromLocation = location.state?.from as { pathname?: string; search?: string } | undefined;
+    const intendedPath = fromLocation?.pathname
+        ? `${fromLocation.pathname}${fromLocation.search ?? ''}`
+        : '';
+
+    const getStaffRedirectTarget = useCallback((role?: UserRole) => {
+        if (role === 'ADMIN') {
+            return intendedPath.startsWith('/admin') ? intendedPath : getHomePath('ADMIN');
+        }
+        if (role === 'MAINTENANCE_OFFICER') {
+            return intendedPath.startsWith('/staff') || intendedPath.startsWith('/potholes')
+                ? intendedPath
+                : getHomePath('MAINTENANCE_OFFICER');
+        }
+        return getHomePath(role);
+    }, [getHomePath, intendedPath]);
+
+    useEffect(() => {
+        if (isAuthenticated && user?.role !== 'CITIZEN') {
+            navigate(getStaffRedirectTarget(user?.role), { replace: true });
+        }
+    }, [getStaffRedirectTarget, isAuthenticated, navigate, user?.role]);
 
     const validate = () => {
         const newErrors: { email?: string; password?: string; province?: string } = {};
@@ -46,7 +66,7 @@ const StaffLogin = () => {
         setIsLoading(false);
 
         if (result.success) {
-            navigate(getHomePath());
+            navigate(getStaffRedirectTarget(result.user?.role), { replace: true });
         } else {
             setFeedback({
                 type: 'error',

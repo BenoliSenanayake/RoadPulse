@@ -1,42 +1,70 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Mail, Lock, LogIn, UserPlus, Loader2 } from 'lucide-react';
 import { Alert, type AlertType } from '../components/Alert';
 import { AuthInput } from '../components/AuthInput';
+import type { UserRole } from '../types';
 import logo from '../assets/logo.png';
 
 const LoginPage = () => {
-    const [email, setEmail] = useState('');
+    const [email, setEmail] = useState(() => localStorage.getItem('rp_remember_email') || '');
     const [password, setPassword] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-    const [rememberMe, setRememberMe] = useState(false);
+    const [rememberMe, setRememberMe] = useState(() => !!localStorage.getItem('rp_remember_email'));
     const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
     const [feedback, setFeedback] = useState<{ type: AlertType; message: string; description?: string } | null>(null);
 
-    const { login, isAuthenticated, getHomePath } = useAuth();
+    const { login, isAuthenticated, user, getHomePath } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
 
     const fromLocation = location.state?.from as { pathname?: string; search?: string } | undefined;
-    const from = fromLocation?.pathname
+    const returnTo = new URLSearchParams(location.search).get('returnTo');
+    const stateFrom = fromLocation?.pathname
         ? `${fromLocation.pathname}${fromLocation.search ?? ''}`
         : '/citizen';
-    const getRedirectTarget = () => from !== '/login' ? from : getHomePath();
+    const intendedPath = returnTo && returnTo.startsWith('/') && !returnTo.startsWith('//')
+        ? returnTo
+        : stateFrom;
 
-    useEffect(() => {
-        const savedEmail = localStorage.getItem('rp_remember_email');
-        if (savedEmail) {
-            setEmail(savedEmail);
-            setRememberMe(true);
+    const getRedirectTarget = useCallback((role?: UserRole) => {
+        const activeRole = role || user?.role;
+        const fallback = getHomePath(activeRole);
+
+        if (!intendedPath || intendedPath.startsWith('/login') || intendedPath === '/') {
+            return fallback;
         }
-    }, []);
+
+        // CITIZEN Firewall: Never allow a citizen to be redirected to staff/admin areas
+        if (activeRole === 'CITIZEN') {
+            const isRestrictedPath = intendedPath.startsWith('/staff') || 
+                                   intendedPath.startsWith('/admin') || 
+                                   intendedPath.startsWith('/potholes');
+            return isRestrictedPath ? '/citizen' : intendedPath;
+        }
+
+        // STAFF/ADMIN Firewall: Ensure they go to their intended area or fallback to their home
+        if (activeRole === 'MAINTENANCE_OFFICER') {
+            return (intendedPath.startsWith('/staff') || intendedPath.startsWith('/potholes'))
+                ? intendedPath
+                : getHomePath('MAINTENANCE_OFFICER');
+        }
+
+        if (activeRole === 'ADMIN') {
+            return (intendedPath.startsWith('/admin') || intendedPath.startsWith('/staff'))
+                ? intendedPath
+                : getHomePath('ADMIN');
+        }
+
+        return intendedPath;
+    }, [getHomePath, intendedPath, user?.role]);
 
     useEffect(() => {
         if (isAuthenticated) {
-            navigate(getRedirectTarget(), { replace: true });
+            navigate(getRedirectTarget(user?.role), { replace: true });
         }
-    }, [isAuthenticated, navigate, from]);
+    }, [getRedirectTarget, isAuthenticated, navigate, user?.role]);
 
     const validate = () => {
         const newErrors: { email?: string; password?: string } = {};
@@ -67,7 +95,7 @@ const LoginPage = () => {
         setIsLoading(false);
 
         if (result.success) {
-            navigate(getRedirectTarget(), { replace: true });
+            navigate(getRedirectTarget(result.user?.role), { replace: true });
         } else {
             setFeedback({
                 type: 'error',
