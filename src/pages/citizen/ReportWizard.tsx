@@ -13,7 +13,6 @@ import iconShadow from 'leaflet/dist/images/marker-shadow.png';
 import { reportsApi, aiApi } from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
 import { cn } from '../../lib/utils';
-import { cn } from '../../lib/utils';
 
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -75,8 +74,6 @@ const ReportWizard = () => {
 
     const [error, setError] = useState('');
     const [isMapModalOpen, setIsMapModalOpen] = useState(false);
-    const [error, setError] = useState('');
-    const [isMapModalOpen, setIsMapModalOpen] = useState(false);
 
     const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         setError('');
@@ -114,7 +111,6 @@ const ReportWizard = () => {
             formData.append('lon', lon.toString());
             const fullDesc = `${roadName ? `[${roadName}] ` : ''}${description}`.trim();
             if (fullDesc) formData.append('description', fullDesc);
-            if (imageFile) formData.append('image', imageFile);
             if (imageFile) formData.append('image', imageFile);
             const report = await reportsApi.submit(formData);
             navigate(`/citizen/status/${report.id}`);
