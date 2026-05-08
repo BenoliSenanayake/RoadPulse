@@ -31,6 +31,16 @@ class CitizenReportBase(BaseModel):
 class CitizenReportCreate(CitizenReportBase):
     citizen_id: str
 
+class DetectionResult(BaseModel):
+    detected: bool
+    confidence: Optional[float] = None
+    classification: Optional[str] = None
+    prediction_count: Optional[int] = None
+    bbox: Optional[Any] = None
+    model_id: Optional[str] = None
+    created_at: Optional[datetime] = None
+    raw_response: Optional[Dict[str, Any]] = None
+
 class DetectionResultRead(BaseModel):
     id: str
     report_id: str

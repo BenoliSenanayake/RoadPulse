@@ -1,6 +1,6 @@
 from fastapi import APIRouter, UploadFile, File
 from ..schemas import DetectionResult
-from ..services.ai_service import analyze_pothole_image
+from ..services.roboflow_service import analyze_pothole_image
 import os
 import uuid
 
@@ -27,4 +27,15 @@ async def analyze_image(image: UploadFile = File(...)):
     if os.path.exists(file_path):
         os.remove(file_path)
         
-    return result
+    # Map the output to match the DetectionResult schema
+    mapped_result = {
+        "detected": result.get("detected", False),
+        "confidence": result.get("aiConfidence"),
+        "classification": result.get("aiClassification"),
+        "prediction_count": result.get("predictionCount"),
+        "bbox": result.get("bbox"),
+        "model_id": result.get("detectionModel"),
+        "raw_response": result.get("raw_response")
+    }
+        
+    return mapped_result
