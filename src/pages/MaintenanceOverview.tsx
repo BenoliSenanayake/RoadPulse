@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import {
     AlertTriangle,
     CheckCircle2,
@@ -7,7 +7,8 @@ import {
     Wrench,
     CheckCircle,
     ChevronRight,
-    XCircle
+    XCircle,
+    RefreshCw
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { potholesApi, reportsApi } from '../lib/api';
@@ -38,38 +39,67 @@ const MaintenanceOverview = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
-    useEffect(() => {
-        setLoading(true);
-        setError('');
+    const fetchDashboardData = useCallback(async () => {
+        try {
+            setError('');
+            // Pass province filter to API to reduce bandwidth and enforce server-side filtering
+            const filters = province && province !== 'Unassigned' ? { provincialCouncil: province } : {};
+            
+            if (import.meta.env.DEV) {
+                console.log(`[Dashboard Debug] Fetching data with filters:`, filters);
+            }
 
-        Promise.all([potholesApi.list(), reportsApi.list()])
-            .then(([potholeData, reportData]) => {
-                if (province && province !== 'Unassigned') {
-                    setPotholes(potholeData.filter(p => p.provincialCouncil === province));
-                    setReports(reportData.filter(r => r.provincialCouncil === province));
-                } else {
-                    setPotholes(potholeData);
-                    setReports(reportData);
-                }
-            })
-            .catch(() => setError('Unable to load maintenance overview. Please try again.'))
-            .finally(() => setLoading(false));
+            console.log(`[Staff Overview] Syncing data for province: ${province}`);
+            const [potholeData, reportData] = await Promise.all([
+                potholesApi.list(filters),
+                reportsApi.list(filters)
+            ]);
+            
+            console.log(`[Staff Overview] Sync complete. Filtered results: ${potholeData.length} potholes, ${reportData.length} reports for ${province}`);
+
+            setPotholes(potholeData);
+            setReports(reportData);
+        } catch (err) {
+            console.error('Fetch error:', err);
+            setError('Unable to load maintenance overview. Please try again.');
+        } finally {
+            setLoading(false);
+        }
     }, [province]);
 
+    useEffect(() => {
+        setLoading(true);
+        fetchDashboardData();
+
+        // Real-time synchronization: Poll every 30 seconds
+        const interval = setInterval(fetchDashboardData, 30000);
+        return () => clearInterval(interval);
+    }, [fetchDashboardData]);
+
     const { cards } = useMemo(() => {
-        // AI-Verified: High confidence reports or already in pothole inventory
-        const verified = potholes.filter(p => ['Verified', 'Confirmed', 'New'].includes(p.status)).length;
+        // Combined list for overview counts
+        const allItems = [...reports, ...potholes.filter(p => !reports.some(r => r.id === p.id))];
+
+        // Verified: status is Verified/Confirmed OR aiClassification is VERIFIED_POTHOLE
+        const verified = allItems.filter(item => 
+            ['Verified', 'Confirmed'].includes(item.status) || 
+            item.aiClassification === 'VERIFIED_POTHOLE'
+        ).length;
         
-        // Manual Review Required: PENDING reports
-        const needsReview = reports.filter(r => r.aiStatus === 'PENDING').length;
+        // Manual Review: status is New OR aiClassification is NEEDS_MANUAL_REVIEW
+        const needsReview = allItems.filter(item => 
+            item.status === 'New' || 
+            item.aiClassification === 'NEEDS_MANUAL_REVIEW'
+        ).length;
         
-        const inProgress = potholes.filter(p => p.status === 'In Progress').length;
-        const completed = potholes.filter(p => ['Completed', 'Fixed'].includes(p.status)).length;
-        const rejected = reports.filter(r => r.aiStatus === 'REJECTED').length;
+        const inProgress = allItems.filter(item => item.status === 'In Progress').length;
+        const completed = allItems.filter(item => ['Completed', 'Fixed'].includes(item.status)).length;
+        const rejected = allItems.filter(item => 
+            item.status === 'Rejected' || 
+            item.aiClassification === 'REJECTED'
+        ).length;
         
-        const overdueReports = reports.filter(isOverdue);
-        const overduePotholes = potholes.filter(isOverdue);
-        const totalOverdue = overdueReports.length + overduePotholes.length;
+        const overdue = allItems.filter(isOverdue).length;
 
         return {
             cards: [
@@ -77,7 +107,7 @@ const MaintenanceOverview = () => {
                 { label: 'Manual Review Required', value: needsReview, icon: ShieldAlert, color: 'bg-amber-500', filter: 'manual-review' },
                 { label: 'In Progress Repairs', value: inProgress, icon: Wrench, color: 'bg-blue-600', filter: 'in-progress' },
                 { label: 'Completed Repairs', value: completed, icon: CheckCircle2, color: 'bg-slate-900', filter: 'completed' },
-                { label: 'Overdue Repairs', value: totalOverdue, icon: AlertTriangle, color: 'bg-rose-600', filter: 'overdue' },
+                { label: 'Overdue Repairs', value: overdue, icon: AlertTriangle, color: 'bg-rose-600', filter: 'overdue' },
                 { label: 'Rejected Reports', value: rejected, icon: XCircle, color: 'bg-slate-400', filter: 'rejected' },
             ]
         };
@@ -100,11 +130,20 @@ const MaintenanceOverview = () => {
                     <h1 className="section-heading mb-1">Maintenance Overview</h1>
                     <p className="text-sm font-bold text-slate-500">Provincial operational summary. Click cards to view detailed reports.</p>
                 </div>
-                {province && province !== 'Unassigned' && (
-                    <div className="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-emerald-700 flex items-center gap-2">
-                        <MapPin size={12} /> {getProvinceShortName(province)} Sector
-                    </div>
-                )}
+                <div className="flex items-center gap-3">
+                    <button 
+                        onClick={() => { setLoading(true); fetchDashboardData(); }}
+                        className="btn-premium bg-white text-slate-600 border border-slate-100 shadow-sm hover:bg-slate-50"
+                    >
+                        <RefreshCw size={14} className={cn("text-blue-500", loading && "animate-spin")} />
+                        Manual Sync
+                    </button>
+                    {province && province !== 'Unassigned' && (
+                        <div className="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-emerald-700 flex items-center gap-2">
+                            <MapPin size={12} /> {getProvinceShortName(province)} Sector
+                        </div>
+                    )}
+                </div>
             </div>
 
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">

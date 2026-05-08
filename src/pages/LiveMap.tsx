@@ -85,18 +85,16 @@ const LiveMap = () => {
         setLoading(true);
         setError('');
         try {
-            let data = await potholesApi.list();
+            // Pass province filter to API
+            const filters = province && province !== 'Unassigned' ? { provincialCouncil: province } : {};
+            let data = await potholesApi.list(filters);
             
-            // Access Control: Province-based visibility
-            if (province && province !== 'Unassigned') {
-                data = data.filter(p => p.provincialCouncil === province);
-            }
-
             // Status Restriction: Only Verified and In Progress
             data = data.filter(p => ['Verified', 'Confirmed', 'In Progress'].includes(p.status));
             
             setPotholes(data);
-        } catch {
+        } catch (err) {
+            console.error('Map fetch error:', err);
             setError('Failed to load map data. Please try again later.');
         } finally {
             setLoading(false);
@@ -105,6 +103,17 @@ const LiveMap = () => {
 
     useEffect(() => {
         loadMapData();
+        
+        // Real-time synchronization: Poll every 30 seconds
+        const interval = setInterval(() => {
+            // Background refresh (don't show loading spinner)
+            const filters = province && province !== 'Unassigned' ? { provincialCouncil: province } : {};
+            potholesApi.list(filters).then(data => {
+                setPotholes(data.filter(p => ['Verified', 'Confirmed', 'In Progress'].includes(p.status)));
+            }).catch(console.error);
+        }, 30000);
+
+        return () => clearInterval(interval);
     }, [province]);
 
     const districts = useMemo(() => {
@@ -242,7 +251,7 @@ const LiveMap = () => {
                     <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" attribution="&copy; OpenStreetMap &copy; CARTO" />
                     <MapController center={mapCenter} />
                     <MarkerClusterGroup chunkedLoading spiderfyOnMaxZoom showCoverageOnHover={false} maxClusterRadius={40}>
-                        {filtered.map(p => (
+                        {filtered.length > 0 ? filtered.map(p => (
                             <Marker
                                 key={p.id}
                                 position={[p.lat, p.lon]}
@@ -266,7 +275,19 @@ const LiveMap = () => {
                                     </div>
                                 </Popup>
                             </Marker>
-                        ))}
+                        )) : (
+                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[1001]">
+                                <div className="bg-white/90 backdrop-blur p-8 rounded-[2rem] border border-slate-100 shadow-2xl text-center max-w-xs">
+                                    <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                                        <MapPin size={20} className="text-slate-300" />
+                                    </div>
+                                    <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight mb-1">No Live Reports</h3>
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-relaxed">
+                                        There are currently no active potholes or verified reports in this jurisdictional sector.
+                                    </p>
+                                </div>
+                            </div>
+                        )}
                     </MarkerClusterGroup>
                 </MapContainer>
 

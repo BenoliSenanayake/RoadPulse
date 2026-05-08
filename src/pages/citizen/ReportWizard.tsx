@@ -100,9 +100,18 @@ const ReportWizard = () => {
 
     const handleSubmit = async () => {
         if (!user) {
+            console.warn('[ReportWizard] No user found in AuthContext. Redirecting to login.');
             navigate('/login', { state: { from: { pathname: '/citizen/report' } }, replace: true });
             return;
         }
+
+        console.log('[ReportWizard] Submitting report...', { 
+            userId: user.id, 
+            lat, 
+            lon, 
+            roadName, 
+            hasImage: !!imageFile 
+        });
 
         setStep('SUBMITTING');
         try {
@@ -110,14 +119,26 @@ const ReportWizard = () => {
             formData.append('citizen_id', user.id);
             formData.append('latitude', lat.toString());
             formData.append('longitude', lon.toString());
+            
             const fullDesc = `${roadName ? `[${roadName}] ` : ''}${description}`.trim();
             if (fullDesc) formData.append('description', fullDesc);
             if (imageFile) formData.append('image', imageFile);
+
+            console.log('[ReportWizard] Sending FormData to API...');
             const report = await reportsApi.submit(formData);
+            
+            console.log('[ReportWizard] Submission successful! Received report:', report);
             setSubmittedReportId(report.id);
-            navigate(report.id ? `/citizen/status/${report.id}` : '/citizen/my-reports', { replace: true });
-        } catch {
-            setError('Submission failed. Please check your connection and try again.');
+            
+            // Redirect immediately to status page if we have an ID
+            if (report.id) {
+                navigate(`/citizen/status/${report.id}`, { replace: true });
+            } else {
+                setStep('SUCCESS');
+            }
+        } catch (err: any) {
+            console.error('[ReportWizard] Submission failed:', err);
+            setError(`Submission failed: ${err.message || 'Unknown error'}. Please check your connection.`);
             setStep('REVIEW');
         }
     };

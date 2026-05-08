@@ -17,6 +17,8 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { cn } from '../lib/utils';
+import { BackendStatusBanner } from './BackendStatusBanner';
+import { isBackendDown } from '../lib/api';
 
 const adminNavItems = [
     { name: 'Overview', icon: LayoutDashboard, path: '/admin/overview' },
@@ -151,8 +153,10 @@ const AdminHeader = ({ onMenuClick }: { onMenuClick: () => void }) => {
                 </div>
 
                 <div className="flex h-11 items-center gap-1.5 rounded-2xl border border-slate-100 bg-slate-50/50 px-4">
-                    <div className="h-2 w-2 rounded-full bg-blue-500 animate-pulse shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
-                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-600">Sys OK</span>
+                    <div className={cn("h-2 w-2 rounded-full animate-pulse shadow-[0_0_8px_rgba(59,130,246,0.5)]", isBackendDown ? "bg-rose-500" : "bg-blue-500")} />
+                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-600">
+                        {isBackendDown ? 'Sys ERR' : 'Sys OK'}
+                    </span>
                 </div>
 
                 <button className="relative flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-100 bg-white text-slate-600 hover:bg-slate-50 transition-all shadow-sm group">
@@ -175,15 +179,18 @@ export const AdminLayout = ({ children }: { children: ReactNode }) => {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
     return (
-        <div className="flex min-h-screen bg-slate-50">
-            <AdminSidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
-            
-            <div className="flex flex-1 flex-col lg:pl-72">
-                <AdminHeader onMenuClick={() => setIsSidebarOpen(true)} />
+        <div className="flex min-h-screen flex-col bg-slate-50">
+            <BackendStatusBanner />
+            <div className="flex flex-1">
+                <AdminSidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
                 
-                <main className="flex-1 p-6 md:p-8 max-w-[1600px] w-full mx-auto animate-fade-in-up">
-                    {children}
-                </main>
+                <div className="flex flex-1 flex-col lg:pl-72">
+                    <AdminHeader onMenuClick={() => setIsSidebarOpen(true)} />
+                    
+                    <main className="flex-1 p-6 md:p-8 max-w-[1600px] w-full mx-auto animate-fade-in-up">
+                        {children}
+                    </main>
+                </div>
             </div>
         </div>
     );

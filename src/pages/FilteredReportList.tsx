@@ -12,7 +12,8 @@ import {
     ChevronRight,
     Loader2,
     Search,
-    XCircle
+    XCircle,
+    History
 } from 'lucide-react';
 import { potholesApi, reportsApi } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
@@ -94,18 +95,14 @@ const FilteredReportList = () => {
     const loadData = async () => {
         setLoading(true);
         try {
-            const [pData, rData] = await Promise.all([potholesApi.list(), reportsApi.list()]);
+            const filters = (province && province !== 'Unassigned') ? { provincialCouncil: province } : {};
+            const [pData, rData] = await Promise.all([
+                potholesApi.list(filters),
+                reportsApi.list(filters)
+            ]);
             
-            // Apply provincial siloing
-            const filteredP = (province && province !== 'Unassigned') 
-                ? pData.filter(p => p.provincialCouncil === province)
-                : pData;
-            const filteredR = (province && province !== 'Unassigned')
-                ? rData.filter(r => r.provincialCouncil === province)
-                : rData;
-
-            setPotholes(filteredP);
-            setReports(filteredR);
+            setPotholes(pData);
+            setReports(rData);
         } catch (error) {
             console.error("Failed to load reports", error);
         } finally {
@@ -118,29 +115,39 @@ const FilteredReportList = () => {
     }, [province]);
 
     const displayItems = useMemo(() => {
+        const allItems = [...reports, ...potholes.filter(p => !reports.some(r => r.id === p.id))];
         let items: (CitizenReport | PotholeEvent)[] = [];
 
         switch (filter) {
             case 'verified':
-                items = potholes.filter(p => ['Verified', 'Confirmed', 'New'].includes(p.status));
+                items = allItems.filter(item => 
+                    ['Verified', 'Confirmed'].includes(item.status) || 
+                    item.aiClassification === 'VERIFIED_POTHOLE'
+                );
                 break;
             case 'manual-review':
-                items = reports.filter(r => r.aiStatus === 'PENDING');
+                items = allItems.filter(item => 
+                    item.status === 'New' || 
+                    item.aiClassification === 'NEEDS_MANUAL_REVIEW'
+                );
                 break;
             case 'in-progress':
-                items = potholes.filter(p => p.status === 'In Progress');
+                items = allItems.filter(item => item.status === 'In Progress');
                 break;
             case 'completed':
-                items = potholes.filter(p => ['Completed', 'Fixed'].includes(p.status));
+                items = allItems.filter(item => ['Completed', 'Fixed'].includes(item.status));
                 break;
             case 'overdue':
-                items = [...reports.filter(isOverdue), ...potholes.filter(isOverdue)];
+                items = allItems.filter(isOverdue);
                 break;
             case 'rejected':
-                items = reports.filter(r => r.aiStatus === 'REJECTED');
+                items = allItems.filter(item => 
+                    item.status === 'Rejected' || 
+                    item.aiClassification === 'REJECTED'
+                );
                 break;
             case 'all':
-                items = [...reports, ...potholes];
+                items = allItems;
                 break;
         }
 

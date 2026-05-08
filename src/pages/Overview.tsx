@@ -66,12 +66,13 @@ const Overview = () => {
                 authApi.listUsers(),
                 auditLogsApi.list()
             ]);
+            console.log(`[Admin Overview] Live Data Sync: ${rData.length} reports, ${pData.length} pothole events, ${uData.length} users.`);
             setPotholes(pData);
             setReports(rData);
             setUsers(uData);
             setAuditLogs(aData);
         } catch (error) {
-            console.error("Failed to load overview data", error);
+            console.error("[Admin Overview] Failed to load live overview data", error);
         } finally {
             setLoading(false);
         }
@@ -79,6 +80,13 @@ const Overview = () => {
 
     useEffect(() => {
         loadData();
+        
+        // Real-time synchronization: Poll every 30 seconds
+        const interval = setInterval(() => {
+            loadData();
+        }, 30000);
+
+        return () => clearInterval(interval);
     }, []);
 
     const isOverdue = (item: CitizenReport | PotholeEvent) => {
@@ -233,7 +241,7 @@ const Overview = () => {
                                         </div>
                                         <div>
                                             <div className="flex items-center gap-2 mb-1">
-                                                <span className="text-xs font-black text-slate-900 uppercase">#{report.id.split('-')[1]}</span>
+                                                <span className="text-xs font-black text-slate-900 uppercase">#{report.id.includes('-') && report.id.length < 15 ? report.id.split('-')[1] : report.id.slice(0, 8)}</span>
                                                 <span className="px-2 py-0.5 bg-amber-100 text-amber-700 rounded text-[9px] font-black uppercase tracking-widest">Awaiting Review</span>
                                             </div>
                                             <p className="text-[11px] font-bold text-slate-500 uppercase tracking-tight flex items-center gap-1.5">

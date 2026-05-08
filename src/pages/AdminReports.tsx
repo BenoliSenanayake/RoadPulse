@@ -61,10 +61,11 @@ const AdminReports = () => {
                 reportsApi.list(),
                 potholesApi.list()
             ]);
+            console.log(`[Admin Reports] Successfully synced ${rData.length} citizen reports and ${pData.length} pothole events from PostgreSQL.`);
             setReports(rData);
             setPotholes(pData);
-        } catch (err) {
-            console.error("Failed to load reports", err);
+        } catch (error) {
+            console.error("[Admin Reports] Failed to fetch live reports data", error);
         } finally {
             setLoading(false);
         }
@@ -72,6 +73,10 @@ const AdminReports = () => {
 
     useEffect(() => {
         loadData();
+
+        // Real-time synchronization: Poll every 30 seconds
+        const interval = setInterval(loadData, 30000);
+        return () => clearInterval(interval);
     }, []);
 
     const unifiedData = useMemo(() => {
@@ -81,13 +86,18 @@ const AdminReports = () => {
                     ? resolveProvince(r.lat, r.lon) 
                     : { council: r.provincialCouncil };
                 
+                let status = 'New';
+                if (['Verified', 'Confirmed'].includes(r.status) || r.aiClassification === 'VERIFIED_POTHOLE') status = 'Verified';
+                else if (r.status === 'Rejected' || r.aiClassification === 'REJECTED') status = 'Rejected';
+                else if (r.status === 'New' || r.aiClassification === 'NEEDS_MANUAL_REVIEW') status = 'Manual Review';
+
                 return {
                     id: r.id,
                     province: detected.council || 'Unknown',
                     district: r.district || 'Unknown',
                     location: r.description || 'Coordinate Location',
                     submittedDate: r.createdAt,
-                    status: r.aiStatus === 'PENDING' ? 'Manual Review' : r.aiStatus === 'ACCEPTED' ? 'Verified' : 'Rejected',
+                    status: status,
                     priority: 'Medium',
                     submittedBy: r.citizenId || 'Anonymous',
                     lastUpdated: r.createdAt,
@@ -295,7 +305,9 @@ const AdminReports = () => {
                                     <tr key={item.id} className="hover:bg-slate-50/50 transition-all duration-300 group">
                                         <td className="whitespace-nowrap">
                                             <div className="flex flex-col">
-                                                <span className="text-[11px] font-black text-slate-900 uppercase">#{item.id.split('-')[1]}</span>
+                                                <span className="text-[11px] font-black text-slate-900 uppercase">
+                                                    #{item.id.includes('-') ? item.id.split('-')[1] : item.id.slice(0, 8)}
+                                                </span>
                                                 <span className="text-[9px] font-black text-blue-500 uppercase tracking-widest mt-0.5">{item.type.replace('_', ' ')}</span>
                                             </div>
                                         </td>

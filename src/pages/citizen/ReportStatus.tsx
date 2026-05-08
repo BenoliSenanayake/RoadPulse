@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { listCitizenReports } from '../../lib/api';
+import { reportsApi } from '../../lib/api';
 import { ArrowLeft, MapPin, Calendar, CheckCircle2, Clock, Wrench, CircleDot } from 'lucide-react';
 import { format } from 'date-fns';
 import type { CitizenReport } from '../../types';
@@ -68,11 +68,26 @@ const ReportStatus = () => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        if (!id || !user) return;
-        const all = listCitizenReports();
-        const found = all.find(r => r.id === id && r.citizenId === user.id) ?? null;
-        setReport(found);
-        setLoading(false);
+        const loadReport = async () => {
+            if (!id || !user) return;
+            setLoading(true);
+            try {
+                const found = await reportsApi.getById(id);
+                // Security: Only show report if it belongs to the citizen or user is staff/admin
+                if (found && (found.citizenId === user.id || ['MAINTENANCE_OFFICER', 'ADMIN'].includes(user.role))) {
+                    setReport(found);
+                } else {
+                    setReport(null);
+                }
+            } catch (err) {
+                console.error('[ReportStatus] Failed to load report:', err);
+                setReport(null);
+            } finally {
+                setLoading(false);
+            }
+        };
+        
+        loadReport();
     }, [id, user]);
 
     if (loading) return (

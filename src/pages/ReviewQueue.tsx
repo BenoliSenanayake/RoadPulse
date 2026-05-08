@@ -45,10 +45,8 @@ const ReviewQueue = () => {
         setLoading(true);
         setError(null);
         try {
-            let data = await reportsApi.list();
-            if (province && province !== 'Unassigned') {
-                data = data.filter(r => r.provincialCouncil === province);
-            }
+            const filters = (province && province !== 'Unassigned') ? { provincialCouncil: province } : {};
+            const data = await reportsApi.list(filters);
             setReports(data.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
         } catch (e) {
             console.error(e);
@@ -60,6 +58,10 @@ const ReviewQueue = () => {
 
     useEffect(() => {
         fetchReports();
+
+        // Real-time synchronization: Poll every 30 seconds
+        const interval = setInterval(fetchReports, 30000);
+        return () => clearInterval(interval);
     }, [province]);
 
     const filteredReports = useMemo(() => {
@@ -80,7 +82,7 @@ const ReviewQueue = () => {
         if (window.confirm(`Are you sure you want to manually ${action} this report?`)) {
             setLoading(true);
             reportsApi.review(id, action, (action === 'reject' || action === 'request_info') ? rejectionReason : undefined)
-                .then(() => reportsApi.list())
+                .then(() => reportsApi.list({ provincialCouncil: province || '' }))
                 .then(fresh => {
                     const sorted = fresh.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
                     setReports(sorted);

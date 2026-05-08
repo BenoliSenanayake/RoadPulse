@@ -9,9 +9,9 @@ import type { UserRole } from '../types';
 import logo from '../assets/logo.png';
 
 const StaffLogin = () => {
-    const [email, setEmail] = useState('western@roadpulse.lk');
+    const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [selectedProvince, setSelectedProvince] = useState<ProvincialCouncil>('Western Provincial Council');
+    const [selectedProvince, setSelectedProvince] = useState<ProvincialCouncil | ''>('');
     const [isLoading, setIsLoading] = useState(false);
     const [errors, setErrors] = useState<{ email?: string; password?: string; province?: string }>({});
     const [feedback, setFeedback] = useState<{ type: AlertType; message: string; description?: string } | null>(null);

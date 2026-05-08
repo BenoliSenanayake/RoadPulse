@@ -1,14 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { formatDistanceToNow, format } from 'date-fns';
-import { ArrowRight, Clock, Inbox, MapPin, PlusCircle } from 'lucide-react';
-import { listCitizenReports } from '../../lib/api';
+import { ArrowRight, Clock, Inbox, MapPin, PlusCircle, AlertTriangle, Loader2 } from 'lucide-react';
+import { reportsApi } from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
 import type { CitizenReport } from '../../types';
 
 function friendlyStatus(report: CitizenReport): { label: string; color: string } {
-    if (report.status === 'Discarded') return { label: 'Not Accepted', color: 'text-rose-700 bg-rose-50 border-rose-100' };
-    if (report.aiStatus === 'ACCEPTED') return { label: 'In Progress', color: 'text-violet-700 bg-violet-50 border-violet-100' };
+    if (report.status === 'Rejected' || report.status === 'Discarded') return { label: 'Not Accepted', color: 'text-rose-700 bg-rose-50 border-rose-100' };
+    if (report.status === 'Verified' || report.status === 'In Progress' || report.status === 'Completed') return { label: 'In Progress', color: 'text-violet-700 bg-violet-50 border-violet-100' };
     return { label: 'Under Review', color: 'text-amber-700 bg-amber-50 border-amber-100' };
 }
 
@@ -19,14 +19,37 @@ const FILTERS: FilterKey[] = ['ALL', 'Under Review', 'In Progress', 'Not Accepte
 const MyReports = () => {
     const { user } = useAuth();
     const [reports, setReports] = useState<CitizenReport[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
     const [filter, setFilter] = useState<FilterKey>('ALL');
 
-    useEffect(() => {
-        if (!user) return;
-
-        const mine = listCitizenReports({ citizenId: user.id });
-        setReports(mine.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+    const loadMyReports = useCallback(async () => {
+        if (!user) {
+            console.warn('[MyReports] No user found in AuthContext');
+            return;
+        }
+        
+        console.log(`[MyReports] Fetching reports for citizenId: ${user.id} (Type: ${typeof user.id})`);
+        try {
+            const mine = await reportsApi.list({ citizenId: user.id });
+            console.log(`[MyReports] Successfully loaded ${mine.length} reports for this user.`);
+            setReports(mine.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+            setError('');
+        } catch (err: any) {
+            console.error('[MyReports] Failed to load reports:', err);
+            setError(`Could not sync with the database: ${err.message || 'Unknown error'}`);
+        } finally {
+            setLoading(false);
+        }
     }, [user]);
+
+    useEffect(() => {
+        loadMyReports();
+        
+        // Poll for updates every 30 seconds
+        const interval = setInterval(loadMyReports, 30000);
+        return () => clearInterval(interval);
+    }, [loadMyReports]);
 
     const filteredReports = reports.filter(report => {
         if (filter === 'ALL') return true;
@@ -64,7 +87,19 @@ const MyReports = () => {
                 ))}
             </div>
 
-            {filteredReports.length === 0 ? (
+            {loading ? (
+                <div className="flex flex-col items-center justify-center py-20">
+                    <Loader2 size={32} className="animate-spin text-slate-200 mb-4" />
+                    <p className="text-xs font-black uppercase tracking-widest text-slate-400">Syncing with database...</p>
+                </div>
+            ) : error ? (
+                <div className="bg-rose-50 border border-rose-100 rounded-xl p-8 text-center">
+                    <AlertTriangle size={32} className="text-rose-500 mx-auto mb-4" />
+                    <h3 className="text-sm font-black text-rose-900 uppercase tracking-widest mb-1">Synchronization Error</h3>
+                    <p className="text-xs font-bold text-rose-600 mb-6">{error}</p>
+                    <button onClick={loadMyReports} className="px-5 py-2 bg-rose-600 text-white rounded-lg text-xs font-black uppercase tracking-widest hover:bg-rose-700 transition-all">Retry Sync</button>
+                </div>
+            ) : filteredReports.length === 0 ? (
                 <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-12 text-center">
                     <div className="w-14 h-14 bg-slate-50 rounded-xl flex items-center justify-center mx-auto mb-4">
                         <Inbox size={24} className="text-slate-300" />

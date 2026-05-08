@@ -29,14 +29,26 @@ const CITIZEN_ACCOUNTS_KEY = 'rp_citizen_accounts';
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // Current Session
     const [user, setUser] = useState<User | null>(() => {
-        const saved = localStorage.getItem(USER_KEY);
-        return saved ? JSON.parse(saved) : null;
+        try {
+            const saved = localStorage.getItem(USER_KEY);
+            return saved ? JSON.parse(saved) : null;
+        } catch (e) {
+            console.error("[Auth] Failed to parse user from storage", e);
+            localStorage.removeItem(USER_KEY);
+            return null;
+        }
     });
 
     // Persistent Accounts
     const [citizenAccounts, setCitizenAccounts] = useState<CitizenAccount[]>(() => {
-        const saved = localStorage.getItem(CITIZEN_ACCOUNTS_KEY);
-        return saved ? JSON.parse(saved) : [];
+        try {
+            const saved = localStorage.getItem(CITIZEN_ACCOUNTS_KEY);
+            return saved ? JSON.parse(saved) : [];
+        } catch (e) {
+            console.error("[Auth] Failed to parse accounts from storage", e);
+            localStorage.removeItem(CITIZEN_ACCOUNTS_KEY);
+            return [];
+        }
     });
 
     // Keep localStorage in sync with accounts state
@@ -124,9 +136,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             return { success: false, error: 'Email identity already registered in the network.' };
         }
 
+        const signupData = {
+            name: data.name,
+            email: data.email,
+            password: data.passwordHash, // Backend expects 'password'
+            role: 'CITIZEN'
+        };
+
+        const result = await authApi.signup(signupData);
+        if (!result.success) {
+            return { success: false, error: 'Registration failed at backend.' };
+        }
+
+        // Get the created user from backend to have the real ID
+        const users = await authApi.listUsers();
+        const createdUser = users.find(u => u.email === data.email);
+
         const newCitizen: CitizenAccount = {
             ...data,
-            id: `cit-${Date.now()}`,
+            id: createdUser?.id || `cit-${Date.now()}`,
             role: 'CITIZEN',
             createdAt: new Date().toISOString()
         };
