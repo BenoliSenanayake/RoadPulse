@@ -36,6 +36,7 @@ interface UnifiedReport {
     submittedBy: string;
     lastUpdated: string;
     type: 'CITIZEN_REPORT' | 'POTHOLE_EVENT';
+    imageUrl?: string;
 }
 
 const AdminReports = () => {
@@ -98,10 +99,11 @@ const AdminReports = () => {
                     location: r.description || 'Coordinate Location',
                     submittedDate: r.createdAt,
                     status: status,
-                    priority: 'Medium',
+                    priority: r.priority || 'Medium',
                     submittedBy: r.citizenId || 'Anonymous',
                     lastUpdated: r.createdAt,
-                    type: 'CITIZEN_REPORT' as const
+                    type: 'CITIZEN_REPORT' as const,
+                    imageUrl: r.imageUrl
                 };
             }),
             ...potholes.map(p => {
@@ -118,6 +120,7 @@ const AdminReports = () => {
                     status: p.status,
                     priority: p.priority || 'Unassigned',
                     submittedBy: 'AI System',
+                    imageUrl: p.imageUrl,
                     lastUpdated: p.timestamp,
                     type: 'POTHOLE_EVENT' as const
                 };
@@ -308,7 +311,7 @@ const AdminReports = () => {
                                                 <span className="text-[11px] font-black text-slate-900 uppercase">
                                                     #{item.id.includes('-') ? item.id.split('-')[1] : item.id.slice(0, 8)}
                                                 </span>
-                                                <span className="text-[9px] font-black text-blue-500 uppercase tracking-widest mt-0.5">{item.type.replace('_', ' ')}</span>
+                                                <span className="text-[9px] font-black text-blue-500 uppercase tracking-widest mt-0.5">{String(item.type ?? '').replace(/_/g, ' ')}</span>
                                             </div>
                                         </td>
                                         <td>
@@ -351,12 +354,23 @@ const AdminReports = () => {
                                             </span>
                                         </td>
                                         <td className="text-right px-8">
-                                            <button 
-                                                onClick={() => navigate(item.type === 'CITIZEN_REPORT' ? `/admin/reports/${item.id}` : `/potholes/${item.id}`)}
-                                                className="h-9 px-4 bg-white border border-slate-200 rounded-xl text-[9px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-900 hover:text-white hover:border-slate-900 transition-all active:scale-95 flex items-center gap-2 ml-auto shadow-sm"
-                                            >
-                                                <Eye size={12} /> Details
-                                            </button>
+                                            <div className="relative group/details inline-block ml-auto">
+                                                <button 
+                                                    onClick={() => navigate(item.type === 'CITIZEN_REPORT' ? `/admin/reports/${item.id}` : `/potholes/${item.id}`)}
+                                                    className="h-9 px-4 bg-white border border-slate-200 rounded-xl text-[9px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-900 hover:text-white hover:border-slate-900 transition-all active:scale-95 flex items-center gap-2 shadow-sm"
+                                                >
+                                                    <Eye size={12} /> Details
+                                                </button>
+                                                {/* Image preview tooltip on hover */}
+                                                {item.imageUrl && (
+                                                    <div className="absolute right-0 bottom-full mb-2 z-30 w-52 rounded-2xl overflow-hidden border border-slate-200 shadow-2xl shadow-slate-900/20 opacity-0 invisible group-hover/details:opacity-100 group-hover/details:visible transition-all duration-300 pointer-events-none -translate-y-2 group-hover/details:translate-y-0 bg-white">
+                                                        <img src={item.imageUrl} alt="Preview" className="w-full h-32 object-cover" />
+                                                        <div className="p-2.5 bg-slate-50">
+                                                            <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest text-center">Report Image Preview</p>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
                                         </td>
                                     </tr>
                                 ))

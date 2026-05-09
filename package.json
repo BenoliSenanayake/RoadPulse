@@ -5,9 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "dev:citizen": "vite --mode citizen",
-    "dev:staff": "vite --mode staff",
-    "dev:admin": "vite --mode admin",
+    "dev:citizen": "vite --host 0.0.0.0 --port 5173 --mode citizen",
+    "dev:staff": "vite --host 0.0.0.0 --port 5174 --mode staff",
+    "dev:admin": "vite --host 0.0.0.0 --port 5175 --mode admin",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview"

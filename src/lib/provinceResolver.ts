@@ -111,8 +111,9 @@ export function resolveProvince(lat: number, lon: number): ProvinceDetectionResu
 /**
  * Get the display-friendly short name of a Provincial Council.
  */
-export function getProvinceShortName(council: ProvincialCouncil): string {
-    return council.replace(' Provincial Council', '');
+export function getProvinceShortName(council?: ProvincialCouncil | string | null): string {
+    if (!council) return 'Unassigned';
+    return String(council).replace(' Provincial Council', '');
 }
 
 export const PROVINCIAL_COUNCILS: ProvincialCouncil[] = [

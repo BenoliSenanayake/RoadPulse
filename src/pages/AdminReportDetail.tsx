@@ -37,6 +37,7 @@ const AdminReportDetail = () => {
     const [editedProvince, setEditedProvince] = useState<ProvincialCouncil>('Unassigned');
     const [editedDistrict, setEditedDistrict] = useState('');
     const [editedStatus, setEditedStatus] = useState<CitizenReport['status']>('New');
+    const [editedPriority, setEditedPriority] = useState<CitizenReport['priority']>('Medium');
     const [adminNote, setAdminNote] = useState('');
 
     const loadData = async () => {
@@ -53,6 +54,7 @@ const AdminReportDetail = () => {
                 setEditedProvince(reportData.provincialCouncil || 'Unassigned');
                 setEditedDistrict(reportData.district || '');
                 setEditedStatus(reportData.status);
+                setEditedPriority(reportData.priority || 'Medium');
                 
                 const reportLogs = logsData.filter((l: any) => l.entityId === id);
                 setLogs(reportLogs.sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
@@ -76,6 +78,8 @@ const AdminReportDetail = () => {
                 provincialCouncil: editedProvince,
                 district: editedDistrict,
                 status: editedStatus,
+                priority: editedPriority,
+                maintenanceNotes: adminNote
             };
             
             const updated = await reportsApi.update(id, updates);
@@ -156,6 +160,17 @@ const AdminReportDetail = () => {
                     )}>
                         {report.status}
                     </div>
+                    {report.priority && (
+                        <div className={cn(
+                            "px-6 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest border shadow-xl transition-all duration-500",
+                            report.priority === 'Urgent' ? 'bg-rose-500 text-white border-rose-600 shadow-rose-500/20' :
+                            report.priority === 'High' ? 'bg-orange-500 text-white border-orange-600 shadow-orange-500/20' :
+                            report.priority === 'Medium' ? 'bg-blue-500 text-white border-blue-600 shadow-blue-500/20' :
+                            'bg-slate-400 text-white border-slate-500 shadow-slate-500/20'
+                        )}>
+                            {report.priority} PRIORITY
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -248,7 +263,7 @@ const AdminReportDetail = () => {
                                         <div>
                                             <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 mb-2">
                                                 <h4 className="text-[10px] font-black text-slate-900 uppercase tracking-widest">
-                                                    {log.action.replace('_', ' ')}
+                                                    {String(log.action ?? '').replace(/_/g, ' ')}
                                                 </h4>
                                                 <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest bg-slate-50 px-2 py-0.5 rounded-lg border border-slate-100">
                                                     {format(new Date(log.timestamp), 'dd MMM, HH:mm')}
@@ -320,6 +335,30 @@ const AdminReportDetail = () => {
                                     placeholder="Enter district identifier..."
                                     className="w-full px-5 py-4 bg-slate-50/50 border border-slate-100 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-700 outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/5 transition-all"
                                 />
+                            </div>
+
+                            {/* Priority Selector */}
+                            <div className="space-y-4">
+                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] block px-1">Maintenance Priority</label>
+                                <div className="grid grid-cols-2 gap-3">
+                                    {['Low', 'Medium', 'High', 'Urgent'].map(p => (
+                                        <button
+                                            key={p}
+                                            onClick={() => setEditedPriority(p as any)}
+                                            className={cn(
+                                                "py-3 rounded-2xl text-[9px] font-black uppercase tracking-widest transition-all border",
+                                                editedPriority === p 
+                                                    ? p === 'Urgent' ? 'bg-rose-600 text-white border-rose-600 shadow-xl' :
+                                                      p === 'High' ? 'bg-orange-500 text-white border-orange-500 shadow-xl' :
+                                                      p === 'Medium' ? 'bg-blue-600 text-white border-blue-600 shadow-xl' :
+                                                      'bg-slate-600 text-white border-slate-600 shadow-xl'
+                                                    : "bg-slate-50 text-slate-400 border-slate-100 hover:bg-white hover:border-slate-200"
+                                            )}
+                                        >
+                                            {p}
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
 
                             {/* Status Update */}

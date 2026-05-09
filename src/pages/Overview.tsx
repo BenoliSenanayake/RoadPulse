@@ -363,7 +363,7 @@ const Overview = () => {
                                     <td>
                                         <div className="flex items-center gap-2">
                                             <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-                                            <span className="text-[10px] font-black text-slate-700 uppercase tracking-widest">{log.action.replace('_', ' ')}</span>
+                                            <span className="text-[10px] font-black text-slate-700 uppercase tracking-widest">{String(log.action ?? '').replace(/_/g, ' ')}</span>
                                         </div>
                                     </td>
                                     <td>

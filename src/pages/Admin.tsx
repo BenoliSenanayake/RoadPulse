@@ -53,7 +53,7 @@ const AdminPage = () => {
                     user.role === 'ADMIN' ? 'bg-rose-50 text-rose-700' :
                         user.role === 'MAINTENANCE_OFFICER' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-700'
                 )}>
-                    {user.role.replace('_', ' ')}
+                    {String(user.role ?? '').replace(/_/g, ' ')}
                 </span>
             )
         },
@@ -87,7 +87,7 @@ const AdminPage = () => {
                 user.role === 'ADMIN' ? 'bg-rose-50 text-rose-700' :
                     user.role === 'MAINTENANCE_OFFICER' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-700'
             )}>
-                {user.role.replace('_', ' ')}
+                {String(user.role ?? '').replace(/_/g, ' ')}
             </span>
         </div>
     );
@@ -106,7 +106,7 @@ const AdminPage = () => {
             render: (log: any) => (
                 <div className="flex flex-col">
                     <span className="font-black text-slate-900 tracking-tight">{log.actorName || 'CORE_SYSTEM'}</span>
-                    <span className="text-[8px] text-slate-400 font-black tracking-widest uppercase opacity-60 leading-none mt-1">{log.actor.replace('_', ' ')}</span>
+                    <span className="text-[8px] text-slate-400 font-black tracking-widest uppercase opacity-60 leading-none mt-1">{String(log.actor ?? '').replace(/_/g, ' ')}</span>
                 </div>
             )
         },
@@ -115,7 +115,7 @@ const AdminPage = () => {
             render: (log: any) => (
                 <div className="flex flex-col gap-2 max-w-sm">
                     <span className="font-black text-[9px] px-2.5 py-1 rounded-lg bg-slate-900 text-white w-fit uppercase tracking-widest shadow-lg shadow-slate-900/10">
-                        {log.action.replace('_', ' ')}
+                        {String(log.action ?? '').replace(/_/g, ' ')}
                     </span>
                     <span className="text-slate-600 font-bold leading-relaxed line-clamp-1 group-hover:line-clamp-none transition-all truncate">
                         {log.details}
@@ -160,7 +160,7 @@ const AdminPage = () => {
             </div>
             <div className="flex flex-col gap-2">
                 <span className="font-black text-[8px] px-2 py-0.5 rounded-md bg-slate-900 text-white w-fit uppercase tracking-widest">
-                    {log.action.replace('_', ' ')}
+                    {String(log.action ?? '').replace(/_/g, ' ')}
                 </span>
                 <p className="text-[10px] font-bold text-slate-500 leading-relaxed line-clamp-2">{log.details}</p>
             </div>

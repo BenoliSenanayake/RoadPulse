@@ -148,13 +148,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             return { success: false, error: 'Registration failed at backend.' };
         }
 
-        // Get the created user from backend to have the real ID
-        const users = await authApi.listUsers();
-        const createdUser = users.find(u => u.email === data.email);
+        // Use the ID returned directly from signup; fall back to listUsers() if missing.
+        let backendUserId: string | undefined = result.userId;
+        if (!backendUserId) {
+            const users = await authApi.listUsers();
+            backendUserId = users.find((u: any) => u.email === data.email)?.id;
+        }
 
         const newCitizen: CitizenAccount = {
             ...data,
-            id: createdUser?.id || `cit-${Date.now()}`,
+            id: backendUserId || `cit-${Date.now()}`,
             role: 'CITIZEN',
             createdAt: new Date().toISOString()
         };

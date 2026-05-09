@@ -129,7 +129,7 @@ export const ActivityTimeline = ({ entityId }: ActivityTimelineProps) => {
 
                                     <div className="flex items-center gap-2 mt-2">
                                         <span className={`text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-wider ${getActorRoleStyle(log.actor)}`}>
-                                            {log.actor.replace('_', ' ')}
+                                            {String(log.actor ?? '').replace(/_/g, ' ')}
                                         </span>
                                         <span className="text-xs font-bold text-gray-500">
                                             • {log.actorName || 'System Process'}

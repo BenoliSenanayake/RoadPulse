@@ -69,8 +69,53 @@ async def create_report(
     print(f">>> Received citizen_id: {citizen_id}")
     print(f">>> Received file: {image.filename}")
     print(f">>> Received location: {latitude}, {longitude}")
+    print(f">>> Received description: {description}")
+    print(f">>> Received address: {address}")
+    
+    # ── Resolve citizen_id: ensure user exists or create stub ──
+    resolved_citizen_id = citizen_id or "Anonymous"
+    from app.models import User
+    existing_user = db.query(User).filter(User.id == resolved_citizen_id).first()
+    if not existing_user:
+        print(f">>> WARNING: citizen_id '{resolved_citizen_id}' not found in users table")
+        if resolved_citizen_id != "Anonymous":
+            # Preserve the provided citizen_id by creating a stub user.
+            # This happens when the frontend uses a locally-generated fallback ID.
+            try:
+                stub_user = User(
+                    id=resolved_citizen_id,
+                    name="Citizen User",
+                    email=f"citizen-{resolved_citizen_id}@roadpulse.lk",
+                    password_hash="nologin",
+                    role="CITIZEN",
+                )
+                db.add(stub_user)
+                db.commit()
+                print(f">>> Created stub user for citizen_id: {resolved_citizen_id}")
+            except Exception as stub_err:
+                db.rollback()
+                print(f">>> WARNING: Could not create stub user ({stub_err}), falling back to Anonymous")
+                resolved_citizen_id = "Anonymous"
+
+        if resolved_citizen_id == "Anonymous":
+            anon_user = db.query(User).filter(User.id == "Anonymous").first()
+            if not anon_user:
+                print(">>> Creating 'Anonymous' placeholder user...")
+                anon_user = User(
+                    id="Anonymous",
+                    name="Anonymous Citizen",
+                    email="anonymous@roadpulse.lk",
+                    password_hash="nologin",
+                    role="CITIZEN",
+                )
+                db.add(anon_user)
+                db.commit()
+                print(">>> Anonymous user created successfully")
+
+    print(f">>> Resolved citizen_id: {resolved_citizen_id}")
     
     try:
+        # ── Save uploaded image ──
         os.makedirs(UPLOAD_DIR, exist_ok=True)
         ext = image.filename.split(".")[-1] if "." in image.filename else "jpg"
         filename = f"{uuid.uuid4()}.{ext}"
@@ -79,22 +124,38 @@ async def create_report(
         with open(file_path, "wb") as f:
             content = await image.read()
             f.write(content)
+        print(f">>> Image saved: {file_path} ({len(content)} bytes)")
             
         image_url = f"http://localhost:8000/static/{filename}"
         
-        # Analyze Image via Roboflow
-        print(">>> Calling AI Analysis...")
-        detection = await analyze_pothole_image(file_path)
-        classification = detection.get("aiClassification", "NEEDS_MANUAL_REVIEW")
-        print(f">>> AI Result: {classification} (Conf: {detection.get('aiConfidence')})")
+        # ── AI Analysis (non-blocking — failure must NOT block submission) ──
+        classification = "NEEDS_MANUAL_REVIEW"
+        detection = {
+            "detected": False,
+            "aiClassification": "NEEDS_MANUAL_REVIEW",
+            "aiConfidence": 0.0,
+            "predictionCount": 0,
+            "bbox": None,
+            "detectionModel": "pothole-voxrl/1"
+        }
+        
+        try:
+            print(">>> Calling AI Analysis...")
+            detection = await analyze_pothole_image(file_path)
+            classification = detection.get("aiClassification", "NEEDS_MANUAL_REVIEW")
+            print(f">>> AI Result: {classification} (Conf: {detection.get('aiConfidence')})")
+        except Exception as ai_err:
+            print(f">>> WARNING: AI analysis failed (non-fatal): {ai_err}")
+            print(">>> Proceeding with NEEDS_MANUAL_REVIEW classification")
         
         initial_status = "Verified" if classification == "VERIFIED_POTHOLE" else ("Rejected" if classification == "REJECTED" else "New")
         province, district = detect_location_metadata(latitude, longitude)
         print(f">>> Detected Geography: {province} / {district}")
 
-        # Save CitizenReport
+        # ── Save CitizenReport to DB ──
+        print(">>> DB insert starting...")
         report_in = schemas.CitizenReportCreate(
-            citizen_id=citizen_id or "Anonymous",
+            citizen_id=resolved_citizen_id,
             latitude=latitude,
             longitude=longitude,
             description=description,
@@ -115,23 +176,31 @@ async def create_report(
             detection_model=detection.get("detectionModel"),
             detection_timestamp=datetime.utcnow()
         )
+        print(f">>> DB commit success. Created ID: {db_report.id}")
+        print(f">>> Saved province: {db_report.provincial_council}")
+        print(f">>> Saved status: {db_report.status}")
+        print(f">>> Saved district: {db_report.district}")
         
-        # Save DetectionResult
-        crud.create_detection_result(db, detection, db_report.id)
+        # ── Save DetectionResult (non-blocking) ──
+        try:
+            crud.create_detection_result(db, detection, db_report.id)
+        except Exception as det_err:
+            print(f">>> WARNING: Failed to save detection result (non-fatal): {det_err}")
         
-        # Save AuditLog
-        crud.create_audit_log(
-            db=db,
-            report_id=db_report.id,
-            user_id=citizen_id or "Anonymous",
-            action="REPORT_SUBMITTED",
-            new_status=initial_status,
-            notes=f"Citizen submitted report. AI status: {classification}"
-        )
+        # ── Save AuditLog (non-blocking) ──
+        try:
+            crud.create_audit_log(
+                db=db,
+                report_id=db_report.id,
+                user_id=resolved_citizen_id,
+                action="REPORT_SUBMITTED",
+                new_status=initial_status,
+                notes=f"Citizen submitted report. AI status: {classification}"
+            )
+        except Exception as log_err:
+            print(f">>> WARNING: Failed to save audit log (non-fatal): {log_err}")
         
-        print(f">>> Database commit success. Created ID: {db_report.id}")
-        
-        # Immediate Verification
+        # ── Verification ──
         verified_report = crud.get_report_by_id(db, db_report.id)
         print(f">>> VERIFICATION: Saved report found in DB: {verified_report is not None}")
         
@@ -139,11 +208,18 @@ async def create_report(
             print("!!! ERROR: Report was committed but not found immediately after !!!")
             raise HTTPException(status_code=500, detail="Database persistence failed. Record not found after commit.")
 
+        # Log total count for debug
+        total_count = db.query(models.CitizenReport).count()
+        print(f">>> Total reports in DB after insert: {total_count}")
         print("="*50 + "\n")
         return db_report
 
+    except HTTPException:
+        raise  # Re-raise HTTP exceptions as-is
     except Exception as e:
         print(f"!!! CRITICAL ERROR in POST /reports: {str(e)}")
+        import traceback
+        traceback.print_exc()
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Failed to save report: {str(e)}")
 
@@ -186,9 +262,13 @@ def update_status(report_id: str, update: schemas.StatusUpdateCreate, officer_id
         raise HTTPException(status_code=404, detail="Report not found")
         
     old_status = report.status
-    crud.update_report_status(db, report_id, update.status)
+    
+    if update.status:
+        crud.update_report_status(db, report_id, update.status)
     if update.priority:
         crud.update_report_priority(db, report_id, update.priority)
+    if update.notes:
+        crud.update_report_notes(db, report_id, update.notes)
         
     crud.create_status_update(db, update, report_id, officer_id)
     
@@ -198,7 +278,7 @@ def update_status(report_id: str, update: schemas.StatusUpdateCreate, officer_id
         user_id=officer_id,
         action="STATUS_UPDATED",
         old_status=old_status,
-        new_status=update.status,
+        new_status=update.status or old_status,
         notes=update.notes
     )
     

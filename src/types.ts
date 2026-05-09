@@ -60,7 +60,7 @@ export interface PotholeEvent {
     imageUrl?: string;
     source?: 'SYSTEM' | 'CITIZEN_REPORT';
     reportId?: string;
-    bbox?: [number, number, number, number]; // [x, y, width, height] relative to image (0-1)
+    bbox?: any;
     priority?: RepairPriority;
     assignedTeam?: RepairTeam;
     scheduledDate?: string;
@@ -70,6 +70,11 @@ export interface PotholeEvent {
     completedAt?: string;
     provincialCouncil?: ProvincialCouncil;
     lastStatusUpdatedBy?: string;
+    lastStatusUpdatedAt?: string;
+    aiClassification?: 'VERIFIED_POTHOLE' | 'NEEDS_MANUAL_REVIEW' | 'REJECTED' | string;
+    aiConfidence?: number;
+    predictionCount?: number;
+    submittedAt?: string;
     createdAt: string;
     updatedAt: string;
 }
@@ -105,7 +110,7 @@ export interface CitizenReport {
     aiStatus: 'PENDING' | 'ACCEPTED' | 'REJECTED';
     aiConfidence?: number;
     aiReason?: string;
-    aiClassification?: string;
+    aiClassification?: 'VERIFIED_POTHOLE' | 'NEEDS_MANUAL_REVIEW' | 'REJECTED' | string;
     predictionCount?: number;
     detectionModel?: string;
     detectionTimestamp?: string;
@@ -113,11 +118,16 @@ export interface CitizenReport {
     modelName?: string;
     modelVersion?: string;
     inferenceTimeMs?: number;
-    bbox?: [number, number, number, number];
+    bbox?: any;
     linkedPotholeId?: string;
     provincialCouncil?: ProvincialCouncil;
     provinceDetectionMethod?: 'GPS_BOUNDARY' | 'MANUAL' | 'UNKNOWN';
     district?: string;
+    priority?: 'Low' | 'Medium' | 'High' | 'Urgent';
+    maintenanceNotes?: string;
+    lastStatusUpdatedAt?: string;
+    submittedAt?: string;
+    updatedAt?: string;
     status: 'New' | 'Verified' | 'In Progress' | 'Completed' | 'Rejected' | 'Discarded'; // Mapping from assignment
     createdAt: string; // Keep as submittedAt alias
 }

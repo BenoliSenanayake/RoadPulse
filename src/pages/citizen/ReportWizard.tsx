@@ -124,13 +124,57 @@ const ReportWizard = () => {
             if (fullDesc) formData.append('description', fullDesc);
             if (imageFile) formData.append('image', imageFile);
 
-            console.log('[ReportWizard] Sending FormData to API...');
+            console.log('[ReportWizard] FormData prepared:', {
+                citizen_id: user.id,
+                latitude: lat,
+                longitude: lon,
+                description: fullDesc,
+                hasImage: !!imageFile,
+                imageSize: imageFile?.size,
+            });
+            console.log('[ReportWizard] Sending to backend...');
             const report = await reportsApi.submit(formData);
             
-            console.log('[ReportWizard] Submission successful! Received report:', report);
+            console.log('[ReportWizard] ✅ Submission successful! Backend response:', report);
+            console.log('[ReportWizard] Created report ID:', report.id);
+            console.log('[ReportWizard] Report status:', report.status);
+            console.log('[ReportWizard] Report province:', report.provincialCouncil);
+
+            // ── Debug verification: confirm report exists in PostgreSQL ──
+            try {
+                const verified = await reportsApi.getById(report.id);
+                console.log(`[ReportWizard] 🔍 GET /reports/${report.id} result:`, verified ? 'FOUND' : 'NOT FOUND');
+                if (verified) {
+                    console.log('[ReportWizard] Verified report data:', {
+                        id: verified.id,
+                        status: verified.status,
+                        provincialCouncil: verified.provincialCouncil,
+                        district: verified.district,
+                    });
+                }
+
+                // Check total count via debug endpoint
+                try {
+                    const debugRes = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/debug/reports`);
+                    const debugData = await debugRes.json();
+                    console.log(`[ReportWizard] 📊 Total reports in DB: ${debugData.total_count}`);
+                } catch (debugErr) {
+                    console.warn('[ReportWizard] Debug count check failed (non-fatal):', debugErr);
+                }
+
+                if (!verified) {
+                    console.error('[ReportWizard] ⚠️ Report was returned by POST but not found by GET!');
+                    setError('Report may not have been saved correctly. Please try again.');
+                    setStep('REVIEW');
+                    return;
+                }
+            } catch (verifyErr) {
+                console.warn('[ReportWizard] Verification fetch failed (non-fatal):', verifyErr);
+            }
+
             setSubmittedReportId(report.id);
             
-            // Redirect immediately to status page if we have an ID
+            // Redirect to status page using the REAL backend report ID
             if (report.id) {
                 navigate(`/citizen/status/${report.id}`, { replace: true });
             } else {
@@ -138,7 +182,7 @@ const ReportWizard = () => {
             }
         } catch (err: any) {
             console.error('[ReportWizard] Submission failed:', err);
-            setError(`Submission failed: ${err.message || 'Unknown error'}. Please check your connection.`);
+            setError(`Submission failed: ${err.message || 'Please check your connection and try again.'}`);
             setStep('REVIEW');
         }
     };

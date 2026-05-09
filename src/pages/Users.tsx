@@ -53,7 +53,11 @@ const Users = () => {
             const matchesProvince = provinceFilter === 'ALL' || user.provincialCouncil === provinceFilter;
             
             return matchesSearch && matchesRole && matchesProvince;
-        }).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        }).sort((a, b) => {
+            const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+            const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+            return dateB - dateA;
+        });
     }, [users, searchTerm, roleFilter, provinceFilter]);
 
     const handleToggleStatus = async (userId: string, currentStatus: 'ACTIVE' | 'DISABLED') => {
@@ -231,7 +235,7 @@ const Users = () => {
                                                 user.role === 'MAINTENANCE_OFFICER' ? 'bg-blue-50 text-blue-600 border-blue-100' :
                                                 'bg-slate-50 text-slate-400 border-slate-100'
                                             )}>
-                                                {user.role.replace('_', ' ')}
+                                                {String(user.role ?? '').replace(/_/g, ' ')}
                                             </span>
                                         </td>
                                         <td>
@@ -253,7 +257,9 @@ const Users = () => {
                                         </td>
                                         <td>
                                             <div className="flex flex-col">
-                                                <span className="text-[11px] font-black text-slate-900">{format(new Date(user.createdAt), 'dd MMM yyyy')}</span>
+                                                <span className="text-[11px] font-black text-slate-900">
+                                                    {user.createdAt ? format(new Date(user.createdAt), 'dd MMM yyyy') : 'N/A'}
+                                                </span>
                                                 <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">ID: {user.id.split('-')[0]}</span>
                                             </div>
                                         </td>

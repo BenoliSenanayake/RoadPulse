@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { reportsApi } from '../../lib/api';
-import { ArrowLeft, MapPin, Calendar, CheckCircle2, Clock, Wrench, CircleDot } from 'lucide-react';
+import { ArrowLeft, MapPin, Calendar, CheckCircle2, Clock, Wrench, CircleDot, XCircle, ShieldCheck } from 'lucide-react';
 import { format } from 'date-fns';
 import type { CitizenReport } from '../../types';
-import { useAuth } from '../../context/AuthContext';
 
 interface TimelineStep {
     label: string;
@@ -15,19 +14,33 @@ interface TimelineStep {
 }
 
 /**
- * Build a simple 4-step timeline based on fields that actually exist
- * on CitizenReport (status: 'New'|'Discarded', aiStatus: 'PENDING'|'ACCEPTED'|'REJECTED').
+ * Build a 5-step timeline based on the REAL backend report.status field.
  *
- * Mapping:
- *   Submitted  – always done
- *   Under Review – done when aiStatus !== 'PENDING'
- *   Repair Scheduled – done when aiStatus === 'ACCEPTED'
- *   Fixed – not derivable from CitizenReport alone; kept as future state
+ * Backend statuses: New, Verified, In Progress, Completed, Rejected
+ *
+ * Timeline steps:
+ *   1. Submitted   – always done (report exists)
+ *   2. Under Review – done once status moves past 'New'
+ *   3. Verified     – done when status is 'Verified', 'In Progress', or 'Completed'
+ *   4. In Progress  – done when status is 'In Progress' or 'Completed'
+ *   5. Completed    – done when status is 'Completed'
+ *
+ * If Rejected, the timeline stops and the rejection is shown via the badge.
  */
 function buildTimeline(report: CitizenReport): TimelineStep[] {
-    const submitted = true;
-    const reviewed  = report.aiStatus !== 'PENDING';
-    const accepted  = report.aiStatus === 'ACCEPTED';
+    const status = report.status;
+    const isRejected = status === 'Rejected' || status === 'Discarded';
+
+    // Define progress levels for non-rejected flow
+    const statusOrder = ['New', 'Verified', 'In Progress', 'Completed'];
+    const currentLevel = statusOrder.indexOf(status);
+
+    // Step completion flags
+    const submitted = true; // always — report exists
+    const underReviewDone = !isRejected && currentLevel > 0;
+    const verifiedDone = !isRejected && currentLevel >= 1;
+    const inProgressDone = !isRejected && currentLevel >= 2;
+    const completedDone = !isRejected && currentLevel >= 3;
 
     return [
         {
@@ -35,60 +48,81 @@ function buildTimeline(report: CitizenReport): TimelineStep[] {
             description: 'Your report was received and is being processed by our team.',
             icon: CircleDot,
             done: submitted,
-            current: submitted && !reviewed,
+            current: submitted && !underReviewDone && !isRejected,
         },
         {
             label: 'Under Review',
-            description: 'Our team is reviewing your report and verifying the location.',
+            description: 'Our team and AI system are reviewing your report and verifying the damage.',
             icon: Clock,
-            done: reviewed,
-            current: reviewed && !accepted,
+            done: underReviewDone,
+            current: underReviewDone && !verifiedDone,
         },
         {
-            label: 'Repair Scheduled',
-            description: 'A maintenance crew has been assigned and a repair date is set.',
+            label: 'Verified',
+            description: 'The pothole has been verified and approved for maintenance action.',
+            icon: ShieldCheck,
+            done: verifiedDone,
+            current: verifiedDone && !inProgressDone,
+        },
+        {
+            label: 'In Progress',
+            description: 'A maintenance crew has been assigned and repair work is underway.',
             icon: Wrench,
-            done: accepted,
-            current: accepted,
+            done: inProgressDone,
+            current: inProgressDone && !completedDone,
         },
         {
-            label: 'Fixed',
+            label: 'Completed',
             description: 'The pothole has been repaired. Thank you for helping improve our roads!',
             icon: CheckCircle2,
-            done: false,
-            current: false,
+            done: completedDone,
+            current: completedDone,
         },
     ];
 }
 
 const ReportStatus = () => {
     const { id } = useParams();
-    const { user } = useAuth();
     const [report, setReport] = useState<CitizenReport | null>(null);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
 
     useEffect(() => {
         const loadReport = async () => {
-            if (!id || !user) return;
+            if (!id) {
+                setLoading(false);
+                return;
+            }
             setLoading(true);
+            setError('');
             try {
+                console.log(`[ReportStatus] Fetching report by ID: ${id}`);
                 const found = await reportsApi.getById(id);
-                // Security: Only show report if it belongs to the citizen or user is staff/admin
-                if (found && (found.citizenId === user.id || ['MAINTENANCE_OFFICER', 'ADMIN'].includes(user.role))) {
-                    setReport(found);
-                } else {
+                if (!found) {
+                    console.error(`[ReportStatus] Report ${id} not found in backend.`);
+                    setError('Report not found. It may not have been saved correctly.');
                     setReport(null);
+                } else {
+                    console.log(`[ReportStatus] Report loaded successfully:`, {
+                        id: found.id,
+                        status: found.status,
+                        provincialCouncil: found.provincialCouncil,
+                        district: found.district,
+                        aiClassification: found.aiClassification,
+                    });
+                    setReport(found);
                 }
-            } catch (err) {
+            } catch (err: any) {
                 console.error('[ReportStatus] Failed to load report:', err);
+                setError(`Failed to load report: ${err.message || 'Unknown error'}`);
                 setReport(null);
             } finally {
                 setLoading(false);
             }
         };
-        
+
         loadReport();
-    }, [id, user]);
+    }, [id]);
 
     if (loading) return (
         <div className="min-h-[50vh] flex items-center justify-center">
@@ -96,10 +130,12 @@ const ReportStatus = () => {
         </div>
     );
 
-    if (!report) return (
+    if (error || !report) return (
         <div className="max-w-xl mx-auto p-12 text-center space-y-4">
             <h2 className="text-2xl font-bold text-slate-900">Report Not Found</h2>
-            <p className="text-slate-500 text-sm">We couldn't find this report. It may have been removed.</p>
+            <p className="text-slate-500 text-sm">
+                {error || "We couldn't find this report. It may have been removed."}
+            </p>
             <Link to="/citizen/my-reports" className="inline-flex items-center gap-2 text-sm font-semibold text-slate-900 hover:underline">
                 <ArrowLeft size={16} /> Back to My Reports
             </Link>
@@ -111,13 +147,19 @@ const ReportStatus = () => {
     const locationLabel = `${report.lat.toFixed(5)}, ${report.lon.toFixed(5)}`;
     const submittedDate = format(new Date(report.createdAt), 'MMMM d, yyyy');
 
-    // Friendly overall status badge
+    // Friendly overall status badge based on real backend status
     let overallStatus = { label: 'Under Review', color: 'text-amber-700 bg-amber-50 border-amber-200' };
-    if (report.status === 'Discarded' || report.aiStatus === 'REJECTED') {
+    const s = report.status;
+    if (s === 'Rejected' || s === 'Discarded') {
         overallStatus = { label: 'Not Accepted', color: 'text-rose-700 bg-rose-50 border-rose-200' };
-    } else if (report.aiStatus === 'ACCEPTED') {
-        overallStatus = { label: 'Repair Scheduled', color: 'text-violet-700 bg-violet-50 border-violet-200' };
+    } else if (s === 'Completed') {
+        overallStatus = { label: 'Completed', color: 'text-emerald-700 bg-emerald-50 border-emerald-200' };
+    } else if (s === 'In Progress') {
+        overallStatus = { label: 'In Progress', color: 'text-blue-700 bg-blue-50 border-blue-200' };
+    } else if (s === 'Verified') {
+        overallStatus = { label: 'Verified', color: 'text-violet-700 bg-violet-50 border-violet-200' };
     }
+    // Default 'New' stays as 'Under Review'
 
     return (
         <div className="max-w-2xl mx-auto px-4 py-8 sm:py-12 pb-24 space-y-6">
@@ -178,6 +220,21 @@ const ReportStatus = () => {
             {/* Timeline */}
             <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 sm:p-8">
                 <h2 className="text-base font-bold text-slate-900 mb-6">Report Progress</h2>
+
+                {/* Rejection notice */}
+                {(report.status === 'Rejected' || report.status === 'Discarded') && (
+                    <div className="flex items-start gap-3 mb-6 p-4 bg-rose-50 border border-rose-100 rounded-xl">
+                        <XCircle size={18} className="text-rose-500 mt-0.5 shrink-0" />
+                        <div>
+                            <p className="text-sm font-semibold text-rose-800 mb-0.5">Report Not Accepted</p>
+                            <p className="text-xs text-rose-600 leading-relaxed">
+                                This report was reviewed and could not be accepted. This may be due to image quality, 
+                                duplicate submission, or the damage not being confirmed.
+                            </p>
+                        </div>
+                    </div>
+                )}
+
                 <ol className="relative space-y-0">
                     {timeline.map((step, idx) => {
                         const isLast = idx === timeline.length - 1;

@@ -14,6 +14,20 @@ export const USE_MOCK = false;
 
 export let isBackendDown = false;
 
+export const checkBackendHealth = async (): Promise<boolean> => {
+    try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 5000);
+        const response = await fetch(`${API_BASE_URL}/debug/db`, { signal: controller.signal });
+        clearTimeout(timeout);
+        isBackendDown = !response.ok;
+        return response.ok;
+    } catch {
+        isBackendDown = true;
+        return false;
+    }
+};
+
 // ==========================================
 // REPORT NORMALIZER (CORE UTILITY)
 // ==========================================
@@ -76,12 +90,21 @@ const mapBackendReportToFrontend = normalizeReport;
 
 const mapReportToPotholeEvent = (data: any): PotholeEvent => {
     if (!data) return data;
-    const cr = mapBackendReportToFrontend(data);
+    const cr = mapBackendReportToFrontend(data) as any;
     return {
         ...cr,
         timestamp: cr.createdAt,
-        confidence: cr.aiConfidence,
-        repairStatus: cr.status as any
+        updatedAt: cr.updatedAt ?? cr.createdAt,
+        confidence: cr.aiConfidence ?? 0,
+        status: cr.status as PotholeStatus,
+        repairStatus: cr.status as any,
+        aiClassification: cr.aiClassification || 'NEEDS_MANUAL_REVIEW',
+        aiConfidence: cr.aiConfidence ?? 0,
+        predictionCount: cr.predictionCount ?? 0,
+        priority: cr.priority || 'Medium',
+        district: cr.district || 'Unknown District',
+        provincialCouncil: cr.provincialCouncil || 'Unassigned',
+        maintenanceNotes: cr.maintenanceNotes || '',
     };
 };
 
@@ -102,6 +125,14 @@ const apiClient = {
     },
     async post(endpoint: string, data: any) {
         const isFormData = data instanceof FormData;
+        const url = `${API_BASE_URL}${endpoint}`;
+        console.log(`[apiClient.post] URL: ${url}`);
+        if (isFormData) {
+            const fields: string[] = [];
+            (data as FormData).forEach((_v, k) => fields.push(k));
+            console.log(`[apiClient.post] FormData fields: ${fields.join(', ')}`);
+        }
+
         const options: RequestInit = {
             method: 'POST',
             body: isFormData ? data : JSON.stringify(data),
@@ -110,8 +141,18 @@ const apiClient = {
             options.headers = { 'Content-Type': 'application/json' };
         }
         
-        const response = await fetch(`${API_BASE_URL}${endpoint}`, options);
-        if (!response.ok) throw new Error(`API Error: ${response.statusText}`);
+        const response = await fetch(url, options);
+        if (!response.ok) {
+            // Try to extract the real error detail from the backend JSON response
+            let detail = response.statusText;
+            try {
+                const errBody = await response.json();
+                detail = errBody.detail || JSON.stringify(errBody);
+            } catch { /* response wasn't JSON */ }
+            console.error(`[apiClient.post] ${response.status} error: ${detail}`);
+            throw new Error(detail);
+        }
+        console.log(`[apiClient.post] Success: ${response.status}`);
         return response.json();
     },
     async patch(endpoint: string, data: any) {
@@ -178,14 +219,31 @@ export const reportsApi = {
         );
     },
     submit: async (data: any): Promise<CitizenReport> => {
-        console.log('[API] reportsApi.submit called');
-        return withFallback(
-            async () => {
-                const res = await apiClient.post('/reports', data);
-                return mapBackendReportToFrontend(res);
-            },
-            async () => { throw new Error("Submission requires backend connection."); }
-        );
+        console.log('[reportsApi.submit] Called');
+        console.log(`[reportsApi.submit] API_BASE_URL: ${API_BASE_URL}`);
+        console.log(`[reportsApi.submit] Endpoint: ${API_BASE_URL}/reports`);
+        
+        // Log FormData contents if applicable
+        if (data instanceof FormData) {
+            const entries: string[] = [];
+            (data as FormData).forEach((val, key) => {
+                if (val instanceof File) {
+                    entries.push(`${key}: [File: ${val.name}, ${val.size} bytes]`);
+                } else {
+                    entries.push(`${key}: ${val}`);
+                }
+            });
+            console.log(`[reportsApi.submit] FormData: ${entries.join(', ')}`);
+        }
+        
+        try {
+            const res = await apiClient.post('/reports', data);
+            console.log('[reportsApi.submit] Backend response:', res);
+            return mapBackendReportToFrontend(res);
+        } catch (err: any) {
+            console.error('[reportsApi.submit] POST /reports failed:', err.message);
+            throw err; // Surface the REAL error — never mask it
+        }
     },
     review: async (id: string, action: 'accept' | 'reject' | 'request_info', reason?: string): Promise<void> => {
         return withFallback(
@@ -201,10 +259,11 @@ export const reportsApi = {
     update: async (id: string, updates: Partial<CitizenReport>): Promise<CitizenReport | null> => {
         return withFallback(
             async () => {
-                // Map frontend names back to backend expected names if necessary
-                const payload: any = { ...updates };
+                // Map frontend field names to backend StatusUpdateCreate schema
+                const payload: any = {};
                 if (updates.status) payload.status = updates.status;
                 if (updates.priority) payload.priority = updates.priority;
+                if (updates.maintenanceNotes !== undefined) payload.notes = updates.maintenanceNotes;
                 if (updates.provincialCouncil) payload.provincial_council = updates.provincialCouncil;
                 
                 const res = await apiClient.patch(`/reports/${id}/status`, payload);
@@ -278,10 +337,10 @@ export const authApi = {
             return false;
         }
     },
-    signup: async (data: any): Promise<{ success: boolean; error?: string }> => {
+    signup: async (data: any): Promise<{ success: boolean; userId?: string; error?: string }> => {
         try {
-            await apiClient.post('/auth/signup', data);
-            return { success: true };
+            const user = await apiClient.post('/auth/signup', data);
+            return { success: true, userId: user?.id };
         } catch (e: any) {
             return { success: false, error: e.message };
         }

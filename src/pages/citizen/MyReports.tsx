@@ -8,13 +8,15 @@ import type { CitizenReport } from '../../types';
 
 function friendlyStatus(report: CitizenReport): { label: string; color: string } {
     if (report.status === 'Rejected' || report.status === 'Discarded') return { label: 'Not Accepted', color: 'text-rose-700 bg-rose-50 border-rose-100' };
-    if (report.status === 'Verified' || report.status === 'In Progress' || report.status === 'Completed') return { label: 'In Progress', color: 'text-violet-700 bg-violet-50 border-violet-100' };
+    if (report.status === 'Completed') return { label: 'Completed', color: 'text-emerald-700 bg-emerald-50 border-emerald-100' };
+    if (report.status === 'In Progress') return { label: 'In Progress', color: 'text-blue-700 bg-blue-50 border-blue-100' };
+    if (report.status === 'Verified') return { label: 'Verified', color: 'text-violet-700 bg-violet-50 border-violet-100' };
     return { label: 'Under Review', color: 'text-amber-700 bg-amber-50 border-amber-100' };
 }
 
-type FilterKey = 'ALL' | 'Under Review' | 'In Progress' | 'Not Accepted';
+type FilterKey = 'ALL' | 'Under Review' | 'Verified' | 'In Progress' | 'Completed' | 'Not Accepted';
 
-const FILTERS: FilterKey[] = ['ALL', 'Under Review', 'In Progress', 'Not Accepted'];
+const FILTERS: FilterKey[] = ['ALL', 'Under Review', 'Verified', 'In Progress', 'Completed', 'Not Accepted'];
 
 const MyReports = () => {
     const { user } = useAuth();
@@ -156,6 +158,9 @@ const ReportRow = ({ report }: { report: CitizenReport }) => {
                     </span>
                     <span className="flex items-center gap-1 text-xs text-slate-400" title={fullDate}>
                         <Clock size={11} /> {dateStr}
+                    </span>
+                    <span className="text-[10px] text-slate-300 font-medium">
+                        {format(new Date(report.createdAt), 'h:mm a')}
                     </span>
                 </div>
             </div>
