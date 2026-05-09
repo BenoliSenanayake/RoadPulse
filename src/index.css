@@ -109,3 +109,8 @@ body {
 .table-premium tr:last-child td {
   @apply border-b-0;
 }
+
+.dashed-line {
+  background-image: linear-gradient(to right, #3b82f6 50%, transparent 50%);
+  background-size: 20px 100%;
+}

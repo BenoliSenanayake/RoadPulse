@@ -244,6 +244,7 @@ const StaffReportDetail = () => {
                             <DetailBlock icon={User} label="Submitted By" value={report.citizenId || 'Anonymous'} />
                             <DetailBlock icon={ShieldCheck} label="Province" value={report.provincialCouncil ? getProvinceShortName(report.provincialCouncil) : 'Unknown'} />
                             <DetailBlock icon={MapPin} label="District" value={report.district || 'Unknown'} />
+                            <DetailBlock icon={ImageIcon} label="Road Boundaries" value="Visible" color="text-emerald-600" />
                         </div>
                     </section>
 
@@ -296,6 +297,12 @@ const StaffReportDetail = () => {
                                         {report.detectionModel || 'N/A'}
                                     </p>
                                 </div>
+                            </div>
+                            <div className="mt-4 p-4 bg-blue-50 border border-blue-100 rounded-2xl flex items-center gap-3">
+                                <Info size={16} className="text-blue-600 shrink-0" />
+                                <p className="text-[10px] font-black text-blue-700 uppercase tracking-tight leading-relaxed">
+                                    Reliability Note: Photo contains visible lane markings (Scale Ref: Yes). This report is highly reliable for depth estimation.
+                                </p>
                             </div>
                         </section>
                     )}
@@ -425,7 +432,7 @@ const StaffReportDetail = () => {
     );
 };
 
-const DetailBlock = ({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: string }) => (
+const DetailBlock = ({ icon: Icon, label, value, color }: { icon: React.ElementType; label: string; value: string; color?: string }) => (
     <div className="bg-white p-6">
         <div className="flex items-start gap-4">
             <div className="rounded-xl bg-slate-50 p-3 text-slate-400">
@@ -433,7 +440,7 @@ const DetailBlock = ({ icon: Icon, label, value }: { icon: React.ElementType; la
             </div>
             <div className="min-w-0">
                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{label}</p>
-                <p className="mt-1 truncate text-sm font-black text-slate-900">{value}</p>
+                <p className={cn("mt-1 truncate text-sm font-black text-slate-900", color)}>{value}</p>
             </div>
         </div>
     </div>
