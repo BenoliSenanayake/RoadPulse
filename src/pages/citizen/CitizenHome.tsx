@@ -6,10 +6,23 @@ import {
     PlusCircle,
     FileText,
     ShieldAlert,
-    Clock,
     ArrowRight,
+    Activity,
+    Navigation,
+    ShieldCheck,
+    Users,
 } from 'lucide-react';
 import type React from 'react';
+
+const FeatureCard = ({ icon: Icon, title, desc }: { icon: React.ElementType; title: string; desc: string }) => (
+    <div className="group bg-white p-6 rounded-2xl border border-slate-200/60 shadow-sm hover:shadow-xl hover:shadow-blue-500/5 hover:-translate-y-1.5 transition-all duration-300">
+        <div className="w-12 h-12 rounded-xl bg-slate-50 text-slate-600 flex items-center justify-center mb-4 group-hover:bg-blue-600 group-hover:text-white group-hover:shadow-lg group-hover:shadow-blue-600/30 transition-all duration-300">
+            <Icon size={22} />
+        </div>
+        <h3 className="text-sm font-bold text-slate-900 mb-2 group-hover:text-blue-600 transition-colors">{title}</h3>
+        <p className="text-[13px] text-slate-500 leading-relaxed font-medium">{desc}</p>
+    </div>
+);
 
 const CitizenHome = () => {
     return (
@@ -46,33 +59,58 @@ const CitizenHome = () => {
             </section>
 
             <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-                <section className="relative -mt-5 z-20 mb-10" aria-label="Public service highlights">
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                        <InfoCard icon={Camera} title="Photo first" text="Use a clear, safe photo of the road damage." color="blue" />
-                        <InfoCard icon={MapPin} title="Exact location" text="Confirm the spot so crews know where to go." color="emerald" />
-                        <InfoCard icon={Clock} title="Track updates" text="Sign in when you want to view your own reports." color="amber" />
+                {/* Why Use RoadPulse Section */}
+                <section className="relative -mt-8 z-20 mb-12" aria-label="Why Use RoadPulse">
+                    <div className="flex items-center gap-3 mb-6 bg-white p-2 rounded-xl inline-flex pr-5 shadow-sm border border-slate-100">
+                        <div className="w-2 h-6 bg-blue-500 rounded-full" />
+                        <h2 className="text-xs font-bold text-slate-900 uppercase tracking-[0.15em]">Why Use RoadPulse?</h2>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <FeatureCard 
+                            icon={Activity} 
+                            title="Real-Time Tracking" 
+                            desc="Follow the progress of your submitted road issue from review to completion." 
+                        />
+                        <FeatureCard 
+                            icon={Navigation} 
+                            title="Province-Based Response" 
+                            desc="Reports are automatically routed to the correct provincial maintenance team." 
+                        />
+                        <FeatureCard 
+                            icon={ShieldCheck} 
+                            title="AI-Assisted Verification" 
+                            desc="RoadPulse helps maintenance officers identify genuine road damage faster." 
+                        />
+                        <FeatureCard 
+                            icon={Users} 
+                            title="Safer Roads Together" 
+                            desc="Every citizen report contributes to improving road safety across Sri Lanka." 
+                        />
                     </div>
                 </section>
 
-                <section className="mb-10" aria-label="How it works">
-                    <div className="flex items-baseline justify-between mb-4">
+                <section className="mb-12" aria-label="How it works">
+                    <div className="flex items-baseline justify-between mb-6">
                         <h2 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight">How it works</h2>
-                        <span className="text-xs text-slate-400 font-medium hidden sm:block">3 simple steps</span>
+                        <div className="flex items-center gap-2 px-3 py-1 bg-slate-50 rounded-full border border-slate-100">
+                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+                            <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">3 Simple Steps</span>
+                        </div>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         {[
                             { step: 1, icon: Camera, title: 'Take a Photo', desc: 'Snap a clear photo from a safe spot.' },
                             { step: 2, icon: MapPin, title: 'Confirm Location', desc: 'Use GPS or tap the map to pin the exact place.' },
                             { step: 3, icon: CheckCircle, title: 'Submit Report', desc: 'Sign in, send the report, and check updates later.' },
                         ].map(item => (
-                            <div key={item.step} className="bg-white rounded-xl p-5 border border-slate-100 shadow-sm flex items-start gap-4">
-                                <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-slate-50 text-slate-700">
+                            <div key={item.step} className="group bg-white rounded-2xl p-5 border border-slate-100 shadow-sm flex items-start gap-4 hover:border-blue-100 hover:shadow-md transition-all duration-300">
+                                <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-slate-50 text-slate-600 group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors">
                                     <item.icon size={20} />
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                    <span className="text-[10px] font-semibold text-slate-300 uppercase tracking-wider">Step {item.step}</span>
-                                    <h3 className="text-sm font-semibold text-slate-900 mb-1">{item.title}</h3>
-                                    <p className="text-xs text-slate-500 leading-relaxed">{item.desc}</p>
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Step {item.step}</span>
+                                    <h3 className="text-[15px] font-bold text-slate-900 mb-1 group-hover:text-blue-600 transition-colors">{item.title}</h3>
+                                    <p className="text-xs text-slate-500 leading-relaxed font-medium">{item.desc}</p>
                                 </div>
                             </div>
                         ))}
@@ -80,25 +118,26 @@ const CitizenHome = () => {
                 </section>
 
                 <section className="mb-10">
-                    <div className="bg-slate-900 rounded-xl p-6 sm:p-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-white">
-                        <div>
-                            <h3 className="text-base font-bold mb-1">Ready to report a pothole?</h3>
-                            <p className="text-sm text-slate-400">You can browse this page freely. We will ask you to sign in only when you start a report or view your reports.</p>
+                    <div className="bg-slate-900 rounded-2xl p-6 sm:p-8 flex flex-col sm:flex-row items-center justify-between gap-6 text-white shadow-xl shadow-slate-900/10 border border-white/5 relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full -mr-32 -mt-32 blur-3xl group-hover:bg-blue-500/20 transition-colors duration-500" />
+                        <div className="relative z-10">
+                            <h3 className="text-lg font-bold mb-1">Ready to report a pothole?</h3>
+                            <p className="text-sm text-slate-400 max-w-md">You can browse this page freely. We will ask you to sign in only when you start a report or view your reports.</p>
                         </div>
-                        <Link to="/citizen/report" className="inline-flex items-center gap-2 px-5 py-2.5 bg-white text-slate-900 rounded-lg font-semibold text-sm hover:bg-slate-100 transition-colors shrink-0">
+                        <Link to="/citizen/report" className="relative z-10 inline-flex items-center gap-2 px-6 py-3 bg-white text-slate-900 rounded-xl font-bold text-sm hover:bg-blue-50 hover:text-blue-600 transition-all hover:scale-105 active:scale-95 shrink-0 shadow-lg">
                             Start Report <ArrowRight size={16} />
                         </Link>
                     </div>
                 </section>
 
                 <section className="mb-6" aria-label="Safety reminder">
-                    <div className="bg-amber-50/80 border border-amber-200/60 rounded-xl px-5 py-4 flex gap-3.5 items-start">
-                        <div className="w-9 h-9 bg-amber-100 rounded-lg flex items-center justify-center shrink-0 mt-0.5">
-                            <ShieldAlert size={18} className="text-amber-600" />
+                    <div className="bg-amber-50/50 border border-amber-200/40 rounded-2xl px-5 py-4 flex gap-4 items-start shadow-sm shadow-amber-900/5">
+                        <div className="w-10 h-10 bg-amber-100/80 rounded-xl flex items-center justify-center shrink-0 mt-0.5 shadow-inner">
+                            <ShieldAlert size={20} className="text-amber-600" />
                         </div>
                         <div>
-                            <h3 className="text-sm font-semibold text-amber-900 mb-0.5">Safety first</h3>
-                            <p className="text-xs sm:text-sm text-amber-700/90 leading-relaxed">
+                            <h3 className="text-[15px] font-bold text-amber-900 mb-0.5">Safety first</h3>
+                            <p className="text-sm text-amber-800/80 leading-relaxed font-medium">
                                 Only report when it is safe. Never take photos while driving. Pull over or ask a passenger.
                             </p>
                         </div>
@@ -109,31 +148,5 @@ const CitizenHome = () => {
     );
 };
 
-interface InfoCardProps {
-    icon: React.ElementType;
-    title: string;
-    text: string;
-    color: 'blue' | 'emerald' | 'amber';
-}
-
-const colorMap = {
-    blue: { iconBg: 'bg-blue-50', text: 'text-blue-600' },
-    emerald: { iconBg: 'bg-emerald-50', text: 'text-emerald-600' },
-    amber: { iconBg: 'bg-amber-50', text: 'text-amber-600' },
-};
-
-const InfoCard = ({ icon: Icon, title, text, color }: InfoCardProps) => {
-    const c = colorMap[color];
-
-    return (
-        <div className="bg-white rounded-xl p-4 border border-slate-100 shadow-md shadow-slate-200/60">
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center mb-3 ${c.iconBg} ${c.text}`}>
-                <Icon size={16} />
-            </div>
-            <p className="text-sm font-bold text-slate-900 mb-1">{title}</p>
-            <p className="text-xs font-medium text-slate-400 leading-relaxed">{text}</p>
-        </div>
-    );
-};
-
 export default CitizenHome;
+
