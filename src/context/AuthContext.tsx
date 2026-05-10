@@ -65,38 +65,54 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 return { success: false, error: 'Please select your Provincial Council.' };
             }
 
-            const staffUser = await authApi.verifyStaff(email);
-            if (!staffUser) {
-                return { success: false, error: 'Staff account not found.' };
-            }
+            try {
+                const response = await authApi.login(email, password, provincialCouncil);
+                if (!response || !response.user) {
+                    return { success: false, error: 'Login failed.' };
+                }
 
-            if (staffUser.role !== 'MAINTENANCE_OFFICER') {
-                return { success: false, error: 'Unauthorized: This portal is only for Maintenance Officers.' };
-            }
+                const sessionUser: User = {
+                    id: response.user.id,
+                    name: response.user.name,
+                    email: response.user.email,
+                    role: response.user.role,
+                    provincialCouncil: response.user.provincialCouncil,
+                    status: 'ACTIVE',
+                    createdAt: new Date().toISOString()
+                };
 
-            if (staffUser.provincialCouncil !== provincialCouncil) {
-                return { success: false, error: 'Selected province does not match this officer account.' };
+                setUser(sessionUser);
+                localStorage.setItem(USER_KEY, JSON.stringify(sessionUser));
+                return { success: true, user: sessionUser };
+            } catch (e: any) {
+                return { success: false, error: e.message || 'Invalid credentials.' };
             }
-
-            const sessionUser: User = {
-                ...staffUser,
-                provincialCouncil: provincialCouncil,
-            };
-            setUser(sessionUser);
-            localStorage.setItem(USER_KEY, JSON.stringify(sessionUser));
-            return { success: true, user: sessionUser };
         }
 
         // Admin login logic
         if (portalMode === 'admin') {
-            const adminUser = await authApi.verifyStaff(email); // Reusing verifyStaff for backend check
-            if (!adminUser || adminUser.role !== 'ADMIN') {
-                return { success: false, error: 'Unauthorized: This portal is only for administrators.' };
-            }
+            try {
+                const response = await authApi.login(email, password);
+                if (!response || !response.user || response.user.role !== 'ADMIN') {
+                    return { success: false, error: 'Unauthorized: This portal is only for administrators.' };
+                }
 
-            setUser(adminUser);
-            localStorage.setItem(USER_KEY, JSON.stringify(adminUser));
-            return { success: true, user: adminUser };
+                const sessionUser: User = {
+                    id: response.user.id,
+                    name: response.user.name,
+                    email: response.user.email,
+                    role: response.user.role,
+                    provincialCouncil: response.user.provincialCouncil,
+                    status: 'ACTIVE',
+                    createdAt: new Date().toISOString()
+                };
+
+                setUser(sessionUser);
+                localStorage.setItem(USER_KEY, JSON.stringify(sessionUser));
+                return { success: true, user: sessionUser };
+            } catch (e: any) {
+                return { success: false, error: e.message || 'Invalid credentials.' };
+            }
         }
 
         // Citizen login logic

@@ -6,13 +6,66 @@ from ..database import get_db
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
+from ..security import verify_password, get_password_hash
+import logging
+
+logger = logging.getLogger(__name__)
+
 @router.post("/login")
 def login(request: schemas.LoginRequest, db: Session = Depends(get_db)):
-    # Very basic placeholder - compare password directly for now
+    # 8. ADD TEMPORARY LOGIN DEBUG LOGS
+    logger.info(f"Login attempt received for email: {request.email}")
+    
     user = db.query(models.User).filter(models.User.email == request.email).first()
-    if not user or user.password_hash != request.password:
+    
+    if not user:
+        logger.warning(f"Login failed: User not found for email: {request.email}")
         raise HTTPException(status_code=401, detail="Invalid credentials")
     
+    # 5. VERIFY PASSWORD HASHING
+    is_password_valid = verify_password(request.password, user.password_hash)
+    
+    # Log user found and role
+    logger.info(f"User found: True, Role: {user.role}, Password valid: {is_password_valid}")
+
+    if not is_password_valid:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+
+    # 7. FIX ADMIN LOGIN VALIDATION
+    if user.role == "ADMIN":
+        logger.info("Admin login successful")
+        return {"token": "mock-jwt-token", "user": {
+            "id": user.id, 
+            "name": user.name,
+            "email": user.email,
+            "role": user.role,
+            "provincialCouncil": user.provincial_council
+        }}
+
+    # 6. FIX STAFF LOGIN VALIDATION
+    if user.role == "MAINTENANCE_OFFICER":
+        stored_province = user.provincial_council
+        selected_province = request.provincial_council
+        
+        logger.info(f"Staff login: Stored province: {stored_province}, Selected province: {selected_province}")
+        
+        if stored_province != selected_province:
+            logger.warning(f"Province mismatch for {request.email}. Expected {stored_province}, got {selected_province}")
+            raise HTTPException(
+                status_code=401, 
+                detail="Selected province does not match assigned officer account."
+            )
+        
+        logger.info("Staff login successful")
+        return {"token": "mock-jwt-token", "user": {
+            "id": user.id, 
+            "name": user.name,
+            "email": user.email,
+            "role": user.role,
+            "provincialCouncil": user.provincial_council
+        }}
+
+    # Default for CITIZEN or other roles
     return {"token": "mock-jwt-token", "user": {
         "id": user.id, 
         "name": user.name,
@@ -29,7 +82,7 @@ def signup(user: schemas.UserCreate, db: Session = Depends(get_db)):
     db_user = models.User(
         name=user.name,
         email=user.email,
-        password_hash=user.password,
+        password_hash=get_password_hash(user.password),
         role=user.role,
         provincial_council=user.provincial_council
     )

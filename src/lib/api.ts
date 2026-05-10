@@ -322,6 +322,18 @@ export const potholesApi = {
 };
 
 export const authApi = {
+    login: async (email: string, password?: string, provincialCouncil?: string): Promise<any | null> => {
+        try {
+            return await apiClient.post('/auth/login', { 
+                email, 
+                password, 
+                provincial_council: provincialCouncil 
+            });
+        } catch (e: any) {
+            console.error(`[authApi.login] Error: ${e.message}`);
+            throw e;
+        }
+    },
     verifyStaff: async (email: string): Promise<any | null> => {
         try {
             return await apiClient.get(`/auth/staff/verify?email=${email}`);

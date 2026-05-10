@@ -22,6 +22,7 @@ class UserRead(UserBase):
 class LoginRequest(BaseModel):
     email: str
     password: str
+    provincial_council: Optional[str] = None
 
 class CitizenReportBase(BaseModel):
     description: Optional[str] = None

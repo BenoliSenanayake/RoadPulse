@@ -44,12 +44,14 @@ def update_report_notes(db: Session, report_id: str, notes: str):
         db.refresh(report)
     return report
 
+from .security import get_password_hash
+
 # USER SERVICES
 def create_user(db: Session, user: schemas.UserCreate) -> models.User:
     db_user = models.User(
         name=user.name,
         email=user.email,
-        password_hash=user.password, # For real app, hash this
+        password_hash=get_password_hash(user.password),
         role=user.role,
         provincial_council=user.provincial_council
     )
