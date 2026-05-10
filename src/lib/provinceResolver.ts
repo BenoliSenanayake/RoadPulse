@@ -155,7 +155,8 @@ export function normalizeProvince(value?: string | null): string {
         .toLowerCase()
         .replace(/\s+/g, ' ');
 
-    if (!clean || clean === 'unassigned' || clean === 'none_assigned') return 'unassigned';
+    if (!clean) return '';
+    if (clean === 'unassigned' || clean === 'none_assigned') return 'unassigned';
 
     const base = clean
         .replace(/\s+provincial council$/, '')
@@ -176,6 +177,33 @@ export function normalizeProvince(value?: string | null): string {
     return mapping[base] || clean;
 }
 
+export function normalizeDistrict(value?: string | null): string {
+    const clean = String(value || '')
+        .trim()
+        .toLowerCase()
+        .replace(/[_-]+/g, ' ')
+        .replace(/[.,;:()[\]]/g, ' ')
+        .replace(/\bdistrict\b/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+    if (!clean) return '';
+
+    const knownDistricts = Object.values(PROVINCE_DISTRICTS).flat();
+    for (const district of knownDistricts) {
+        const normalizedDistrict = String(district)
+            .trim()
+            .toLowerCase()
+            .replace(/\s+/g, ' ');
+        const districtPattern = new RegExp(`(^|\\s)${normalizedDistrict.replace(/\s+/g, '\\s+')}(\\s|$)`);
+        if (clean === normalizedDistrict || districtPattern.test(clean)) {
+            return normalizedDistrict;
+        }
+    }
+
+    return clean;
+}
+
 const CANONICAL_PROVINCES: Record<string, ProvincialCouncil> = {
     'western provincial council': 'Western Provincial Council',
     'central provincial council': 'Central Provincial Council',
@@ -191,4 +219,21 @@ const CANONICAL_PROVINCES: Record<string, ProvincialCouncil> = {
 
 export function canonicalizeProvince(value?: string | null): ProvincialCouncil {
     return CANONICAL_PROVINCES[normalizeProvince(value)] || 'Unassigned';
+}
+
+export const PROVINCE_CENTERS: Record<ProvincialCouncil, [number, number]> = {
+    'Western Provincial Council': [6.9271, 79.8612],
+    'Central Provincial Council': [7.2906, 80.6337],
+    'Southern Provincial Council': [6.0535, 80.2210],
+    'Northern Provincial Council': [9.6615, 80.0255],
+    'Eastern Provincial Council': [7.7170, 81.7000],
+    'North Western Provincial Council': [7.4863, 80.3647],
+    'North Central Provincial Council': [8.3114, 80.4037],
+    'Uva Provincial Council': [6.9934, 81.0550],
+    'Sabaragamuwa Provincial Council': [6.6828, 80.3992],
+    'Unassigned': [7.8731, 80.7718],
+};
+
+export function getProvinceCenter(value?: string | null): [number, number] {
+    return PROVINCE_CENTERS[canonicalizeProvince(value)];
 }

@@ -18,34 +18,39 @@ import {
     X,
     ChevronRight,
     CheckCircle,
-    Play
+    Play,
+    CalendarClock
 } from 'lucide-react';
 import { subDays, isAfter } from 'date-fns';
-import { potholesApi, reportsApi } from '../lib/api';
+import { reportsApi } from '../lib/api';
 import type { CitizenReport, RepairPriority } from '../types';
 import { StatusPill } from '../components/StatusPill';
 import { cn } from '../lib/utils';
 import { useAuth } from '../context/AuthContext';
-import { getProvinceShortName, PROVINCE_DISTRICTS, normalizeProvince } from '../lib/provinceResolver';
-import { filterReportsForProvince, hasOfficerProvince, OFFICER_PROVINCE_MISSING } from '../lib/staffReportFilters';
+import { getProvinceShortName, PROVINCE_DISTRICTS, normalizeProvince, normalizeDistrict, canonicalizeProvince, getProvinceCenter } from '../lib/provinceResolver';
+import { filterReportsForProvince, hasOfficerProvince, logStaffReportFilter, OFFICER_PROVINCE_MISSING } from '../lib/staffReportFilters';
+import { canonicalizeStatus } from '../lib/status';
 import 'leaflet/dist/leaflet.css';
 
 const PRIORITIES: RepairPriority[] = ['Low', 'Medium', 'High', 'Urgent'];
-type LiveMapStatus = 'Verified' | 'In Progress' | 'All';
-const STATUSES: LiveMapStatus[] = ['All', 'Verified', 'In Progress'];
+type LiveMapStatus = 'Verified' | 'Scheduled' | 'In Progress' | 'All';
+const STATUSES: LiveMapStatus[] = ['All', 'Verified', 'Scheduled', 'In Progress'];
+const LIVE_MAP_STATUSES = new Set(['Verified', 'Scheduled', 'In Progress']);
 
-const MapController = ({ center }: { center: [number, number] | null }) => {
+const MapController = ({ center, zoom }: { center: [number, number] | null; zoom: number }) => {
     const map = useMap();
     useEffect(() => {
-        if (center) map.flyTo(center, 16, { duration: 1.2 });
-    }, [center, map]);
+        if (center) map.flyTo(center, zoom, { duration: 1.2 });
+    }, [center, map, zoom]);
     return null;
 };
 
 const getMarkerIcon = (pothole: CitizenReport) => {
-    // Verified = Green, In Progress = Blue
-    const statusColor = pothole.status === 'Verified' ? '#10B981' 
-        : pothole.status === 'In Progress' ? '#2563EB'
+    // Verified = Green, Scheduled = Orange, In Progress = Blue
+    const status = canonicalizeStatus(pothole.status);
+    const statusColor = status === 'Verified' ? '#10B981' 
+        : status === 'Scheduled' ? '#F97316'
+        : status === 'In Progress' ? '#2563EB'
         : '#64748B';
 
     const html = `
@@ -71,7 +76,9 @@ const getMarkerIcon = (pothole: CitizenReport) => {
 const LiveMap = () => {
     const { user } = useAuth();
     const province = user?.provincialCouncil;
-    const [potholes, setPotholes] = useState<CitizenReport[]>([]);
+    const officerProvince = canonicalizeProvince(province);
+    const provinceCenter = getProvinceCenter(province);
+    const [mapReports, setMapReports] = useState<CitizenReport[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [searchTerm, setSearchTerm] = useState('');
@@ -80,7 +87,9 @@ const LiveMap = () => {
     const [areaFilter, setAreaFilter] = useState('All');
     const [dateFilter, setDateFilter] = useState('All');
     const [selected, setSelected] = useState<CitizenReport | null>(null);
-    const [mapCenter, setMapCenter] = useState<[number, number] | null>(null);
+    const [mapCenter, setMapCenter] = useState<[number, number] | null>(provinceCenter);
+    const [mapZoom, setMapZoom] = useState(10);
+    const [debugCounts, setDebugCounts] = useState({ allReports: 0, provinceReports: 0 });
     const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
 
     const loadMapData = async () => {
@@ -98,11 +107,26 @@ const LiveMap = () => {
             const data = await reportsApi.list();
             console.log(`[LiveMap] Raw telemetry: ${data.length} records.`);
             
-            const filtered = filterReportsForProvince(data, province)
-                .filter(p => ['Verified', 'In Progress'].includes(p.status));
-            console.log(`[LiveMap] Filtered for ${staffProvince}: ${filtered.length} records.`);
+            const provinceReports = filterReportsForProvince(data, province);
+            console.log(`[LiveMap] Province-filtered for ${staffProvince}: ${provinceReports.length} records.`);
+            console.log('Selected District:', areaFilter);
+            console.log(
+                'Province Filtered Reports:',
+                provinceReports.map(report => ({
+                    id: report.id,
+                    district: report.district,
+                    normalized: normalizeDistrict(report.district),
+                }))
+            );
+            logStaffReportFilter('Live Map', province, data, provinceReports);
+            setDebugCounts({ allReports: data.length, provinceReports: provinceReports.length });
             
-            setPotholes(filtered);
+            setMapReports(provinceReports);
+            setSelected(current => current
+                && provinceReports.some(report => report.id === current.id)
+                && LIVE_MAP_STATUSES.has(canonicalizeStatus(current.status))
+                ? current
+                : null);
         } catch (err) {
             console.error('Map fetch error:', err);
             setError('Failed to load map data. Please try again later.');
@@ -118,54 +142,107 @@ const LiveMap = () => {
         const interval = setInterval(() => {
             if (!hasOfficerProvince(province)) return;
             reportsApi.list().then(data => {
-                const filtered = filterReportsForProvince(data, province)
-                    .filter(p => ['Verified', 'In Progress'].includes(p.status));
-                setPotholes(filtered);
+                const provinceReports = filterReportsForProvince(data, province);
+                logStaffReportFilter('Live Map Poll', province, data, provinceReports);
+                setDebugCounts({ allReports: data.length, provinceReports: provinceReports.length });
+                setMapReports(provinceReports);
+                setSelected(current => current
+                    && provinceReports.some(report => report.id === current.id)
+                    && LIVE_MAP_STATUSES.has(canonicalizeStatus(current.status))
+                    ? current
+                    : null);
             }).catch(console.error);
         }, 30000);
 
         return () => clearInterval(interval);
     }, [province]);
 
+    useEffect(() => {
+        setAreaFilter('All');
+        setMapCenter(provinceCenter);
+        setMapZoom(10);
+        setSelected(null);
+    }, [province, provinceCenter]);
+
     const districts = useMemo(() => {
-        if (province && province !== 'Unassigned') {
-            // Use canonical districts for the province
-            const provinceDistricts = PROVINCE_DISTRICTS[province] || [];
+        if (officerProvince !== 'Unassigned') {
+            const provinceDistricts = PROVINCE_DISTRICTS[officerProvince] || [];
             return ['All', ...provinceDistricts];
         }
-        const values = new Set(potholes.map(p => p.district).filter(Boolean));
-        return ['All', ...Array.from(values)] as string[];
-    }, [potholes, province]);
+        return ['All'];
+    }, [officerProvince]);
 
     const filtered = useMemo(() => {
-        return potholes.filter(p => {
-            const matchesSearch = p.id.toLowerCase().includes(searchTerm.toLowerCase())
-                || p.description?.toLowerCase().includes(searchTerm.toLowerCase())
-                || p.district?.toLowerCase().includes(searchTerm.toLowerCase());
-            
-            // Only Verified and In Progress are allowed on this map
-            const matchesStatus = statusFilter === 'All' || p.status === statusFilter;
-            const matchesPriority = priorityFilter === 'All' || p.priority === priorityFilter;
-            const matchesDistrict = areaFilter === 'All' || p.district === areaFilter;
+        const selectedDistrict = normalizeDistrict(areaFilter);
+        const districtFilteredReports = areaFilter === 'All'
+            ? mapReports
+            : mapReports.filter(report => normalizeDistrict(report.district) === selectedDistrict);
+
+        console.log('Selected District:', areaFilter);
+        console.log(
+            'Province Filtered Reports:',
+            mapReports.map(report => ({
+                id: report.id,
+                district: report.district,
+                normalized: normalizeDistrict(report.district),
+            }))
+        );
+        console.log('District Filtered Reports:', districtFilteredReports);
+
+        const statusFilteredReports = districtFilteredReports.filter(report => LIVE_MAP_STATUSES.has(canonicalizeStatus(report.status)));
+
+        const search = searchTerm.trim().toLowerCase();
+        const normalizedSearchDistrict = normalizeDistrict(searchTerm);
+        const visibleReports = statusFilteredReports.filter(report => {
+            const reportStatus = canonicalizeStatus(report.status);
+            const matchesStatus = statusFilter === 'All' || reportStatus === statusFilter;
+            const matchesPriority = priorityFilter === 'All' || report.priority === priorityFilter;
+            const matchesSearch = !search
+                || report.id.toLowerCase().includes(search)
+                || (report.description || '').toLowerCase().includes(search)
+                || normalizeDistrict(report.district).includes(normalizedSearchDistrict);
 
             let matchesDate = true;
-            const reportedDate = new Date(p.createdAt);
+            const reportedDate = new Date(report.createdAt);
             if (dateFilter === 'Last 24h') matchesDate = isAfter(reportedDate, subDays(new Date(), 1));
             if (dateFilter === 'Last 7 Days') matchesDate = isAfter(reportedDate, subDays(new Date(), 7));
             if (dateFilter === 'Last 30 Days') matchesDate = isAfter(reportedDate, subDays(new Date(), 30));
 
-            return matchesSearch && matchesStatus && matchesPriority && matchesDistrict && matchesDate;
+            return matchesStatus && matchesPriority && matchesDate && matchesSearch;
         });
-    }, [potholes, searchTerm, statusFilter, priorityFilter, areaFilter, dateFilter]);
+
+        console.log('[Live Map Visible Debug]', {
+            loggedOfficerProvince: province,
+            allReportsCount: debugCounts.allReports,
+            provinceReportsCount: debugCounts.provinceReports,
+            selectedDistrict: areaFilter,
+            normalizedSelectedDistrict: selectedDistrict,
+            districtFilteredReportsCount: districtFilteredReports.length,
+            statusFilteredReportsCount: statusFilteredReports.length,
+            finalVisibleReportsCount: visibleReports.length,
+            visibleReportProvinces: Array.from(new Set(visibleReports.map(report => report.provincialCouncil || 'Unassigned'))),
+            visibleReportStatuses: Array.from(new Set(visibleReports.map(report => canonicalizeStatus(report.status)))),
+            visibleReportDistricts: Array.from(new Set(visibleReports.map(report => report.district || 'Unknown'))),
+            visibleReportNormalizedDistricts: Array.from(new Set(visibleReports.map(report => normalizeDistrict(report.district)))),
+            visibleReportCoordinates: visibleReports.map(report => ({ id: report.id, lat: report.lat, lon: report.lon })),
+        });
+
+        return visibleReports;
+    }, [mapReports, searchTerm, statusFilter, priorityFilter, areaFilter, dateFilter, province, debugCounts]);
 
     const selectPothole = (pothole: CitizenReport) => {
         setSelected(pothole);
         setMapCenter([pothole.lat, pothole.lon]);
+        setMapZoom(16);
     };
 
-    const updateStatus = async (status: 'In Progress' | 'Completed') => {
+    const updateStatus = async (status: 'Scheduled' | 'In Progress' | 'Completed') => {
         if (!selected) return;
-        await potholesApi.updateStatus(selected.id, status, `Field update from live map by ${user?.name || 'officer'}.`, user?.name);
+        await reportsApi.updateStatus(
+            selected.id,
+            status,
+            `Field update from live map by ${user?.name || 'officer'}.`
+        );
         await loadMapData();
         // If it becomes completed, it should disappear from the map
         if (status === 'Completed') {
@@ -215,7 +292,7 @@ const LiveMap = () => {
                 />
                 <div className="grid grid-cols-2 gap-3">
                     <Stat label="Total Locations" value={filtered.length} />
-                    <Stat label="Active Repairs" value={filtered.filter(p => p.status === 'In Progress').length} />
+                    <Stat label="Active Repairs" value={filtered.filter(p => ['Scheduled', 'In Progress'].includes(canonicalizeStatus(p.status))).length} />
                 </div>
             </aside>
 
@@ -240,6 +317,10 @@ const LiveMap = () => {
                             <span className="text-[10px] font-black text-slate-700 uppercase tracking-tight">Verified</span>
                         </div>
                         <div className="flex items-center gap-2.5">
+                            <div className="w-3 h-3 rounded-full bg-[#F97316] ring-4 ring-orange-500/10" />
+                            <span className="text-[10px] font-black text-slate-700 uppercase tracking-tight">Scheduled</span>
+                        </div>
+                        <div className="flex items-center gap-2.5">
                             <div className="w-3 h-3 rounded-full bg-[#2563EB] ring-4 ring-blue-500/10" />
                             <span className="text-[10px] font-black text-slate-700 uppercase tracking-tight">In Progress</span>
                         </div>
@@ -258,9 +339,9 @@ const LiveMap = () => {
                     </button>
                 </div>
 
-                <MapContainer center={[6.9271, 79.8612]} zoom={11} zoomControl={false} style={{ height: '100%', width: '100%' }}>
+                <MapContainer center={provinceCenter} zoom={10} zoomControl={false} style={{ height: '100%', width: '100%' }}>
                     <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" attribution="&copy; OpenStreetMap &copy; CARTO" />
-                    <MapController center={mapCenter} />
+                    <MapController center={mapCenter} zoom={mapZoom} />
                     <MarkerClusterGroup chunkedLoading spiderfyOnMaxZoom showCoverageOnHover={false} maxClusterRadius={40}>
                         {filtered.length > 0 ? filtered.map(p => (
                             <Marker
@@ -336,10 +417,12 @@ const LiveMap = () => {
                             </div>
 
                             <div className="grid grid-cols-2 gap-3">
-                                <Detail label="Discovery Date" value={new Date(selected.createdAt).toLocaleDateString()} />
-                                <Detail label="Last Update" value={selected.updatedAt ? new Date(selected.updatedAt).toLocaleDateString() : 'Initial Discovery'} />
-                                <Detail label="GPS Lat/Lon" value={`${selected.lat.toFixed(4)}, ${selected.lon.toFixed(4)}`} />
-                                <Detail label="Record ID" value={`#${selected.id.split('-')[0]}`} />
+                                <Detail label="Report ID" value={`#${selected.id.split('-')[0]}`} />
+                                <Detail label="District" value={selected.district || 'Unknown'} />
+                                <Detail label="Province" value={selected.provincialCouncil || 'Unassigned'} />
+                                <Detail label="Status" value={selected.status} />
+                                <Detail label="Priority" value={selected.priority || 'Medium'} />
+                                <Detail label="Submitted Date" value={new Date(selected.createdAt).toLocaleDateString()} />
                             </div>
 
                             {selected.maintenanceNotes && (
@@ -350,15 +433,23 @@ const LiveMap = () => {
                             )}
 
                             <div className="space-y-3 pt-4 border-t border-slate-50">
-                                {selected.status === 'Verified' && (
+                                {canonicalizeStatus(selected.status) === 'Verified' && (
+                                    <button 
+                                        onClick={() => updateStatus('Scheduled')} 
+                                        className="flex w-full items-center justify-center gap-2 rounded-xl bg-orange-500 py-4 text-[10px] font-black uppercase tracking-widest text-white shadow-xl shadow-orange-500/20 hover:bg-orange-600 transition-all"
+                                    >
+                                        <CalendarClock size={14} /> Mark Scheduled
+                                    </button>
+                                )}
+                                {canonicalizeStatus(selected.status) === 'Scheduled' && (
                                     <button 
                                         onClick={() => updateStatus('In Progress')} 
                                         className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 py-4 text-[10px] font-black uppercase tracking-widest text-white shadow-xl shadow-blue-600/20 hover:bg-blue-700 transition-all"
                                     >
-                                        <Play size={14} /> Initialize Repair
+                                        <Play size={14} /> Mark In Progress
                                     </button>
                                 )}
-                                {selected.status === 'In Progress' && (
+                                {canonicalizeStatus(selected.status) === 'In Progress' && (
                                     <button 
                                         onClick={() => updateStatus('Completed')} 
                                         className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 py-4 text-[10px] font-black uppercase tracking-widest text-white shadow-xl shadow-emerald-600/20 hover:bg-emerald-700 transition-all"

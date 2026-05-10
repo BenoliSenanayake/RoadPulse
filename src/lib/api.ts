@@ -5,6 +5,7 @@ import type {
     RepairScheduleInput,
     AuditLog
 } from '../types';
+import { canonicalizeStatus } from './status';
 
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 export const PORTAL_MODE = import.meta.env.VITE_PORTAL_MODE || 'citizen';
@@ -41,11 +42,12 @@ export const normalizeReport = (data: any): CitizenReport => {
     // AI Status Mapping
     let aiStatus: 'PENDING' | 'ACCEPTED' | 'REJECTED' = 'PENDING';
     const classification = data.ai_classification || data.aiClassification;
+    const reportStatus = canonicalizeStatus(data.status);
     
     if (classification === 'VERIFIED_POTHOLE' || classification === 'ACCEPTED') aiStatus = 'ACCEPTED';
     else if (classification === 'REJECTED' || classification === 'NON_POTHOLE') aiStatus = 'REJECTED';
-    else if (data.status === 'Verified') aiStatus = 'ACCEPTED';
-    else if (data.status === 'Rejected') aiStatus = 'REJECTED';
+    else if (reportStatus === 'Verified') aiStatus = 'ACCEPTED';
+    else if (reportStatus === 'Rejected') aiStatus = 'REJECTED';
 
     const mapped: CitizenReport = {
         ...data,
@@ -67,7 +69,7 @@ export const normalizeReport = (data: any): CitizenReport => {
         lastStatusUpdatedAt: data.last_status_updated_at || data.lastStatusUpdatedAt,
         provincialCouncil: data.provincial_council || data.provincialCouncil || 'Unassigned',
         district: data.district || 'General',
-        status: (data.status as any) || 'New',
+        status: reportStatus,
         maintenanceNotes: data.maintenance_notes || data.maintenanceNotes || '',
         priority: data.priority || 'Medium',
         bbox: data.bbox || null
@@ -254,6 +256,25 @@ export const reportsApi = {
                 await apiClient.patch(`/reports/${id}/status`, { status, notes: reason });
             },
             async () => {}
+        );
+    },
+    updateStatus: async (
+        id: string,
+        status: CitizenReport['status'],
+        notes?: string,
+        priority?: CitizenReport['priority']
+    ): Promise<CitizenReport | null> => {
+        return withFallback(
+            async () => {
+                const payload: { status: string; notes?: string; priority?: string } = {
+                    status: canonicalizeStatus(status),
+                };
+                if (notes) payload.notes = notes;
+                if (priority) payload.priority = priority;
+                const res = await apiClient.patch(`/reports/${id}/status`, payload);
+                return mapBackendReportToFrontend(res);
+            },
+            async () => null
         );
     },
     update: async (id: string, updates: Partial<CitizenReport>): Promise<CitizenReport | null> => {

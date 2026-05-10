@@ -14,13 +14,15 @@ import { reportsApi, auditLogsApi } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import { StatusPill } from '../components/StatusPill';
 import { cn } from '../lib/utils';
-import { getProvinceShortName, PROVINCE_DISTRICTS, normalizeProvince } from '../lib/provinceResolver';
+import { getProvinceShortName, PROVINCE_DISTRICTS, normalizeProvince, canonicalizeProvince, normalizeDistrict } from '../lib/provinceResolver';
 import {
     filterReportsForProvince,
     hasOfficerProvince,
     isOverdueReport,
+    logStaffReportFilter,
     OFFICER_PROVINCE_MISSING
 } from '../lib/staffReportFilters';
+import { canonicalizeStatus } from '../lib/status';
 import type { CitizenReport, AuditLog } from '../types';
 
 interface LifecycleHistory {
@@ -75,6 +77,7 @@ const ReportMaintenanceHistory = () => {
             const filteredReports = filterReportsForProvince(reportData, province);
             console.log(`[History] Raw telemetry: ${reportData.length} reports.`);
             console.log(`[History] Filtered for ${staffProvince}: ${filteredReports.length} reports.`);
+            logStaffReportFilter('Maintenance History', province, reportData, filteredReports);
 
             setReports(filteredReports);
             setAuditLogs(logData);
@@ -91,8 +94,9 @@ const ReportMaintenanceHistory = () => {
     }, [province]);
 
     const districts = useMemo(() => {
-        if (province && province !== 'Unassigned') {
-            return ['All', ...(PROVINCE_DISTRICTS[province] || [])];
+        const officerProvince = canonicalizeProvince(province);
+        if (officerProvince !== 'Unassigned') {
+            return ['All', ...(PROVINCE_DISTRICTS[officerProvince] || [])];
         }
         return ['All'];
     }, [province]);
@@ -102,10 +106,11 @@ const ReportMaintenanceHistory = () => {
             const logs = auditLogs.filter(log => log.entityId === report.id);
             const findDate = (actions: string[]) => logs.find(log => actions.includes(log.action))?.timestamp || EMPTY_DATE;
 
-            const reachedVerified = ['Verified', 'In Progress', 'Completed'].includes(report.status)
+            const reportStatus = canonicalizeStatus(report.status);
+            const reachedVerified = ['Verified', 'Scheduled', 'In Progress', 'Completed'].includes(reportStatus)
                 || report.aiClassification === 'VERIFIED_POTHOLE';
-            const reachedInProgress = ['In Progress', 'Completed'].includes(report.status);
-            const reachedCompleted = report.status === 'Completed';
+            const reachedInProgress = ['In Progress', 'Completed'].includes(reportStatus);
+            const reachedCompleted = reportStatus === 'Completed';
 
             const verifiedAt = reachedVerified
                 ? findDate(['AI_ACCEPTED', 'MANUAL_ACCEPTED', 'STATUS_CHANGED'])
@@ -120,7 +125,7 @@ const ReportMaintenanceHistory = () => {
                 inProgress: reachedInProgress ? findDate(['REPAIR_STARTED', 'STATUS_CHANGED']) : EMPTY_DATE,
                 completed: reachedCompleted ? findDate(['REPAIR_COMPLETED', 'STATUS_CHANGED']) : EMPTY_DATE,
                 overdue: isOverdueReport(report),
-                status: report.status,
+                status: reportStatus,
                 priority: report.priority || 'Medium',
                 notes: report.maintenanceNotes || report.description || '',
                 lastUpdated: report.updatedAt || report.createdAt,
@@ -130,8 +135,8 @@ const ReportMaintenanceHistory = () => {
         return items.filter(item => {
             const matchesSearch = item.id.toLowerCase().includes(searchTerm.toLowerCase())
                 || item.location.toLowerCase().includes(searchTerm.toLowerCase());
-            const matchesDistrict = districtFilter === 'All' || item.district === districtFilter;
-            const matchesStatus = statusFilter === 'All' || item.status === statusFilter;
+            const matchesDistrict = districtFilter === 'All' || normalizeDistrict(item.district) === normalizeDistrict(districtFilter);
+            const matchesStatus = statusFilter === 'All' || canonicalizeStatus(item.status as any) === statusFilter;
             const matchesPriority = priorityFilter === 'All' || item.priority === priorityFilter;
 
             return matchesSearch && matchesDistrict && matchesStatus && matchesPriority;
@@ -218,6 +223,7 @@ const ReportMaintenanceHistory = () => {
                             <option value="All">All Statuses</option>
                             <option value="New">New</option>
                             <option value="Verified">Verified</option>
+                            <option value="Scheduled">Scheduled</option>
                             <option value="In Progress">In Progress</option>
                             <option value="Completed">Completed</option>
                             <option value="Rejected">Rejected</option>

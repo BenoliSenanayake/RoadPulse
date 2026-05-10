@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { reportsApi } from '../../lib/api';
-import { ArrowLeft, MapPin, Calendar, CheckCircle2, Clock, Wrench, CircleDot, XCircle, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, MapPin, Calendar, CheckCircle2, Clock, Wrench, CircleDot, XCircle, ShieldCheck, CalendarClock } from 'lucide-react';
 import { format } from 'date-fns';
 import type { CitizenReport } from '../../types';
+import { canonicalizeStatus } from '../../lib/status';
 
 interface TimelineStep {
     label: string;
@@ -33,8 +34,8 @@ interface TimelineStep {
  * Backend statuses: New, Verified, In Progress, Completed, Rejected
  */
 function buildTimeline(report: CitizenReport): TimelineStep[] {
-    const status = report.status;
-    const isRejected = status === 'Rejected' || status === 'Discarded';
+    const status = canonicalizeStatus(report.status);
+    const isRejected = status === 'Rejected';
 
     if (isRejected) {
         return [
@@ -62,51 +63,61 @@ function buildTimeline(report: CitizenReport): TimelineStep[] {
         ];
     }
 
-    // Step completion flags based on status order
-    // New -> Verified -> In Progress -> Completed
-    const submitted = true; // always
-    const underReviewDone = status !== 'New';
-    const verifiedDone = ['Verified', 'In Progress', 'Completed'].includes(status);
-    const inProgressDone = ['In Progress', 'Completed'].includes(status);
-    const completedDone = status === 'Completed';
+    const verifiedReached = ['Verified', 'Scheduled', 'In Progress', 'Completed'].includes(status);
+    const scheduledReached = ['Scheduled', 'In Progress', 'Completed'].includes(status);
+    const inProgressReached = ['In Progress', 'Completed'].includes(status);
+    const completedReached = status === 'Completed';
 
-    return [
+    const steps: TimelineStep[] = [
         {
             label: 'Submitted',
             description: 'Your report was received.',
             icon: CircleDot,
-            done: submitted,
+            done: true,
             current: false, 
         },
         {
             label: 'Under Review',
             description: 'Maintenance officers are reviewing your report.',
             icon: Clock,
-            done: underReviewDone,
+            done: status !== 'New',
             current: status === 'New', 
         },
         {
             label: 'Verified',
             description: 'The road damage has been verified.',
             icon: ShieldCheck,
-            done: verifiedDone,
+            done: verifiedReached,
             current: status === 'Verified',
         },
         {
-            label: 'In Progress',
-            description: 'Repair work is currently in progress.',
-            icon: Wrench,
-            done: inProgressDone,
-            current: status === 'In Progress',
-        },
-        {
-            label: 'Completed',
-            description: 'The repair has been completed.',
-            icon: CheckCircle2,
-            done: completedDone,
-            current: status === 'Completed',
+            label: 'Repair Scheduled',
+            description: 'Repair work has been scheduled.',
+            icon: CalendarClock,
+            done: scheduledReached,
+            current: status === 'Scheduled',
         },
     ];
+
+    if (inProgressReached) {
+        steps.push({
+            label: 'Repair In Progress',
+            description: 'Repair work is currently in progress.',
+            icon: Wrench,
+            done: inProgressReached,
+            current: status === 'In Progress',
+        });
+    }
+
+    steps.push({
+        label: 'Fixed',
+        description: 'The repair has been completed.',
+        icon: CheckCircle2,
+        done: completedReached,
+        current: status === 'Completed',
+    });
+
+    return steps;
 }
 
 const ReportStatus = () => {
@@ -177,13 +188,15 @@ const ReportStatus = () => {
 
     // Friendly overall status badge based on real backend status
     let overallStatus = { label: 'Under Review', color: 'text-amber-700 bg-amber-50 border-amber-200' };
-    const s = report.status;
-    if (s === 'Rejected' || s === 'Discarded') {
+    const s = canonicalizeStatus(report.status);
+    if (s === 'Rejected') {
         overallStatus = { label: 'Not Accepted', color: 'text-rose-700 bg-rose-50 border-rose-200' };
     } else if (s === 'Completed') {
-        overallStatus = { label: 'Completed', color: 'text-emerald-700 bg-emerald-50 border-emerald-200' };
+        overallStatus = { label: 'Fixed', color: 'text-emerald-700 bg-emerald-50 border-emerald-200' };
     } else if (s === 'In Progress') {
-        overallStatus = { label: 'In Progress', color: 'text-blue-700 bg-blue-50 border-blue-200' };
+        overallStatus = { label: 'Repair In Progress', color: 'text-blue-700 bg-blue-50 border-blue-200' };
+    } else if (s === 'Scheduled') {
+        overallStatus = { label: 'Repair Scheduled', color: 'text-orange-700 bg-orange-50 border-orange-200' };
     } else if (s === 'Verified') {
         overallStatus = { label: 'Verified', color: 'text-violet-700 bg-violet-50 border-violet-200' };
     }
@@ -250,7 +263,7 @@ const ReportStatus = () => {
                 <h2 className="text-base font-bold text-slate-900 mb-6">Report Progress</h2>
 
                 {/* Rejection notice */}
-                {(report.status === 'Rejected' || report.status === 'Discarded') && (
+                {canonicalizeStatus(report.status) === 'Rejected' && (
                     <div className="flex items-start gap-3 mb-6 p-4 bg-rose-50 border border-rose-100 rounded-xl">
                         <XCircle size={18} className="text-rose-500 mt-0.5 shrink-0" />
                         <div>

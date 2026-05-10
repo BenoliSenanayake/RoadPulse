@@ -16,18 +16,47 @@ import {
     CheckCircle2,
     XCircle,
     AlertCircle,
-    Info
+    Info,
+    Play,
+    CalendarClock
 } from 'lucide-react';
 import { reportsApi } from '../lib/api';
 import { StatusPill } from '../components/StatusPill';
 import { useAuth } from '../context/AuthContext';
 import { getProvinceShortName, normalizeProvince } from '../lib/provinceResolver';
+import { hasOfficerProvince, OFFICER_PROVINCE_MISSING } from '../lib/staffReportFilters';
+import { canonicalizeStatus } from '../lib/status';
 import { format } from 'date-fns';
 import { cn } from '../lib/utils';
 import type { CitizenReport, RepairPriority } from '../types';
 
 const PRIORITIES: RepairPriority[] = ['Low', 'Medium', 'High', 'Urgent'];
-const STATUSES = ['New', 'Verified', 'In Progress', 'Completed', 'Rejected'] as const;
+const STATUSES = ['New', 'Verified', 'Scheduled', 'In Progress', 'Completed', 'Rejected'] as const;
+
+const getLifecycleActions = (status: CitizenReport['status']) => {
+    switch (canonicalizeStatus(status)) {
+        case 'New':
+            return [
+                { label: 'Verify Report', status: 'Verified' as const, icon: ShieldCheck, className: 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20' },
+                { label: 'Reject Report', status: 'Rejected' as const, icon: XCircle, className: 'bg-rose-600 hover:bg-rose-700 shadow-rose-600/20' },
+            ];
+        case 'Verified':
+            return [
+                { label: 'Mark as Scheduled', status: 'Scheduled' as const, icon: CalendarClock, className: 'bg-orange-500 hover:bg-orange-600 shadow-orange-500/20' },
+                { label: 'Reject Report', status: 'Rejected' as const, icon: XCircle, className: 'bg-rose-600 hover:bg-rose-700 shadow-rose-600/20' },
+            ];
+        case 'Scheduled':
+            return [
+                { label: 'Mark as In Progress', status: 'In Progress' as const, icon: Play, className: 'bg-blue-600 hover:bg-blue-700 shadow-blue-600/20' },
+            ];
+        case 'In Progress':
+            return [
+                { label: 'Mark as Completed', status: 'Completed' as const, icon: CheckCircle2, className: 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20' },
+            ];
+        default:
+            return [];
+    }
+};
 
 const StaffReportDetail = () => {
     const { id } = useParams<{ id: string }>();
@@ -50,6 +79,11 @@ const StaffReportDetail = () => {
         setLoading(true);
         setError('');
         try {
+            if (user?.role === 'MAINTENANCE_OFFICER' && !hasOfficerProvince(user.provincialCouncil)) {
+                setError(OFFICER_PROVINCE_MISSING);
+                return;
+            }
+
             const staffProvince = normalizeProvince(user?.provincialCouncil);
             console.log(`[ReportDetail Debug] Officer:`, user?.email, staffProvince);
             
@@ -89,19 +123,45 @@ const StaffReportDetail = () => {
         setSaving(true);
         setSaved(false);
         try {
-            const updates: Partial<CitizenReport> = {
-                priority: selectedPriority,
-                status: selectedStatus as any,
-                maintenanceNotes: maintenanceNotes,
-            };
-            const updated = await reportsApi.update(id, updates);
+            const statusChanged = canonicalizeStatus(selectedStatus) !== canonicalizeStatus(report.status);
+            const updated = statusChanged
+                ? await reportsApi.updateStatus(id, selectedStatus as CitizenReport['status'], maintenanceNotes, selectedPriority)
+                : await reportsApi.update(id, {
+                    priority: selectedPriority,
+                    maintenanceNotes: maintenanceNotes,
+                });
             if (updated) {
                 setReport(updated);
+                setSelectedStatus(updated.status);
+                setSelectedPriority(updated.priority || selectedPriority);
+                setMaintenanceNotes(updated.maintenanceNotes || maintenanceNotes);
                 setSaved(true);
                 setTimeout(() => setSaved(false), 3000);
             }
         } catch (err) {
             console.error('Failed to update report:', err);
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleLifecycleAction = async (nextStatus: CitizenReport['status'], label: string) => {
+        if (!report || !id) return;
+        setSaving(true);
+        setSaved(false);
+        try {
+            const note = maintenanceNotes || `${label} by ${user?.name || 'officer'}.`;
+            const updated = await reportsApi.updateStatus(id, nextStatus, note, selectedPriority);
+            if (updated) {
+                setReport(updated);
+                setSelectedStatus(updated.status);
+                setSelectedPriority(updated.priority || selectedPriority);
+                setMaintenanceNotes(updated.maintenanceNotes || note);
+                setSaved(true);
+                setTimeout(() => setSaved(false), 3000);
+            }
+        } catch (err) {
+            console.error('Failed to update report lifecycle:', err);
         } finally {
             setSaving(false);
         }
@@ -136,6 +196,7 @@ const StaffReportDetail = () => {
     const submittedDate = format(new Date(report.createdAt), 'dd MMM yyyy');
     const submittedTime = format(new Date(report.createdAt), 'hh:mm:ss a');
     const description = report.description?.replace(/^\[.*?\]\s*/, '') || 'Road Damage Report';
+    const lifecycleActions = getLifecycleActions(report.status);
 
     const getPriorityColor = (p: string) => {
         switch (p) {
@@ -383,6 +444,30 @@ const StaffReportDetail = () => {
                                     className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-bold text-slate-700 outline-none transition-all focus:border-emerald-400 focus:bg-white focus:ring-4 focus:ring-emerald-500/10 resize-none"
                                 />
                             </div>
+
+                            {lifecycleActions.length > 0 && (
+                                <div className="space-y-3">
+                                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] block px-1">Lifecycle Actions</label>
+                                    <div className="space-y-2">
+                                        {lifecycleActions.map(action => {
+                                            const Icon = action.icon;
+                                            return (
+                                                <button
+                                                    key={action.status}
+                                                    onClick={() => handleLifecycleAction(action.status, action.label)}
+                                                    disabled={saving}
+                                                    className={cn(
+                                                        'flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 text-[10px] font-black uppercase tracking-widest text-white shadow-xl transition-all active:scale-[0.98] disabled:opacity-60',
+                                                        action.className
+                                                    )}
+                                                >
+                                                    <Icon size={15} /> {action.label}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         <button

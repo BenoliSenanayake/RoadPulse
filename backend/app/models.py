@@ -37,7 +37,7 @@ class CitizenReport(Base):
     district = Column(String, nullable=True)
     provincial_council = Column(String, nullable=True)
     
-    status = Column(String, default="New") # New, Verified, In Progress, Completed, Rejected
+    status = Column(String, default="New") # New, Verified, Scheduled, In Progress, Completed, Rejected
     priority = Column(String, nullable=True) # Low, Medium, High, Urgent
     
     # AI Fields

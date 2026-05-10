@@ -5,18 +5,21 @@ import { ArrowRight, Clock, Inbox, MapPin, PlusCircle, AlertTriangle, Loader2 } 
 import { reportsApi } from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
 import type { CitizenReport } from '../../types';
+import { canonicalizeStatus } from '../../lib/status';
 
 function friendlyStatus(report: CitizenReport): { label: string; color: string } {
-    if (report.status === 'Rejected' || report.status === 'Discarded') return { label: 'Not Accepted', color: 'text-rose-700 bg-rose-50 border-rose-100' };
-    if (report.status === 'Completed') return { label: 'Completed', color: 'text-emerald-700 bg-emerald-50 border-emerald-100' };
-    if (report.status === 'In Progress') return { label: 'In Progress', color: 'text-blue-700 bg-blue-50 border-blue-100' };
-    if (report.status === 'Verified') return { label: 'Verified', color: 'text-violet-700 bg-violet-50 border-violet-100' };
+    const status = canonicalizeStatus(report.status);
+    if (status === 'Rejected') return { label: 'Not Accepted', color: 'text-rose-700 bg-rose-50 border-rose-100' };
+    if (status === 'Completed') return { label: 'Fixed', color: 'text-emerald-700 bg-emerald-50 border-emerald-100' };
+    if (status === 'In Progress') return { label: 'Repair In Progress', color: 'text-blue-700 bg-blue-50 border-blue-100' };
+    if (status === 'Scheduled') return { label: 'Repair Scheduled', color: 'text-orange-700 bg-orange-50 border-orange-100' };
+    if (status === 'Verified') return { label: 'Verified', color: 'text-violet-700 bg-violet-50 border-violet-100' };
     return { label: 'Under Review', color: 'text-amber-700 bg-amber-50 border-amber-100' };
 }
 
-type FilterKey = 'ALL' | 'Under Review' | 'Verified' | 'In Progress' | 'Completed' | 'Not Accepted';
+type FilterKey = 'ALL' | 'Under Review' | 'Verified' | 'Repair Scheduled' | 'Repair In Progress' | 'Fixed' | 'Not Accepted';
 
-const FILTERS: FilterKey[] = ['ALL', 'Under Review', 'Verified', 'In Progress', 'Completed', 'Not Accepted'];
+const FILTERS: FilterKey[] = ['ALL', 'Under Review', 'Verified', 'Repair Scheduled', 'Repair In Progress', 'Fixed', 'Not Accepted'];
 
 const MyReports = () => {
     const { user } = useAuth();

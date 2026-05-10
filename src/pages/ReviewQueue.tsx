@@ -13,7 +13,7 @@ import { StatusPill } from '../components/StatusPill';
 import { EmptyState } from '../components/EmptyState';
 import { useAuth } from '../context/AuthContext';
 import { normalizeProvince } from '../lib/provinceResolver';
-import { filterReportsForProvince, hasOfficerProvince, OFFICER_PROVINCE_MISSING } from '../lib/staffReportFilters';
+import { filterReportsForProvince, hasOfficerProvince, logStaffReportFilter, OFFICER_PROVINCE_MISSING } from '../lib/staffReportFilters';
 
 // Fix Leaflet's default icon path issues
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -61,6 +61,7 @@ const ReviewQueue = () => {
             
             const filtered = filterReportsForProvince(data, province);
             console.log(`[ReviewQueue] Filtered for ${staffProvince}: ${filtered.length} reports.`);
+            logStaffReportFilter('Review Queue', province, data, filtered);
             
             setReports(filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
         } catch (e) {

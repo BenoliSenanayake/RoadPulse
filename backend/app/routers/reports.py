@@ -13,6 +13,44 @@ router = APIRouter(prefix="/reports", tags=["reports"])
 
 UPLOAD_DIR = "uploads"
 
+VALID_REPORT_STATUSES = {"New", "Verified", "Scheduled", "In Progress", "Completed", "Rejected"}
+STATUS_ALIASES = {
+    "new": "New",
+    "pending": "New",
+    "under review": "New",
+    "needs manual review": "New",
+    "verified": "Verified",
+    "confirmed": "Verified",
+    "accepted": "Verified",
+    "verified pothole": "Verified",
+    "scheduled": "Scheduled",
+    "repair scheduled": "Scheduled",
+    "scheduled repair": "Scheduled",
+    "awaiting crew": "Scheduled",
+    "in progress": "In Progress",
+    "repair in progress": "In Progress",
+    "completed": "Completed",
+    "fixed": "Completed",
+    "repair completed": "Completed",
+    "rejected": "Rejected",
+    "discarded": "Rejected",
+    "unable to repair": "Rejected",
+    "non pothole": "Rejected",
+}
+
+
+def normalize_report_status(value: Optional[str]) -> Optional[str]:
+    if value is None:
+        return None
+    key = str(value).strip().lower().replace("_", " ").replace("-", " ")
+    key = " ".join(key.split())
+    status = STATUS_ALIASES.get(key)
+    if not status:
+        raise HTTPException(status_code=400, detail=f"Unsupported report status: {value}")
+    if status not in VALID_REPORT_STATUSES:
+        raise HTTPException(status_code=400, detail=f"Unsupported report status: {value}")
+    return status
+
 @router.post("", response_model=schemas.CitizenReportRead)
 async def create_report(
     citizen_id: Optional[str] = Form(None),
@@ -197,7 +235,7 @@ def get_reports(
     if citizenId and citizenId != 'null' and citizenId != 'undefined':
         query = query.filter(models.CitizenReport.citizen_id == citizenId)
     if status and status != 'null' and status != 'undefined':
-        query = query.filter(models.CitizenReport.status == status)
+        query = query.filter(models.CitizenReport.status == normalize_report_status(status))
         
     results = query.order_by(models.CitizenReport.submitted_at.desc()).all()
     print(f">>> GET /reports returning {len(results)} records")
@@ -222,14 +260,21 @@ def update_status(report_id: str, update: schemas.StatusUpdateCreate, officer_id
         
     old_status = report.status
     
-    if update.status:
-        crud.update_report_status(db, report_id, update.status)
+    next_status = normalize_report_status(update.status) if update.status else None
+    
+    if next_status:
+        crud.update_report_status(db, report_id, next_status)
     if update.priority:
         crud.update_report_priority(db, report_id, update.priority)
     if update.notes:
         crud.update_report_notes(db, report_id, update.notes)
-        
-    crud.create_status_update(db, update, report_id, officer_id)
+
+    status_update = schemas.StatusUpdateCreate(
+        status=next_status or old_status,
+        priority=update.priority,
+        notes=update.notes
+    )
+    crud.create_status_update(db, status_update, report_id, officer_id)
     
     crud.create_audit_log(
         db=db,
@@ -237,7 +282,7 @@ def update_status(report_id: str, update: schemas.StatusUpdateCreate, officer_id
         user_id=officer_id,
         action="STATUS_UPDATED",
         old_status=old_status,
-        new_status=update.status or old_status,
+        new_status=next_status or old_status,
         notes=update.notes
     )
     
@@ -274,6 +319,8 @@ def update_report(report_id: str, updates: dict, db: Session = Depends(get_db)):
     for key, value in updates.items():
         db_key = mapping.get(key, key)
         if hasattr(report, db_key):
+            if db_key == "status":
+                value = normalize_report_status(value)
             old_val = getattr(report, db_key)
             if old_val != value:
                 setattr(report, db_key, value)

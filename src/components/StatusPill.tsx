@@ -27,9 +27,9 @@ const statusConfig: Record<StatusType, StatusConfig> = {
         label: 'Verified'
     },
     'Scheduled': {
-        class: 'bg-slate-100 text-slate-600 border-slate-200',
+        class: 'bg-orange-50 text-orange-700 border-orange-100',
         icon: <Wrench size={12} />,
-        label: 'Awaiting Crew'
+        label: 'Scheduled'
     },
     'In Progress': {
         class: 'bg-blue-50 text-blue-700 border-blue-100 shadow-sm',

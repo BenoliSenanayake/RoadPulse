@@ -26,6 +26,7 @@ import {
     isOverdueReport,
     isRejectedReport,
     isVerifiedReport,
+    logStaffReportFilter,
     OFFICER_PROVINCE_MISSING
 } from '../lib/staffReportFilters';
 
@@ -61,6 +62,7 @@ const MaintenanceOverview = () => {
             const filteredReports = filterReportsForProvince(reportData, province);
 
             console.log(`[Staff Overview] Filtered results for ${staffProvince}: ${filteredReports.length} reports.`);
+            logStaffReportFilter('Staff Overview', province, reportData, filteredReports);
             
             setReports(filteredReports);
         } catch (err) {

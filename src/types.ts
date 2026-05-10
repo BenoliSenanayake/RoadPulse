@@ -1,14 +1,17 @@
 export type RepairPriority = 'Low' | 'Medium' | 'High' | 'Urgent';
 export type RepairTeam = 'Team A' | 'Team B' | 'Team C' | 'Emergency Team' | 'Unassigned';
-export type RepairStatus = 'Verified' | 'In Progress' | 'Completed' | 'Unable to Repair';
+export type RepairStatus = 'Verified' | 'Scheduled' | 'In Progress' | 'Completed' | 'Unable to Repair';
 export type PotholeStatus =
     | 'New'
     | 'Confirmed'
     | 'Verified'
+    | 'Scheduled'
     | 'In Progress'
     | 'Completed'
+    | 'Fixed'
     | 'Rejected'
-    | 'Unable to Repair';
+    | 'Unable to Repair'
+    | 'Discarded';
 export type UserRole = 'MAINTENANCE_OFFICER' | 'CITIZEN' | 'ADMIN';
 
 export type ProvincialCouncil =
@@ -126,7 +129,7 @@ export interface CitizenReport {
     lastStatusUpdatedAt?: string;
     submittedAt?: string;
     updatedAt?: string;
-    status: 'New' | 'Verified' | 'In Progress' | 'Completed' | 'Rejected' | 'Discarded'; // Mapping from assignment
+    status: 'New' | 'Verified' | 'Scheduled' | 'In Progress' | 'Completed' | 'Rejected' | 'Discarded'; // Mapping from assignment
     createdAt: string; // Keep as submittedAt alias
 }
 

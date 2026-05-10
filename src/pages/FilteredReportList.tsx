@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useParams, useNavigate, Navigate } from 'react-router-dom';
+import { useParams, useNavigate, Navigate, useLocation } from 'react-router-dom';
 import { 
     ArrowLeft, 
     Calendar, 
@@ -15,7 +15,7 @@ import {
     XCircle,
     History
 } from 'lucide-react';
-import { potholesApi, reportsApi } from '../lib/api';
+import { reportsApi } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import { StatusPill } from '../components/StatusPill';
 import { cn } from '../lib/utils';
@@ -29,6 +29,7 @@ import {
     isOverdueReport,
     isRejectedReport,
     isVerifiedReport,
+    logStaffReportFilter,
     OFFICER_PROVINCE_MISSING
 } from '../lib/staffReportFilters';
 import type { CitizenReport, RepairPriority } from '../types';
@@ -75,7 +76,9 @@ const getDaysSince = (dateStr?: string) => {
 
 const FilteredReportList = () => {
     const { filter: rawFilter } = useParams<{ filter: string }>();
-    const filter = (rawFilter || 'all') as ReportFilter;
+    const location = useLocation();
+    const pathFilter = location.pathname.split('/').filter(Boolean).pop();
+    const filter = (rawFilter || pathFilter || 'all') as ReportFilter;
     const navigate = useNavigate();
     const { user } = useAuth();
     const province = user?.provincialCouncil;
@@ -85,12 +88,13 @@ const FilteredReportList = () => {
     const [error, setError] = useState('');
     const [actionLoading, setActionLoading] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
+    const [totalReportsFetched, setTotalReportsFetched] = useState(0);
 
     useEffect(() => {
-        if (rawFilter && !FILTER_LABELS[rawFilter as ReportFilter]) {
+        if (filter && !FILTER_LABELS[filter]) {
             navigate('/staff/overview');
         }
-    }, [rawFilter, navigate]);
+    }, [filter, navigate]);
 
     const loadData = async () => {
         setLoading(true);
@@ -103,7 +107,13 @@ const FilteredReportList = () => {
             }
             
             const reportData = await reportsApi.list();
-            setReports(filterReportsForProvince(reportData, province));
+            setTotalReportsFetched(reportData.length);
+            const filteredReports = filterReportsForProvince(reportData, province);
+            logStaffReportFilter(`Staff Reports ${filter}`, province, reportData, filteredReports);
+            console.log(`[Staff Reports ${filter}] Current category:`, filter);
+            console.log(`[Staff Reports ${filter}] Total reports fetched:`, reportData.length);
+            console.log(`[Staff Reports ${filter}] Province filtered count:`, filteredReports.length);
+            setReports(filteredReports);
         } catch (error) {
             console.error("Failed to load reports", error);
             setError('Failed to load reports. Please try again later.');
@@ -159,31 +169,34 @@ const FilteredReportList = () => {
         });
     }, [filter, reports, searchTerm]);
 
+    useEffect(() => {
+        console.log(`[Staff Reports ${filter}] Current category:`, filter);
+        console.log(`[Staff Reports ${filter}] Total reports fetched:`, totalReportsFetched);
+        console.log(`[Staff Reports ${filter}] Province filtered count:`, reports.length);
+        console.log(`[Staff Reports ${filter}] Category filtered count:`, displayItems.length);
+        console.log(`[Staff Reports ${filter}] Statuses in result:`, Array.from(new Set(displayItems.map(report => report.status))));
+        console.log(`[Staff Reports ${filter}] Category report provinces:`, Array.from(new Set(displayItems.map(report => report.provincialCouncil || 'Unassigned'))));
+    }, [displayItems, filter, reports.length, totalReportsFetched]);
+
     const handleQuickAction = async (item: any, action: string, value?: any) => {
         setActionLoading(item.id);
         try {
             if (filter === 'manual-review') {
                 if (action === 'accept') {
-                    await reportsApi.review(item.id, 'accept');
+                    await reportsApi.updateStatus(item.id, 'Verified', 'Report verified by maintenance officer.');
                 } else if (action === 'reject') {
                     const reason = window.prompt("Reason for rejection:");
-                    if (reason) await reportsApi.review(item.id, 'reject', reason);
+                    if (reason) await reportsApi.updateStatus(item.id, 'Rejected', reason);
                 }
             } else if (filter === 'verified') {
                 if (action === 'priority') {
-                    await potholesApi.scheduleRepair(item.id, { 
-                        priority: value as RepairPriority,
-                        repairStatus: item.status as any,
-                        assignedTeam: (item as any).assignedTeam || 'Unassigned',
-                        scheduledDate: (item as any).timestamp || (item as any).createdAt || new Date().toISOString(),
-                        maintenanceNotes: (item as any).maintenanceNotes || ''
-                    }, user?.name);
+                    await reportsApi.updateStatus(item.id, 'Scheduled', 'Repair scheduled from verified queue.', value as RepairPriority);
                 } else if (action === 'start') {
-                    await potholesApi.updateStatus(item.id, 'In Progress', 'Work started from priority queue.', user?.name);
+                    await reportsApi.updateStatus(item.id, 'Scheduled', 'Repair scheduled from verified queue.');
                 }
             } else if (filter === 'in-progress') {
                 if (action === 'complete') {
-                    await potholesApi.updateStatus(item.id, 'Completed', 'Maintenance work finalized.', user?.name);
+                    await reportsApi.updateStatus(item.id, 'Completed', 'Maintenance work finalized.');
                 }
             } else if (filter === 'overdue') {
                 if (action === 'update') {
@@ -192,7 +205,7 @@ const FilteredReportList = () => {
                 }
             } else if (filter === 'rejected') {
                 if (action === 'restore') {
-                    await reportsApi.review(item.id, 'accept', 'Report manually moved from Rejected to Verified by officer');
+                    await reportsApi.updateStatus(item.id, 'Verified', 'Report manually moved from Rejected to Verified by officer');
                 }
             }
             await loadData();
