@@ -259,14 +259,9 @@ export const reportsApi = {
     update: async (id: string, updates: Partial<CitizenReport>): Promise<CitizenReport | null> => {
         return withFallback(
             async () => {
-                // Map frontend field names to backend StatusUpdateCreate schema
-                const payload: any = {};
-                if (updates.status) payload.status = updates.status;
-                if (updates.priority) payload.priority = updates.priority;
-                if (updates.maintenanceNotes !== undefined) payload.notes = updates.maintenanceNotes;
-                if (updates.provincialCouncil) payload.provincial_council = updates.provincialCouncil;
-                
-                const res = await apiClient.patch(`/reports/${id}/status`, payload);
+                console.log(`[API] Updating report ${id}:`, updates);
+                // Use the base patch endpoint for multi-field updates (province, district, status, notes)
+                const res = await apiClient.patch(`/reports/${id}`, updates);
                 return mapBackendReportToFrontend(res);
             },
             async () => null
@@ -297,7 +292,7 @@ export const potholesApi = {
             async () => null
         );
     },
-    updateStatus: async (id: string, status: PotholeStatus, note: string, updatedBy?: string): Promise<void> => {
+    updateStatus: async (id: string, status: PotholeStatus, note: string, _updatedBy?: string): Promise<void> => {
         return withFallback(
             async () => {
                 await apiClient.patch(`/reports/${id}/status`, { status, notes: note });
@@ -305,7 +300,7 @@ export const potholesApi = {
             async () => {}
         );
     },
-    scheduleRepair: async (id: string, data: RepairScheduleInput, updatedBy?: string): Promise<PotholeEvent | null> => {
+    scheduleRepair: async (id: string, data: RepairScheduleInput, _updatedBy?: string): Promise<PotholeEvent | null> => {
         return withFallback(
             async () => {
                 const payload = {
@@ -363,6 +358,9 @@ export const authApi = {
         } catch {
             return [];
         }
+    },
+    updateUserStatus: async (userId: string, status: 'ACTIVE' | 'DISABLED'): Promise<void> => {
+        console.warn('[authApi.updateUserStatus] Backend status endpoint is unavailable; applying local UI state only.', { userId, status });
     }
 };
 

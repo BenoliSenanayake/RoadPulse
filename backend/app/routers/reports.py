@@ -7,52 +7,11 @@ from datetime import datetime
 from app.database import get_db
 from app import schemas, models, crud
 from app.services.roboflow_service import analyze_pothole_image
+from app.services.province_resolver import resolve_province_and_district
 
 router = APIRouter(prefix="/reports", tags=["reports"])
 
 UPLOAD_DIR = "uploads"
-
-# Canonical mapping from province to its districts
-PROVINCE_DISTRICTS = {
-    'Western Provincial Council': ['Colombo', 'Gampaha', 'Kalutara'],
-    'Central Provincial Council': ['Kandy', 'Matale', 'Nuwara Eliya'],
-    'Southern Provincial Council': ['Galle', 'Matara', 'Hambantota'],
-    'Northern Provincial Council': ['Jaffna', 'Kilinochchi', 'Mannar', 'Mullaitivu', 'Vavuniya'],
-    'Eastern Provincial Council': ['Trincomalee', 'Batticaloa', 'Ampara'],
-    'North Western Provincial Council': ['Kurunegala', 'Puttalam'],
-    'North Central Provincial Council': ['Anuradhapura', 'Polonnaruwa'],
-    'Uva Provincial Council': ['Badulla', 'Monaragala'],
-    'Sabaragamuwa Provincial Council': ['Ratnapura', 'Kegalle'],
-    'Unassigned': []
-}
-
-# Helper for resolving province roughly based on lat/lon
-def detect_location_metadata(lat: float, lon: float):
-    # Ported from frontend provinceResolver.ts
-    boundaries = [
-        ('Western Provincial Council', [6.65, 7.35, 79.70, 80.25]),
-        ('Central Provincial Council', [7.00, 7.75, 80.20, 81.10]),
-        ('Southern Provincial Council', [5.90, 6.65, 80.00, 81.40]),
-        ('Northern Provincial Council', [9.00, 9.85, 79.50, 80.70]),
-        ('Eastern Provincial Council', [7.00, 8.90, 81.10, 81.90]),
-        ('North Western Provincial Council', [7.35, 8.30, 79.60, 80.40]),
-        ('North Central Provincial Council', [7.75, 9.00, 80.00, 81.10]),
-        ('Uva Provincial Council', [6.50, 7.50, 80.70, 81.40]),
-        ('Sabaragamuwa Provincial Council', [6.40, 7.10, 80.10, 80.80]),
-    ]
-    
-    province = "Unassigned"
-    for council, bounds in boundaries:
-        min_lat, max_lat, min_lon, max_lon = bounds
-        if lat >= min_lat and lat <= max_lat and lon >= min_lon and lon <= max_lon:
-            province = council
-            break
-            
-    # Simple district selection (first one for the province)
-    districts = PROVINCE_DISTRICTS.get(province, ["Unknown"])
-    district = districts[0] if districts else "Unknown"
-    
-    return province, district
 
 @router.post("", response_model=schemas.CitizenReportRead)
 async def create_report(
@@ -149,7 +108,7 @@ async def create_report(
             print(">>> Proceeding with NEEDS_MANUAL_REVIEW classification")
         
         initial_status = "Verified" if classification == "VERIFIED_POTHOLE" else ("Rejected" if classification == "REJECTED" else "New")
-        province, district = detect_location_metadata(latitude, longitude)
+        province, district = resolve_province_and_district(latitude, longitude)
         print(f">>> Detected Geography: {province} / {district}")
 
         # ── Save CitizenReport to DB ──
@@ -294,9 +253,13 @@ def update_priority(report_id: str, priority: str, db: Session = Depends(get_db)
 
 @router.patch("/{report_id}", response_model=schemas.CitizenReportRead)
 def update_report(report_id: str, updates: dict, db: Session = Depends(get_db)):
+    print(f">>> PATCH /reports/{report_id} called with updates: {updates}")
     report = crud.get_report_by_id(db, report_id)
     if not report:
         raise HTTPException(status_code=404, detail="Report not found")
+    
+    old_status = report.status
+    old_priority = report.priority
     
     # Map frontend camelCase to backend snake_case
     mapping = {
@@ -307,11 +270,39 @@ def update_report(report_id: str, updates: dict, db: Session = Depends(get_db)):
         "maintenanceNotes": "maintenance_notes"
     }
     
+    changed_fields = []
     for key, value in updates.items():
         db_key = mapping.get(key, key)
         if hasattr(report, db_key):
-            setattr(report, db_key, value)
+            old_val = getattr(report, db_key)
+            if old_val != value:
+                setattr(report, db_key, value)
+                changed_fields.append(db_key)
             
+    if not changed_fields:
+        return report
+
     db.commit()
     db.refresh(report)
+    
+    # Create Audit Log for significant changes
+    if "status" in changed_fields or "priority" in changed_fields or "provincial_council" in changed_fields:
+        action = "REPORT_UPDATED"
+        if "status" in changed_fields:
+            action = "STATUS_CHANGED"
+        
+        notes = f"Updated fields: {', '.join(changed_fields)}"
+        if updates.get("maintenanceNotes"):
+            notes += f". Note: {updates.get('maintenanceNotes')}"
+
+        crud.create_audit_log(
+            db=db,
+            report_id=report_id,
+            user_id="sys-admin", # Ideally pass this from auth
+            action=action,
+            old_status=old_status,
+            new_status=report.status,
+            notes=notes
+        )
+    
     return report

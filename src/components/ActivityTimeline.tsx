@@ -29,8 +29,6 @@ const getActionConfig = (action: AuditLogAction) => {
             return { icon: UserX, color: 'text-red-600', bg: 'bg-red-100', label: 'Manually Rejected' };
         case 'STATUS_CHANGED':
             return { icon: Activity, color: 'text-purple-500', bg: 'bg-purple-100', label: 'Status Update' };
-        case 'REPAIR_SCHEDULED':
-            return { icon: Activity, color: 'text-blue-500', bg: 'bg-blue-100', label: 'Repair Scheduled' };
         case 'REPAIR_STARTED':
             return { icon: Activity, color: 'text-amber-500', bg: 'bg-amber-100', label: 'Work Started' };
         case 'REPAIR_COMPLETED':
@@ -60,8 +58,10 @@ export const ActivityTimeline = ({ entityId }: ActivityTimelineProps) => {
         const fetchLogs = async () => {
             setLoading(true);
             try {
-                const logs = await auditLogsApi.list(entityId);
-                const sortedLogs = logs.sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+                const logs = await auditLogsApi.list();
+                const sortedLogs = logs
+                    .filter((log: any) => log.entityId === entityId)
+                    .sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
                 setSysLogs(sortedLogs);
             } catch (err) {
                 console.error("Failed to fetch logs", err);

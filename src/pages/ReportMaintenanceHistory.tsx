@@ -1,21 +1,27 @@
 import { useEffect, useMemo, useState } from 'react';
-import { 
-    History, 
-    Search, 
-    Filter, 
-    AlertTriangle, 
-    Clock, 
-    MapPin, 
+import {
+    History,
+    Search,
+    Filter,
+    AlertTriangle,
+    Clock,
+    MapPin,
     Loader2,
     Eye
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { potholesApi, reportsApi, auditLogsApi } from '../lib/api';
+import { reportsApi, auditLogsApi } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import { StatusPill } from '../components/StatusPill';
 import { cn } from '../lib/utils';
-import { getProvinceShortName, PROVINCE_DISTRICTS } from '../lib/provinceResolver';
-import type { CitizenReport, PotholeEvent, AuditLog } from '../types';
+import { getProvinceShortName, PROVINCE_DISTRICTS, normalizeProvince } from '../lib/provinceResolver';
+import {
+    filterReportsForProvince,
+    hasOfficerProvince,
+    isOverdueReport,
+    OFFICER_PROVINCE_MISSING
+} from '../lib/staffReportFilters';
+import type { CitizenReport, AuditLog } from '../types';
 
 interface LifecycleHistory {
     id: string;
@@ -30,17 +36,18 @@ interface LifecycleHistory {
     priority: string;
     notes: string;
     lastUpdated: string;
-    potholeId?: string;
 }
+
+const EMPTY_DATE = '-';
 
 const ReportMaintenanceHistory = () => {
     const navigate = useNavigate();
     const { user } = useAuth();
     const province = user?.provincialCouncil;
-    
-    const [potholes, setPotholes] = useState<PotholeEvent[]>([]);
+
     const [reports, setReports] = useState<CitizenReport[]>([]);
     const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+    const [error, setError] = useState('');
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [districtFilter, setDistrictFilter] = useState('All');
@@ -49,26 +56,31 @@ const ReportMaintenanceHistory = () => {
 
     const fetchData = async () => {
         setLoading(true);
+        setError('');
         try {
-            const [pData, rData, aData] = await Promise.all([
-                potholesApi.list(),
+            if (!hasOfficerProvince(province)) {
+                setError(OFFICER_PROVINCE_MISSING);
+                setLoading(false);
+                return;
+            }
+
+            const staffProvince = normalizeProvince(province);
+            console.log('[History Debug] Current User:', user?.email, staffProvince);
+
+            const [reportData, logData] = await Promise.all([
                 reportsApi.list(),
                 auditLogsApi.list()
             ]);
-            
-            // Provincial Siloing
-            const filteredP = (province && province !== 'Unassigned') 
-                ? pData.filter(p => p.provincialCouncil === province)
-                : pData;
-            const filteredR = (province && province !== 'Unassigned')
-                ? rData.filter(r => r.provincialCouncil === province)
-                : rData;
-            
-            setPotholes(filteredP);
-            setReports(filteredR);
-            setAuditLogs(aData);
-        } catch (error) {
-            console.error("Failed to load history data", error);
+
+            const filteredReports = filterReportsForProvince(reportData, province);
+            console.log(`[History] Raw telemetry: ${reportData.length} reports.`);
+            console.log(`[History] Filtered for ${staffProvince}: ${filteredReports.length} reports.`);
+
+            setReports(filteredReports);
+            setAuditLogs(logData);
+        } catch (fetchError) {
+            console.error('Failed to load history data', fetchError);
+            setError('Failed to load maintenance history. Please try again later.');
         } finally {
             setLoading(false);
         }
@@ -86,81 +98,63 @@ const ReportMaintenanceHistory = () => {
     }, [province]);
 
     const historyItems = useMemo(() => {
-        // Map reports and potholes into a unified history format
-        const items: LifecycleHistory[] = [];
+        const items: LifecycleHistory[] = reports.map(report => {
+            const logs = auditLogs.filter(log => log.entityId === report.id);
+            const findDate = (actions: string[]) => logs.find(log => actions.includes(log.action))?.timestamp || EMPTY_DATE;
 
-        // Track seen pothole IDs to avoid duplicates if they have linked reports
-        const seenPotholes = new Set<string>();
+            const reachedVerified = ['Verified', 'In Progress', 'Completed'].includes(report.status)
+                || report.aiClassification === 'VERIFIED_POTHOLE';
+            const reachedInProgress = ['In Progress', 'Completed'].includes(report.status);
+            const reachedCompleted = report.status === 'Completed';
 
-        // Process Potholes (Primary source for maintenance history)
-        potholes.forEach(p => {
-            const logs = auditLogs.filter(l => l.entityId === p.id);
-            
-            const findDate = (actions: string[]) => {
-                const log = logs.find(l => actions.includes(l.action));
-                return log ? log.timestamp : '—';
+            const verifiedAt = reachedVerified
+                ? findDate(['AI_ACCEPTED', 'MANUAL_ACCEPTED', 'STATUS_CHANGED'])
+                : EMPTY_DATE;
+
+            return {
+                id: report.id,
+                district: report.district || 'Unknown',
+                location: report.description?.replace(/^\[.*?\]\s*/, '') || 'Reported Point',
+                submitted: report.createdAt,
+                verified: verifiedAt !== EMPTY_DATE ? verifiedAt : (reachedVerified ? report.createdAt : EMPTY_DATE),
+                inProgress: reachedInProgress ? findDate(['REPAIR_STARTED', 'STATUS_CHANGED']) : EMPTY_DATE,
+                completed: reachedCompleted ? findDate(['REPAIR_COMPLETED', 'STATUS_CHANGED']) : EMPTY_DATE,
+                overdue: isOverdueReport(report),
+                status: report.status,
+                priority: report.priority || 'Medium',
+                notes: report.maintenanceNotes || report.description || '',
+                lastUpdated: report.updatedAt || report.createdAt,
             };
-
-            const submittedAt = p.timestamp || p.createdAt;
-            const verifiedAt = p.status !== 'New' ? findDate(['AI_ACCEPTED', 'MANUAL_ACCEPTED', 'STATUS_CHANGED']) : '—';
-            const inProgressAt = ['In Progress', 'Completed', 'Fixed'].includes(p.status) ? findDate(['REPAIR_STARTED', 'STATUS_CHANGED']) : '—';
-            const completedAt = ['Completed', 'Fixed'].includes(p.status) ? findDate(['REPAIR_COMPLETED', 'STATUS_CHANGED']) : '—';
-
-            // Overdue logic: >14 days and still New/Verified
-            const ageInDays = Math.floor((new Date().getTime() - new Date(submittedAt).getTime()) / (1000 * 60 * 60 * 24));
-            const isOverdue = ['New', 'Verified', 'Confirmed'].includes(p.status) && ageInDays > 14;
-
-            items.push({
-                id: p.id,
-                district: p.district || 'Unknown',
-                location: p.roadName || 'Coordinate Location',
-                submitted: submittedAt,
-                verified: verifiedAt !== '—' ? verifiedAt : (p.status !== 'New' ? submittedAt : '—'),
-                inProgress: inProgressAt,
-                completed: completedAt,
-                overdue: isOverdue,
-                status: p.status,
-                priority: p.priority || 'Medium',
-                notes: p.maintenanceNotes || '',
-                lastUpdated: p.updatedAt || p.createdAt,
-                potholeId: p.id
-            });
-            seenPotholes.add(p.id);
         });
 
-        // Process Reports that haven't been converted to potholes yet (Rejected or Pending)
-        reports.forEach(r => {
-            if (r.linkedPotholeId && seenPotholes.has(r.linkedPotholeId)) return;
-
-            const submittedAt = r.createdAt;
-            
-            items.push({
-                id: r.id,
-                district: r.district || 'Unknown',
-                location: 'Reported Point',
-                submitted: submittedAt,
-                verified: r.aiStatus === 'ACCEPTED' ? submittedAt : '—',
-                inProgress: '—',
-                completed: '—',
-                overdue: false,
-                status: r.aiStatus === 'PENDING' ? 'PENDING' : r.aiStatus,
-                priority: 'Low',
-                notes: r.description || '',
-                lastUpdated: r.createdAt,
-            });
-        });
-
-        // Filter
         return items.filter(item => {
-            const matchesSearch = item.id.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                                item.location.toLowerCase().includes(searchTerm.toLowerCase());
+            const matchesSearch = item.id.toLowerCase().includes(searchTerm.toLowerCase())
+                || item.location.toLowerCase().includes(searchTerm.toLowerCase());
             const matchesDistrict = districtFilter === 'All' || item.district === districtFilter;
             const matchesStatus = statusFilter === 'All' || item.status === statusFilter;
             const matchesPriority = priorityFilter === 'All' || item.priority === priorityFilter;
-            
+
             return matchesSearch && matchesDistrict && matchesStatus && matchesPriority;
         }).sort((a, b) => new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime());
-    }, [potholes, reports, auditLogs, searchTerm, districtFilter, statusFilter, priorityFilter]);
+    }, [reports, auditLogs, searchTerm, districtFilter, statusFilter, priorityFilter]);
+
+    if (error) {
+        return (
+            <div className="rounded-[2.5rem] border border-rose-100 bg-white p-12 text-center shadow-sm max-w-md mx-auto mt-10">
+                <div className="w-16 h-16 bg-rose-50 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                    <AlertTriangle size={32} className="text-rose-500" />
+                </div>
+                <h2 className="text-lg font-black text-slate-900 uppercase tracking-tight mb-2">Access Denied</h2>
+                <p className="text-sm text-slate-500 font-bold mb-8">{error}</p>
+                <button
+                    onClick={() => navigate('/staff/login')}
+                    className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-black transition-all shadow-xl shadow-slate-900/20"
+                >
+                    Sign In Again
+                </button>
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-8 pb-12 animate-fade-in-up">
@@ -179,8 +173,8 @@ const ReportMaintenanceHistory = () => {
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
                 <div className="relative flex-1">
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                    <input 
-                        type="text" 
+                    <input
+                        type="text"
                         placeholder="Search by ID..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
@@ -190,7 +184,7 @@ const ReportMaintenanceHistory = () => {
                 <div className="flex flex-wrap gap-3">
                     <div className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl">
                         <Filter size={14} className="text-slate-400" />
-                        <select 
+                        <select
                             value={districtFilter}
                             onChange={(e) => setDistrictFilter(e.target.value)}
                             className="bg-transparent text-[10px] font-black uppercase tracking-widest outline-none cursor-pointer"
@@ -202,7 +196,7 @@ const ReportMaintenanceHistory = () => {
                     </div>
                     <div className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl">
                         <AlertTriangle size={14} className="text-slate-400" />
-                        <select 
+                        <select
                             value={priorityFilter}
                             onChange={(e) => setPriorityFilter(e.target.value)}
                             className="bg-transparent text-[10px] font-black uppercase tracking-widest outline-none cursor-pointer"
@@ -216,17 +210,17 @@ const ReportMaintenanceHistory = () => {
                     </div>
                     <div className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl">
                         <Clock size={14} className="text-slate-400" />
-                        <select 
+                        <select
                             value={statusFilter}
                             onChange={(e) => setStatusFilter(e.target.value)}
                             className="bg-transparent text-[10px] font-black uppercase tracking-widest outline-none cursor-pointer"
                         >
                             <option value="All">All Statuses</option>
+                            <option value="New">New</option>
                             <option value="Verified">Verified</option>
                             <option value="In Progress">In Progress</option>
                             <option value="Completed">Completed</option>
-                            <option value="PENDING">Manual Review</option>
-                            <option value="REJECTED">Rejected</option>
+                            <option value="Rejected">Rejected</option>
                         </select>
                     </div>
                 </div>
@@ -277,42 +271,16 @@ const ReportMaintenanceHistory = () => {
                                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{item.district} District</span>
                                         </div>
                                     </td>
-                                    <td className="px-6 py-5 text-center">
-                                        <div className="flex flex-col items-center">
-                                            <span className="text-[11px] font-bold text-slate-600">{item.submitted !== '—' ? new Date(item.submitted).toLocaleDateString() : '—'}</span>
-                                            {item.submitted !== '—' && <span className="text-[8px] font-black text-slate-400 uppercase">{new Date(item.submitted).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>}
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-5 text-center">
-                                        <div className="flex flex-col items-center">
-                                            <span className={cn("text-[11px] font-bold", item.verified !== '—' ? "text-emerald-600" : "text-slate-300")}>
-                                                {item.verified !== '—' ? new Date(item.verified).toLocaleDateString() : '—'}
-                                            </span>
-                                            {item.verified !== '—' && <span className="text-[8px] font-black text-emerald-400 uppercase">{new Date(item.verified).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>}
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-5 text-center">
-                                        <div className="flex flex-col items-center">
-                                            <span className={cn("text-[11px] font-bold", item.inProgress !== '—' ? "text-blue-600" : "text-slate-300")}>
-                                                {item.inProgress !== '—' ? new Date(item.inProgress).toLocaleDateString() : '—'}
-                                            </span>
-                                            {item.inProgress !== '—' && <span className="text-[8px] font-black text-blue-400 uppercase">{new Date(item.inProgress).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>}
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-5 text-center">
-                                        <div className="flex flex-col items-center">
-                                            <span className={cn("text-[11px] font-bold", item.completed !== '—' ? "text-slate-900" : "text-slate-300")}>
-                                                {item.completed !== '—' ? new Date(item.completed).toLocaleDateString() : '—'}
-                                            </span>
-                                            {item.completed !== '—' && <span className="text-[8px] font-black text-slate-500 uppercase">{new Date(item.completed).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>}
-                                        </div>
-                                    </td>
+                                    <DateCell value={item.submitted} tone="default" />
+                                    <DateCell value={item.verified} tone="verified" />
+                                    <DateCell value={item.inProgress} tone="progress" />
+                                    <DateCell value={item.completed} tone="completed" />
                                     <td className="px-6 py-5">
                                         <StatusPill status={item.status as any} />
                                     </td>
                                     <td className="px-6 py-5 text-right">
-                                        <button 
-                                            onClick={() => navigate(item.potholeId ? `/potholes/${item.potholeId}` : `/staff/overview`)}
+                                        <button
+                                            onClick={() => navigate(`/staff/reports/${item.id}`)}
                                             className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-50 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:bg-slate-900 hover:text-white transition-all shadow-sm"
                                         >
                                             Details <Eye size={14} />
@@ -325,6 +293,32 @@ const ReportMaintenanceHistory = () => {
                 </div>
             )}
         </div>
+    );
+};
+
+const DateCell = ({ value, tone }: { value: string; tone: 'default' | 'verified' | 'progress' | 'completed' }) => {
+    const hasDate = value !== EMPTY_DATE;
+    const color = tone === 'verified'
+        ? 'text-emerald-600'
+        : tone === 'progress'
+            ? 'text-blue-600'
+            : tone === 'completed'
+                ? 'text-slate-900'
+                : 'text-slate-600';
+
+    return (
+        <td className="px-6 py-5 text-center">
+            <div className="flex flex-col items-center">
+                <span className={cn('text-[11px] font-bold', hasDate ? color : 'text-slate-300')}>
+                    {hasDate ? new Date(value).toLocaleDateString() : EMPTY_DATE}
+                </span>
+                {hasDate && (
+                    <span className="text-[8px] font-black text-slate-400 uppercase">
+                        {new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                )}
+            </div>
+        </td>
     );
 };
 

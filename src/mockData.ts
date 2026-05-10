@@ -2,10 +2,6 @@ import type {
     AuditLog,
     CitizenReport,
     PotholeEvent,
-    RepairPriority,
-    RepairScheduleInput,
-    RepairStatus,
-    RepairTeam,
     User
 } from './types';
 
@@ -39,19 +35,19 @@ export const addAuditLog = (log: any) => {
 
 export const getSystemSettings = () => ({});
 
-export const submitReport = async (report: any) => {
+export const submitReport = async (_report: any) => {
     console.error("[MOCK] submitReport called - should be hitting API instead.");
     throw new Error("Mock submission disabled.");
 };
 
-export const processReport = async (id: string, action: string) => {
+export const processReport = async (_id: string, _action: string) => {
     console.error("[MOCK] processReport called - should be hitting API instead.");
 };
 
-export const updatePotholeStatus = (id: string, status: string) => {
+export const updatePotholeStatus = (_id: string, _status: string) => {
     console.error("[MOCK] updatePotholeStatus called - should be hitting API instead.");
 };
 
-export const schedulePotholeRepair = (id: string, input: any) => {
+export const schedulePotholeRepair = (_id: string, _input: any) => {
     console.error("[MOCK] schedulePotholeRepair called - should be hitting API instead.");
 };

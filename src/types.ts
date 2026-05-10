@@ -1,13 +1,11 @@
 export type RepairPriority = 'Low' | 'Medium' | 'High' | 'Urgent';
 export type RepairTeam = 'Team A' | 'Team B' | 'Team C' | 'Emergency Team' | 'Unassigned';
-export type RepairStatus = 'Verified' | 'Scheduled' | 'In Progress' | 'Completed' | 'Unable to Repair';
+export type RepairStatus = 'Verified' | 'In Progress' | 'Completed' | 'Unable to Repair';
 export type PotholeStatus =
     | 'New'
     | 'Confirmed'
     | 'Verified'
-    | 'Scheduled'
     | 'In Progress'
-    | 'Fixed'
     | 'Completed'
     | 'Rejected'
     | 'Unable to Repair';
@@ -140,7 +138,6 @@ export type AuditLogAction =
     | 'MANUAL_ACCEPTED'
     | 'MANUAL_REJECTED'
     | 'STATUS_CHANGED'
-    | 'REPAIR_SCHEDULED'
     | 'REPAIR_STARTED'
     | 'REPAIR_COMPLETED'
     | 'REPAIR_NOTE_ADDED';

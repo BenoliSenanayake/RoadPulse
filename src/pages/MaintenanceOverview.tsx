@@ -8,57 +8,61 @@ import {
     CheckCircle,
     ChevronRight,
     XCircle,
-    RefreshCw
+    RefreshCw,
+    Bug
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { potholesApi, reportsApi } from '../lib/api';
-import type { CitizenReport, PotholeEvent } from '../types';
+import { reportsApi } from '../lib/api';
+import type { CitizenReport } from '../types';
 import { cn } from '../lib/utils';
 import { useAuth } from '../context/AuthContext';
-import { getProvinceShortName } from '../lib/provinceResolver';
-
-const isOverdue = (item: CitizenReport | PotholeEvent) => {
-    const dateStr = 'createdAt' in item ? item.createdAt : (item as PotholeEvent).timestamp;
-    if (!dateStr) return false;
-    
-    const createdDate = new Date(dateStr);
-    const today = new Date();
-    const diffDays = Math.floor((today.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24));
-    
-    // Status is New or Verified for more than 14 days
-    return ['New', 'Verified', 'Confirmed'].includes(item.status) && diffDays > 14;
-};
-
+import { getProvinceShortName, normalizeProvince } from '../lib/provinceResolver';
+import {
+    filterReportsForProvince,
+    hasOfficerProvince,
+    isCompletedReport,
+    isInProgressReport,
+    isManualReviewReport,
+    isOverdueReport,
+    isRejectedReport,
+    isVerifiedReport,
+    OFFICER_PROVINCE_MISSING
+} from '../lib/staffReportFilters';
 
 const MaintenanceOverview = () => {
     const navigate = useNavigate();
     const { user } = useAuth();
     const province = user?.provincialCouncil;
-    const [potholes, setPotholes] = useState<PotholeEvent[]>([]);
     const [reports, setReports] = useState<CitizenReport[]>([]);
+    const [rawReports, setRawReports] = useState<CitizenReport[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const [showDebug, setShowDebug] = useState(true); // Toggle for debug panel
 
     const fetchDashboardData = useCallback(async () => {
         try {
             setError('');
-            // Pass province filter to API to reduce bandwidth and enforce server-side filtering
-            const filters = province && province !== 'Unassigned' ? { provincialCouncil: province } : {};
             
-            if (import.meta.env.DEV) {
-                console.log(`[Dashboard Debug] Fetching data with filters:`, filters);
+            if (!hasOfficerProvince(province)) {
+                setError(OFFICER_PROVINCE_MISSING);
+                setLoading(false);
+                return;
             }
 
-            console.log(`[Staff Overview] Syncing data for province: ${province}`);
-            const [potholeData, reportData] = await Promise.all([
-                potholesApi.list(filters),
-                reportsApi.list(filters)
-            ]);
+            const staffProvince = normalizeProvince(province);
             
-            console.log(`[Staff Overview] Sync complete. Filtered results: ${potholeData.length} potholes, ${reportData.length} reports for ${province}`);
+            console.log(`[Staff Debug] Current User:`, user?.email, staffProvince);
 
-            setPotholes(potholeData);
-            setReports(reportData);
+            const reportData = await reportsApi.list();
+            
+            setRawReports(reportData);
+            console.log(`[Staff Overview] Raw telemetry: ${reportData.length} reports.`);
+            
+            const filteredReports = filterReportsForProvince(reportData, province);
+
+            console.log(`[Staff Overview] Filtered results for ${staffProvince}: ${filteredReports.length} reports.`);
+            
+            setReports(filteredReports);
         } catch (err) {
             console.error('Fetch error:', err);
             setError('Unable to load maintenance overview. Please try again.');
@@ -77,29 +81,12 @@ const MaintenanceOverview = () => {
     }, [fetchDashboardData]);
 
     const { cards } = useMemo(() => {
-        // Combined list for overview counts
-        const allItems = [...reports, ...potholes.filter(p => !reports.some(r => r.id === p.id))];
-
-        // Verified: status is Verified/Confirmed OR aiClassification is VERIFIED_POTHOLE
-        const verified = allItems.filter(item => 
-            ['Verified', 'Confirmed'].includes(item.status) || 
-            item.aiClassification === 'VERIFIED_POTHOLE'
-        ).length;
-        
-        // Manual Review: status is New OR aiClassification is NEEDS_MANUAL_REVIEW
-        const needsReview = allItems.filter(item => 
-            item.status === 'New' || 
-            item.aiClassification === 'NEEDS_MANUAL_REVIEW'
-        ).length;
-        
-        const inProgress = allItems.filter(item => item.status === 'In Progress').length;
-        const completed = allItems.filter(item => ['Completed', 'Fixed'].includes(item.status)).length;
-        const rejected = allItems.filter(item => 
-            item.status === 'Rejected' || 
-            item.aiClassification === 'REJECTED'
-        ).length;
-        
-        const overdue = allItems.filter(isOverdue).length;
+        const verified = reports.filter(isVerifiedReport).length;
+        const needsReview = reports.filter(isManualReviewReport).length;
+        const inProgress = reports.filter(isInProgressReport).length;
+        const completed = reports.filter(isCompletedReport).length;
+        const rejected = reports.filter(isRejectedReport).length;
+        const overdue = reports.filter(isOverdueReport).length;
 
         return {
             cards: [
@@ -111,7 +98,7 @@ const MaintenanceOverview = () => {
                 { label: 'Rejected Reports', value: rejected, icon: XCircle, color: 'bg-slate-400', filter: 'rejected' },
             ]
         };
-    }, [potholes, reports]);
+    }, [reports]);
 
     if (error) {
         return (
@@ -145,6 +132,39 @@ const MaintenanceOverview = () => {
                     )}
                 </div>
             </div>
+
+            {/* Temporary Debug Panel */}
+            {showDebug && (
+                <div className="rounded-2xl border-2 border-dashed border-amber-200 bg-amber-50 p-6 shadow-sm">
+                    <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-2 text-amber-700">
+                            <Bug size={18} />
+                            <h2 className="text-xs font-black uppercase tracking-widest">Jurisdictional Debug Panel (Temp)</h2>
+                        </div>
+                        <button onClick={() => setShowDebug(false)} className="text-amber-400 hover:text-amber-700">
+                            <XCircle size={18} />
+                        </button>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="bg-white/50 p-3 rounded-xl border border-amber-100">
+                            <p className="text-[10px] font-black text-amber-800 uppercase mb-1">Logged Officer</p>
+                            <p className="text-xs font-bold text-slate-700">{user?.email}</p>
+                            <p className="text-xs font-black text-emerald-600 mt-1">{province}</p>
+                        </div>
+                        <div className="bg-white/50 p-3 rounded-xl border border-amber-100">
+                            <p className="text-[10px] font-black text-amber-800 uppercase mb-1">API Statistics</p>
+                            <p className="text-xs font-bold text-slate-700">Total reports fetched from API: {rawReports.length}</p>
+                            <p className="text-xs font-bold text-slate-700">Reports after province filter: {reports.length}</p>
+                        </div>
+                        <div className="bg-white/50 p-3 rounded-xl border border-amber-100">
+                            <p className="text-[10px] font-black text-amber-800 uppercase mb-1">Report Provinces Found</p>
+                            <p className="text-[10px] font-bold text-slate-600 truncate">
+                                {Array.from(new Set(rawReports.map(r => r.provincialCouncil || 'null'))).join(', ')}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
                 {cards.map(card => (

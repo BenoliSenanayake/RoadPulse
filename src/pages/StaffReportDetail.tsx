@@ -15,12 +15,13 @@ import {
     Loader2,
     CheckCircle2,
     XCircle,
-    AlertCircle
+    AlertCircle,
+    Info
 } from 'lucide-react';
 import { reportsApi } from '../lib/api';
 import { StatusPill } from '../components/StatusPill';
 import { useAuth } from '../context/AuthContext';
-import { getProvinceShortName } from '../lib/provinceResolver';
+import { getProvinceShortName, normalizeProvince } from '../lib/provinceResolver';
 import { format } from 'date-fns';
 import { cn } from '../lib/utils';
 import type { CitizenReport, RepairPriority } from '../types';
@@ -49,15 +50,22 @@ const StaffReportDetail = () => {
         setLoading(true);
         setError('');
         try {
+            const staffProvince = normalizeProvince(user?.provincialCouncil);
+            console.log(`[ReportDetail Debug] Officer:`, user?.email, staffProvince);
+            
             const data = await reportsApi.getById(id);
             if (!data) {
                 setError('Report not found in the database.');
                 return;
             }
+            
+            const reportProvince = normalizeProvince(data.provincialCouncil);
+            console.log(`[ReportDetail Debug] Report Province:`, reportProvince);
+
             // Access control: staff can only see their province's reports
-            if (user?.role === 'MAINTENANCE_OFFICER' && user.provincialCouncil && 
-                data.provincialCouncil && data.provincialCouncil !== 'Unassigned' &&
-                user.provincialCouncil !== data.provincialCouncil) {
+            if (user?.role === 'MAINTENANCE_OFFICER' && staffProvince !== 'unassigned' &&
+                reportProvince !== 'unassigned' && staffProvince !== reportProvince) {
+                console.warn(`[Access Denied] Staff (${staffProvince}) tried to access Report (${reportProvince})`);
                 setError('Access Restricted: This report belongs to another Provincial Council.');
                 return;
             }

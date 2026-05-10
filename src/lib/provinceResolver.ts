@@ -144,3 +144,51 @@ export const PROVINCE_DISTRICTS: Record<ProvincialCouncil, string[]> = {
 export function getDistrictsByProvince(province: ProvincialCouncil): string[] {
     return PROVINCE_DISTRICTS[province] || [];
 }
+
+/**
+ * Robust province string normalization for cross-system comparison.
+ * Handles casing, trimming, and official suffix mapping.
+ */
+export function normalizeProvince(value?: string | null): string {
+    const clean = String(value || '')
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, ' ');
+
+    if (!clean || clean === 'unassigned' || clean === 'none_assigned') return 'unassigned';
+
+    const base = clean
+        .replace(/\s+provincial council$/, '')
+        .replace(/\s+province$/, '');
+
+    const mapping: Record<string, string> = {
+        'western': 'western provincial council',
+        'central': 'central provincial council',
+        'southern': 'southern provincial council',
+        'northern': 'northern provincial council',
+        'eastern': 'eastern provincial council',
+        'north western': 'north western provincial council',
+        'north central': 'north central provincial council',
+        'uva': 'uva provincial council',
+        'sabaragamuwa': 'sabaragamuwa provincial council',
+    };
+
+    return mapping[base] || clean;
+}
+
+const CANONICAL_PROVINCES: Record<string, ProvincialCouncil> = {
+    'western provincial council': 'Western Provincial Council',
+    'central provincial council': 'Central Provincial Council',
+    'southern provincial council': 'Southern Provincial Council',
+    'northern provincial council': 'Northern Provincial Council',
+    'eastern provincial council': 'Eastern Provincial Council',
+    'north western provincial council': 'North Western Provincial Council',
+    'north central provincial council': 'North Central Provincial Council',
+    'uva provincial council': 'Uva Provincial Council',
+    'sabaragamuwa provincial council': 'Sabaragamuwa Provincial Council',
+    'unassigned': 'Unassigned',
+};
+
+export function canonicalizeProvince(value?: string | null): ProvincialCouncil {
+    return CANONICAL_PROVINCES[normalizeProvince(value)] || 'Unassigned';
+}

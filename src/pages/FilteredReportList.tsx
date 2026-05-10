@@ -10,7 +10,6 @@ import {
     Wrench, 
     AlertTriangle,
     Eye,
-    ChevronRight,
     Loader2,
     Search,
     XCircle,
@@ -21,7 +20,18 @@ import { useAuth } from '../context/AuthContext';
 import { StatusPill } from '../components/StatusPill';
 import { cn } from '../lib/utils';
 import { getProvinceShortName } from '../lib/provinceResolver';
-import type { CitizenReport, PotholeEvent, RepairPriority } from '../types';
+import {
+    filterReportsForProvince,
+    hasOfficerProvince,
+    isCompletedReport,
+    isInProgressReport,
+    isManualReviewReport,
+    isOverdueReport,
+    isRejectedReport,
+    isVerifiedReport,
+    OFFICER_PROVINCE_MISSING
+} from '../lib/staffReportFilters';
+import type { CitizenReport, RepairPriority } from '../types';
 
 type ReportFilter = 'verified' | 'manual-review' | 'in-progress' | 'completed' | 'overdue' | 'rejected' | 'all';
 
@@ -55,17 +65,6 @@ const FILTER_COLORS: Record<ReportFilter, string> = {
     'all': 'text-slate-900 bg-slate-100 border-slate-200'
 };
 
-const isOverdue = (item: CitizenReport | PotholeEvent) => {
-    const dateStr = 'createdAt' in item ? item.createdAt : (item as PotholeEvent).timestamp;
-    if (!dateStr) return false;
-    
-    const createdDate = new Date(dateStr);
-    const today = new Date();
-    const diffDays = Math.floor((today.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24));
-    
-    return ['New', 'Verified', 'Confirmed'].includes(item.status) && diffDays > 14;
-};
-
 const getDaysSince = (dateStr?: string) => {
     if (!dateStr) return 0;
     const date = new Date(dateStr);
@@ -81,9 +80,9 @@ const FilteredReportList = () => {
     const { user } = useAuth();
     const province = user?.provincialCouncil;
     
-    const [potholes, setPotholes] = useState<PotholeEvent[]>([]);
     const [reports, setReports] = useState<CitizenReport[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
     const [actionLoading, setActionLoading] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
 
@@ -95,17 +94,19 @@ const FilteredReportList = () => {
 
     const loadData = async () => {
         setLoading(true);
+        setError('');
         try {
-            const filters = (province && province !== 'Unassigned') ? { provincialCouncil: province } : {};
-            const [pData, rData] = await Promise.all([
-                potholesApi.list(filters),
-                reportsApi.list(filters)
-            ]);
+            if (!hasOfficerProvince(province)) {
+                setError(OFFICER_PROVINCE_MISSING);
+                setLoading(false);
+                return;
+            }
             
-            setPotholes(pData);
-            setReports(rData);
+            const reportData = await reportsApi.list();
+            setReports(filterReportsForProvince(reportData, province));
         } catch (error) {
             console.error("Failed to load reports", error);
+            setError('Failed to load reports. Please try again later.');
         } finally {
             setLoading(false);
         }
@@ -116,39 +117,29 @@ const FilteredReportList = () => {
     }, [province]);
 
     const displayItems = useMemo(() => {
-        const allItems = [...reports, ...potholes.filter(p => !reports.some(r => r.id === p.id))];
-        let items: (CitizenReport | PotholeEvent)[] = [];
+        let items: CitizenReport[] = [];
 
         switch (filter) {
             case 'verified':
-                items = allItems.filter(item => 
-                    ['Verified', 'Confirmed'].includes(item.status) || 
-                    (item as any).aiClassification === 'VERIFIED_POTHOLE'
-                );
+                items = reports.filter(isVerifiedReport);
                 break;
             case 'manual-review':
-                items = allItems.filter(item => 
-                    item.status === 'New' || 
-                    (item as any).aiClassification === 'NEEDS_MANUAL_REVIEW'
-                );
+                items = reports.filter(isManualReviewReport);
                 break;
             case 'in-progress':
-                items = allItems.filter(item => item.status === 'In Progress');
+                items = reports.filter(isInProgressReport);
                 break;
             case 'completed':
-                items = allItems.filter(item => ['Completed', 'Fixed'].includes(item.status));
+                items = reports.filter(isCompletedReport);
                 break;
             case 'overdue':
-                items = allItems.filter(isOverdue);
+                items = reports.filter(isOverdueReport);
                 break;
             case 'rejected':
-                items = allItems.filter(item => 
-                    item.status === 'Rejected' || 
-                    (item as any).aiClassification === 'REJECTED'
-                );
+                items = reports.filter(isRejectedReport);
                 break;
             case 'all':
-                items = allItems;
+                items = reports;
                 break;
         }
 
@@ -157,7 +148,7 @@ const FilteredReportList = () => {
             items = items.filter(item => 
                 item.id.toLowerCase().includes(term) || 
                 (item.district || '').toLowerCase().includes(term) ||
-                ('roadName' in item && (item.roadName || '').toLowerCase().includes(term))
+                (item.description || '').toLowerCase().includes(term)
             );
         }
 
@@ -166,7 +157,7 @@ const FilteredReportList = () => {
             const dateB = new Date(b.createdAt).getTime();
             return dateB - dateA;
         });
-    }, [filter, potholes, reports, searchTerm]);
+    }, [filter, reports, searchTerm]);
 
     const handleQuickAction = async (item: any, action: string, value?: any) => {
         setActionLoading(item.id);
@@ -196,7 +187,7 @@ const FilteredReportList = () => {
                 }
             } else if (filter === 'overdue') {
                 if (action === 'update') {
-                    navigate(`/potholes/${item.id}`);
+                    navigate(`/staff/reports/${item.id}`);
                     return;
                 }
             } else if (filter === 'rejected') {
@@ -215,6 +206,17 @@ const FilteredReportList = () => {
     const Icon = FILTER_ICONS[filter];
 
     const backPath = user?.role === 'ADMIN' ? '/admin/overview' : '/staff/overview';
+
+    if (error) {
+        return (
+            <div className="rounded-3xl border border-rose-100 bg-white p-10 text-center shadow-sm max-w-md mx-auto mt-10">
+                <AlertTriangle className="mx-auto mb-3 text-rose-500" size={32} />
+                <h2 className="text-lg font-black text-slate-900 uppercase tracking-tight mb-2">Reports unavailable</h2>
+                <p className="text-sm text-slate-500 font-bold mb-6">{error}</p>
+                <button onClick={() => navigate('/staff/login')} className="w-full py-3 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-black transition-all">Sign In Again</button>
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-8 pb-12 animate-fade-in-up">
@@ -312,7 +314,7 @@ const FilteredReportList = () => {
                                     >
                                         {'description' in item && item.description 
                                             ? String(item.description).replace(/^\[.*?\]\s*/, '').slice(0, 60) 
-                                            : ('roadName' in item ? (item.roadName || 'Unnamed Road') : 'Coordinate Location')}
+                                            : 'Coordinate Location'}
                                     </h3>
                                     <div className="flex items-center gap-3 text-[10px] font-black uppercase tracking-widest text-slate-400 mt-1">
                                         <span className="flex items-center gap-1"><MapPin size={12} /> {item.district || 'Unknown District'}</span>

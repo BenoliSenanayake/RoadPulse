@@ -27,56 +27,84 @@ interface TimelineStep {
  *
  * If Rejected, the timeline stops and the rejection is shown via the badge.
  */
+/**
+ * Build a 5-step timeline based on the REAL backend report.status field.
+ *
+ * Backend statuses: New, Verified, In Progress, Completed, Rejected
+ */
 function buildTimeline(report: CitizenReport): TimelineStep[] {
     const status = report.status;
     const isRejected = status === 'Rejected' || status === 'Discarded';
 
-    // Define progress levels for non-rejected flow
-    const statusOrder = ['New', 'Verified', 'In Progress', 'Completed'];
-    const currentLevel = statusOrder.indexOf(status);
+    if (isRejected) {
+        return [
+            {
+                label: 'Submitted',
+                description: 'Your report was received.',
+                icon: CircleDot,
+                done: true,
+                current: false,
+            },
+            {
+                label: 'Under Review',
+                description: 'Maintenance officers are reviewing your report.',
+                icon: Clock,
+                done: true,
+                current: false,
+            },
+            {
+                label: 'Rejected',
+                description: 'This report was reviewed and could not be accepted.',
+                icon: XCircle,
+                done: true,
+                current: true,
+            }
+        ];
+    }
 
-    // Step completion flags
-    const submitted = true; // always — report exists
-    const underReviewDone = !isRejected && currentLevel > 0;
-    const verifiedDone = !isRejected && currentLevel >= 1;
-    const inProgressDone = !isRejected && currentLevel >= 2;
-    const completedDone = !isRejected && currentLevel >= 3;
+    // Step completion flags based on status order
+    // New -> Verified -> In Progress -> Completed
+    const submitted = true; // always
+    const underReviewDone = status !== 'New';
+    const verifiedDone = ['Verified', 'In Progress', 'Completed'].includes(status);
+    const inProgressDone = ['In Progress', 'Completed'].includes(status);
+    const completedDone = status === 'Completed';
 
     return [
         {
             label: 'Submitted',
-            description: 'Your report was received and is being processed by our team.',
+            description: 'Your report was received.',
             icon: CircleDot,
             done: submitted,
-            current: submitted && !underReviewDone && !isRejected,
+            current: false, 
         },
         {
             label: 'Under Review',
-            description: 'Our team and AI system are reviewing your report and verifying the damage.',
+            description: 'Maintenance officers are reviewing your report.',
             icon: Clock,
             done: underReviewDone,
-            current: underReviewDone && !verifiedDone,
+            current: status === 'New', 
         },
         {
             label: 'Verified',
-            description: 'The pothole has been verified and approved for maintenance action.',
+            description: 'The road damage has been verified.',
             icon: ShieldCheck,
             done: verifiedDone,
-            current: verifiedDone && !inProgressDone,
+            current: status === 'Verified',
         },
         {
             label: 'In Progress',
-            description: 'A maintenance crew has been assigned and repair work is underway.',
+            description: 'Repair work is currently in progress.',
             icon: Wrench,
             done: inProgressDone,
-            current: inProgressDone && !completedDone,
+            current: status === 'In Progress',
         },
         {
             label: 'Completed',
-            description: 'The pothole has been repaired. Thank you for helping improve our roads!',
+            description: 'The repair has been completed.',
             icon: CheckCircle2,
             done: completedDone,
-            current: completedDone,
+            current: status === 'Completed',
         },
     ];
 }

@@ -12,6 +12,8 @@ import { cn } from '../lib/utils';
 import { StatusPill } from '../components/StatusPill';
 import { EmptyState } from '../components/EmptyState';
 import { useAuth } from '../context/AuthContext';
+import { normalizeProvince } from '../lib/provinceResolver';
+import { filterReportsForProvince, hasOfficerProvince, OFFICER_PROVINCE_MISSING } from '../lib/staffReportFilters';
 
 // Fix Leaflet's default icon path issues
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -45,9 +47,22 @@ const ReviewQueue = () => {
         setLoading(true);
         setError(null);
         try {
-            const filters = (province && province !== 'Unassigned') ? { provincialCouncil: province } : {};
-            const data = await reportsApi.list(filters);
-            setReports(data.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+            if (!hasOfficerProvince(province)) {
+                setError(OFFICER_PROVINCE_MISSING);
+                setLoading(false);
+                return;
+            }
+            const staffProvince = normalizeProvince(province);
+            console.log(`[ReviewQueue Debug] Current User:`, user?.email, staffProvince);
+            
+            // Fetch all and filter on frontend for maximum reliability
+            const data = await reportsApi.list();
+            console.log(`[ReviewQueue] Raw telemetry: ${data.length} reports.`);
+            
+            const filtered = filterReportsForProvince(data, province);
+            console.log(`[ReviewQueue] Filtered for ${staffProvince}: ${filtered.length} reports.`);
+            
+            setReports(filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
         } catch (e) {
             console.error(e);
             setError("Failed to load review queue. Please try again later.");
@@ -82,9 +97,10 @@ const ReviewQueue = () => {
         if (window.confirm(`Are you sure you want to manually ${action} this report?`)) {
             setLoading(true);
             reportsApi.review(id, action, (action === 'reject' || action === 'request_info') ? rejectionReason : undefined)
-                .then(() => reportsApi.list({ provincialCouncil: province || '' }))
+                .then(() => reportsApi.list())
                 .then(fresh => {
-                    const sorted = fresh.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+                    const sorted = filterReportsForProvince(fresh, province)
+                        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
                     setReports(sorted);
                     setSelectedReport(sorted.find(r => r.id === id) || null);
                     setRejectionReason('');

@@ -15,7 +15,7 @@ import { useAuth } from '../context/AuthContext';
 import type { PotholeEvent, RepairPriority, RepairScheduleInput, RepairStatus } from '../types';
 import { StatusPill } from '../components/StatusPill';
 import { cn } from '../lib/utils';
-import { getProvinceShortName } from '../lib/provinceResolver';
+import { getProvinceShortName, normalizeProvince } from '../lib/provinceResolver';
 
 const PRIORITIES: RepairPriority[] = ['Low', 'Medium', 'High', 'Urgent'];
 const REPAIR_STATUSES: RepairStatus[] = ['Verified', 'In Progress', 'Completed'];
@@ -31,7 +31,7 @@ const emptyForm: RepairScheduleInput = {
 const fieldClass = 'w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-900 outline-none transition-all focus:border-emerald-400 focus:bg-white focus:ring-4 focus:ring-emerald-500/10';
 
 const getSection = (pothole: PotholeEvent) => {
-    if (['Completed', 'Fixed'].includes(pothole.status)) return 'Completed Repairs';
+    if (pothole.status === 'Completed') return 'Completed Repairs';
     if (pothole.status === 'In Progress') return 'Work In Progress';
     return 'Verified for Repair';
 };
@@ -51,12 +51,24 @@ const RepairsPage = () => {
         setLoading(true);
         setError('');
         try {
-            let data = await potholesApi.list();
-            if (province && province !== 'Unassigned') {
-                data = data.filter(p => p.provincialCouncil === province);
+            if (!province || province === 'Unassigned') {
+                setError('Officer province is missing. Please sign in again.');
+                setLoading(false);
+                return;
             }
-            setPotholes(data);
-        } catch {
+            const staffProvince = normalizeProvince(province);
+            console.log(`[Repairs Debug] Current User:`, user?.email, staffProvince);
+            
+            // Fetch all and filter on frontend for maximum reliability
+            const data = await potholesApi.list();
+            console.log(`[Repairs] Raw telemetry: ${data.length} records.`);
+            
+            const filtered = data.filter(p => normalizeProvince(p.provincialCouncil) === staffProvince);
+            console.log(`[Repairs] Filtered for ${staffProvince}: ${filtered.length} records.`);
+            
+            setPotholes(filtered);
+        } catch (err) {
+            console.error("[Repairs] Sync failed", err);
             setError('Failed to load repairs data. Please try again later.');
         } finally {
             setLoading(false);
@@ -74,7 +86,7 @@ const RepairsPage = () => {
             assignedTeam: 'Unassigned',
             scheduledDate: pothole.timestamp || new Date().toISOString(),
             maintenanceNotes: pothole.maintenanceNotes || '',
-            repairStatus: (['Fixed', 'Completed'].includes(pothole.status) ? 'Completed' : pothole.status) as RepairStatus,
+            repairStatus: (pothole.status === 'Completed' ? 'Completed' : pothole.status) as RepairStatus,
         });
     };
 
@@ -248,7 +260,7 @@ const RepairCard = ({
     onStart: () => void;
     onComplete: () => void;
 }) => {
-    const isDone = ['Completed', 'Fixed'].includes(pothole.status);
+    const isDone = pothole.status === 'Completed';
     const isInProgress = pothole.status === 'In Progress';
 
     return (

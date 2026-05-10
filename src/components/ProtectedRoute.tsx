@@ -11,7 +11,6 @@ interface ProtectedRouteProps {
 export const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
     const { user, isAuthenticated, hasRole, getHomePath } = useAuth();
     const location = useLocation();
-    const currentPath = `${location.pathname}${location.search}`;
 
     const portalMode = import.meta.env.VITE_PORTAL_MODE || 'citizen';
 

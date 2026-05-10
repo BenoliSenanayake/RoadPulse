@@ -144,8 +144,10 @@ const AdminReports = () => {
 
             return matchesSearch && matchesProvince && matchesDistrict && matchesStatus && matchesStartDate && matchesEndDate;
         }).sort((a, b) => {
-            if (a[sortConfig.key] < b[sortConfig.key]) return sortConfig.direction === 'asc' ? -1 : 1;
-            if (a[sortConfig.key] > b[sortConfig.key]) return sortConfig.direction === 'asc' ? 1 : -1;
+            const aValue = a[sortConfig.key] ?? '';
+            const bValue = b[sortConfig.key] ?? '';
+            if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
+            if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
             return 0;
         });
     }, [unifiedData, searchTerm, provinceFilter, districtFilter, statusFilter, dateRange, sortConfig]);

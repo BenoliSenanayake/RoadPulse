@@ -77,7 +77,7 @@ const ReportWizard = () => {
     const [lon, setLon] = useState(79.8612);
     const [roadName, setRoadName] = useState('');
     const [description, setDescription] = useState('');
-    const [submittedReportId, setSubmittedReportId] = useState('');
+    const [, setSubmittedReportId] = useState('');
 
     const [error, setError] = useState('');
     const [isMapModalOpen, setIsMapModalOpen] = useState(false);

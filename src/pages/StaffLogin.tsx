@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { useNavigate, Link, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Shield, Lock, Mail, ChevronLeft, Loader2, MapPin } from 'lucide-react';
+import { Shield, Lock, Mail, Loader2, MapPin } from 'lucide-react';
 import { AuthInput } from '../components/AuthInput';
 import { Alert, type AlertType } from '../components/Alert';
 import { PROVINCIAL_COUNCILS, type ProvincialCouncil } from '../types';
@@ -62,7 +62,7 @@ const StaffLogin = () => {
         setIsLoading(true);
         await new Promise(r => setTimeout(r, 1200));
 
-        const result = await login(email, password, selectedProvince);
+        const result = await login(email, password, selectedProvince || undefined);
         setIsLoading(false);
 
         if (result.success) {

@@ -5,7 +5,8 @@ import {
     MapPin,
     Calendar,
     ChevronRight,
-    Filter
+    Filter,
+    AlertTriangle
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import * as Papa from 'papaparse';
@@ -15,7 +16,7 @@ import type { PotholeEvent } from '../types';
 import { ResponsiveDataList } from '../components/ResponsiveDataList';
 import { StatusPill } from '../components/StatusPill';
 import { useAuth } from '../context/AuthContext';
-import { getProvinceShortName } from '../lib/provinceResolver';
+import { getProvinceShortName, normalizeProvince } from '../lib/provinceResolver';
 
 const PotholesTable = () => {
     const navigate = useNavigate();
@@ -24,17 +25,32 @@ const PotholesTable = () => {
     const [potholes, setPotholes] = useState<PotholeEvent[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState<string>('All');
+    const [error, setError] = useState('');
+    const [loading, setLoading] = useState(true);
 
     const loadData = async () => {
         try {
-            let data = await potholesApi.list();
-            // Filter by province for maintenance officers
-            if (province && province !== 'Unassigned') {
-                data = data.filter(p => p.provincialCouncil === province);
+            setError('');
+            if (!province || province === 'Unassigned') {
+                setError('Officer province is missing. Please sign in again.');
+                setLoading(false);
+                return;
             }
-            setPotholes(data);
+            const staffProvince = normalizeProvince(province);
+            console.log(`[PotholesTable Debug] Current User:`, user?.email, staffProvince);
+            
+            // Fetch all and filter on frontend for maximum reliability
+            const data = await potholesApi.list();
+            console.log(`[PotholesTable] Raw telemetry: ${data.length} records.`);
+            
+            const filtered = data.filter(p => normalizeProvince(p.provincialCouncil) === staffProvince);
+            console.log(`[PotholesTable] Filtered for ${staffProvince}: ${filtered.length} records.`);
+            
+            setPotholes(filtered);
+        } catch (err) {
+            console.error("[PotholesTable] Sync failed", err);
         } finally {
-            // Data sync complete
+            setLoading(false);
         }
     };
 
@@ -152,6 +168,30 @@ const PotholesTable = () => {
         </div>
     );
 
+    if (loading) {
+        return (
+            <div className="flex h-64 items-center justify-center rounded-3xl border border-slate-100 bg-white shadow-sm">
+                <div className="text-center">
+                    <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-emerald-600" />
+                    <p className="text-xs font-black uppercase tracking-widest text-slate-400">Loading inventory records</p>
+                </div>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="rounded-3xl border border-rose-100 bg-white p-10 text-center shadow-sm max-w-md mx-auto mt-10">
+                <div className="w-16 h-16 bg-rose-50 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                    <AlertTriangle size={32} className="text-rose-500" />
+                </div>
+                <h2 className="text-lg font-black text-slate-900 uppercase tracking-tight mb-2">Operations Restricted</h2>
+                <p className="text-sm text-slate-500 font-bold mb-6">{error}</p>
+                <button onClick={() => navigate('/staff/login')} className="w-full py-3 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-black transition-all">Sign In Again</button>
+            </div>
+        );
+    }
+
     return (
         <div className="space-y-8 animate-fade-in-up">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -199,8 +239,9 @@ const PotholesTable = () => {
                                 <option value="All">All Operational Statuses</option>
                                 <option value="New">New</option>
                                 <option value="Confirmed">Confirmed</option>
-                                <option value="Scheduled">Scheduled</option>
-                                <option value="Fixed">Fixed</option>
+                                <option value="Verified">Verified</option>
+                                <option value="In Progress">In Progress</option>
+                                <option value="Completed">Completed</option>
                                 <option value="Rejected">Rejected</option>
                             </select>
                         </div>

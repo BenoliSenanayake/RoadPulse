@@ -102,7 +102,7 @@ const Overview = () => {
             verifiedReports: reports.filter(r => r.aiClassification === 'VERIFIED_POTHOLE').length,
             manualReview: reports.filter(r => !r.aiClassification || r.aiClassification === 'NEEDS_MANUAL_REVIEW').length,
             inProgress: potholes.filter(p => p.status === 'In Progress').length,
-            completed: potholes.filter(p => ['Completed', 'Fixed'].includes(p.status)).length,
+            completed: potholes.filter(p => p.status === 'Completed').length,
             rejected: reports.filter(r => r.aiClassification === 'REJECTED').length,
             overdue: [...reports, ...potholes].filter(isOverdue).length,
             activeOfficers: users.filter(u => u.role === 'MAINTENANCE_OFFICER' && u.status === 'ACTIVE').length,
@@ -124,7 +124,7 @@ const Overview = () => {
             return {
                 name: pc,
                 total: pReports.length + pPotholes.filter(p => !p.reportId).length,
-                completed: pPotholes.filter(p => ['Completed', 'Fixed'].includes(p.status)).length
+                completed: pPotholes.filter(p => p.status === 'Completed').length
             };
         }).sort((a, b) => b.total - a.total).slice(0, 5);
     }, [reports, potholes]);

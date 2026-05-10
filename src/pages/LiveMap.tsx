@@ -21,16 +21,18 @@ import {
     Play
 } from 'lucide-react';
 import { subDays, isAfter } from 'date-fns';
-import { potholesApi } from '../lib/api';
-import type { PotholeEvent, PotholeStatus, RepairPriority } from '../types';
+import { potholesApi, reportsApi } from '../lib/api';
+import type { CitizenReport, RepairPriority } from '../types';
 import { StatusPill } from '../components/StatusPill';
 import { cn } from '../lib/utils';
 import { useAuth } from '../context/AuthContext';
-import { getProvinceShortName, PROVINCE_DISTRICTS } from '../lib/provinceResolver';
+import { getProvinceShortName, PROVINCE_DISTRICTS, normalizeProvince } from '../lib/provinceResolver';
+import { filterReportsForProvince, hasOfficerProvince, OFFICER_PROVINCE_MISSING } from '../lib/staffReportFilters';
 import 'leaflet/dist/leaflet.css';
 
 const PRIORITIES: RepairPriority[] = ['Low', 'Medium', 'High', 'Urgent'];
-const STATUSES: Array<PotholeStatus | 'All'> = ['All', 'Verified', 'In Progress'];
+type LiveMapStatus = 'Verified' | 'In Progress' | 'All';
+const STATUSES: LiveMapStatus[] = ['All', 'Verified', 'In Progress'];
 
 const MapController = ({ center }: { center: [number, number] | null }) => {
     const map = useMap();
@@ -40,7 +42,7 @@ const MapController = ({ center }: { center: [number, number] | null }) => {
     return null;
 };
 
-const getMarkerIcon = (pothole: PotholeEvent) => {
+const getMarkerIcon = (pothole: CitizenReport) => {
     // Verified = Green, In Progress = Blue
     const statusColor = pothole.status === 'Verified' ? '#10B981' 
         : pothole.status === 'In Progress' ? '#2563EB'
@@ -69,15 +71,15 @@ const getMarkerIcon = (pothole: PotholeEvent) => {
 const LiveMap = () => {
     const { user } = useAuth();
     const province = user?.provincialCouncil;
-    const [potholes, setPotholes] = useState<PotholeEvent[]>([]);
+    const [potholes, setPotholes] = useState<CitizenReport[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [searchTerm, setSearchTerm] = useState('');
-    const [statusFilter, setStatusFilter] = useState<PotholeStatus | 'All'>('All');
+    const [statusFilter, setStatusFilter] = useState<LiveMapStatus>('All');
     const [priorityFilter, setPriorityFilter] = useState<RepairPriority | 'All'>('All');
     const [areaFilter, setAreaFilter] = useState('All');
     const [dateFilter, setDateFilter] = useState('All');
-    const [selected, setSelected] = useState<PotholeEvent | null>(null);
+    const [selected, setSelected] = useState<CitizenReport | null>(null);
     const [mapCenter, setMapCenter] = useState<[number, number] | null>(null);
     const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
 
@@ -85,14 +87,22 @@ const LiveMap = () => {
         setLoading(true);
         setError('');
         try {
-            // Pass province filter to API
-            const filters = province && province !== 'Unassigned' ? { provincialCouncil: province } : {};
-            let data = await potholesApi.list(filters);
+            if (!hasOfficerProvince(province)) {
+                setError(OFFICER_PROVINCE_MISSING);
+                setLoading(false);
+                return;
+            }
+            const staffProvince = normalizeProvince(province);
+            console.log(`[LiveMap Debug] Current User:`, user?.email, staffProvince);
+
+            const data = await reportsApi.list();
+            console.log(`[LiveMap] Raw telemetry: ${data.length} records.`);
             
-            // Status Restriction: Only Verified and In Progress
-            data = data.filter(p => ['Verified', 'Confirmed', 'In Progress'].includes(p.status));
+            const filtered = filterReportsForProvince(data, province)
+                .filter(p => ['Verified', 'In Progress'].includes(p.status));
+            console.log(`[LiveMap] Filtered for ${staffProvince}: ${filtered.length} records.`);
             
-            setPotholes(data);
+            setPotholes(filtered);
         } catch (err) {
             console.error('Map fetch error:', err);
             setError('Failed to load map data. Please try again later.');
@@ -106,10 +116,11 @@ const LiveMap = () => {
         
         // Real-time synchronization: Poll every 30 seconds
         const interval = setInterval(() => {
-            // Background refresh (don't show loading spinner)
-            const filters = province && province !== 'Unassigned' ? { provincialCouncil: province } : {};
-            potholesApi.list(filters).then(data => {
-                setPotholes(data.filter(p => ['Verified', 'Confirmed', 'In Progress'].includes(p.status)));
+            if (!hasOfficerProvince(province)) return;
+            reportsApi.list().then(data => {
+                const filtered = filterReportsForProvince(data, province)
+                    .filter(p => ['Verified', 'In Progress'].includes(p.status));
+                setPotholes(filtered);
             }).catch(console.error);
         }, 30000);
 
@@ -129,7 +140,7 @@ const LiveMap = () => {
     const filtered = useMemo(() => {
         return potholes.filter(p => {
             const matchesSearch = p.id.toLowerCase().includes(searchTerm.toLowerCase())
-                || p.roadName?.toLowerCase().includes(searchTerm.toLowerCase())
+                || p.description?.toLowerCase().includes(searchTerm.toLowerCase())
                 || p.district?.toLowerCase().includes(searchTerm.toLowerCase());
             
             // Only Verified and In Progress are allowed on this map
@@ -138,7 +149,7 @@ const LiveMap = () => {
             const matchesDistrict = areaFilter === 'All' || p.district === areaFilter;
 
             let matchesDate = true;
-            const reportedDate = new Date(p.createdAt || p.timestamp);
+            const reportedDate = new Date(p.createdAt);
             if (dateFilter === 'Last 24h') matchesDate = isAfter(reportedDate, subDays(new Date(), 1));
             if (dateFilter === 'Last 7 Days') matchesDate = isAfter(reportedDate, subDays(new Date(), 7));
             if (dateFilter === 'Last 30 Days') matchesDate = isAfter(reportedDate, subDays(new Date(), 30));
@@ -147,7 +158,7 @@ const LiveMap = () => {
         });
     }, [potholes, searchTerm, statusFilter, priorityFilter, areaFilter, dateFilter]);
 
-    const selectPothole = (pothole: PotholeEvent) => {
+    const selectPothole = (pothole: CitizenReport) => {
         setSelected(pothole);
         setMapCenter([pothole.lat, pothole.lon]);
     };
@@ -160,7 +171,7 @@ const LiveMap = () => {
         if (status === 'Completed') {
             setSelected(null);
         } else {
-            setSelected(prev => prev ? { ...prev, status, repairStatus: status } : prev);
+            setSelected(prev => prev ? { ...prev, status } : prev);
         }
     };
 
@@ -264,7 +275,7 @@ const LiveMap = () => {
                                             <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">#{p.id.split('-')[0]}</p>
                                             <StatusPill status={p.status as any} className="scale-75 origin-right" />
                                         </div>
-                                        <p className="text-sm font-black text-slate-900 leading-tight">{p.roadName || 'Road Location'}</p>
+                                        <p className="text-sm font-black text-slate-900 leading-tight">{p.description?.replace(/^\[.*?\]\s*/, '') || 'Road Location'}</p>
                                         <p className="mt-1 text-[10px] font-black text-slate-400 uppercase tracking-widest">{p.district} District</p>
                                         <button
                                             onClick={() => selectPothole(p)}
@@ -318,14 +329,14 @@ const LiveMap = () => {
                                         {selected.priority || 'Medium'} Priority
                                     </span>
                                 </div>
-                                <h3 className="text-xl font-black text-slate-950 leading-tight">{selected.roadName || 'Provincial Road Point'}</h3>
+                                <h3 className="text-xl font-black text-slate-950 leading-tight">{selected.description?.replace(/^\[.*?\]\s*/, '') || 'Provincial Road Point'}</h3>
                                 <p className="flex items-center gap-1.5 text-xs font-bold text-slate-500 uppercase tracking-widest">
                                     <MapPin size={14} className="text-slate-400" /> {selected.district} District
                                 </p>
                             </div>
 
                             <div className="grid grid-cols-2 gap-3">
-                                <Detail label="Discovery Date" value={new Date(selected.createdAt || selected.timestamp).toLocaleDateString()} />
+                                <Detail label="Discovery Date" value={new Date(selected.createdAt).toLocaleDateString()} />
                                 <Detail label="Last Update" value={selected.updatedAt ? new Date(selected.updatedAt).toLocaleDateString() : 'Initial Discovery'} />
                                 <Detail label="GPS Lat/Lon" value={`${selected.lat.toFixed(4)}, ${selected.lon.toFixed(4)}`} />
                                 <Detail label="Record ID" value={`#${selected.id.split('-')[0]}`} />
@@ -355,7 +366,7 @@ const LiveMap = () => {
                                         <CheckCircle size={14} /> Finalize Maintenance
                                     </button>
                                 )}
-                                <Link to={`/potholes/${selected.id}`} className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 py-4 text-[10px] font-black uppercase tracking-widest text-white shadow-xl shadow-slate-900/20 hover:bg-black transition-all">
+                                <Link to={`/staff/reports/${selected.id}`} className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 py-4 text-[10px] font-black uppercase tracking-widest text-white shadow-xl shadow-slate-900/20 hover:bg-black transition-all">
                                     Open Record Details <ChevronRight size={14} />
                                 </Link>
                             </div>
@@ -399,8 +410,8 @@ const LiveMap = () => {
 interface FilterPanelProps {
     searchTerm: string;
     setSearchTerm: (value: string) => void;
-    statusFilter: PotholeStatus | 'All';
-    setStatusFilter: (value: PotholeStatus | 'All') => void;
+    statusFilter: LiveMapStatus;
+    setStatusFilter: (value: LiveMapStatus) => void;
     priorityFilter: RepairPriority | 'All';
     setPriorityFilter: (value: RepairPriority | 'All') => void;
     areaFilter: string;
@@ -433,7 +444,7 @@ const FilterPanel = ({
                 <input value={searchTerm} onChange={event => setSearchTerm(event.target.value)} placeholder="Search road or ID..." className="w-full rounded-2xl bg-slate-50 py-3.5 pl-11 pr-4 text-xs font-bold text-slate-900 outline-none border border-transparent focus:border-slate-200 transition-all" />
             </div>
             <Select label="District Sector" value={areaFilter} onChange={setAreaFilter} options={districts} />
-            <Select label="Maintenance Status" value={statusFilter} onChange={value => setStatusFilter(value as PotholeStatus | 'All')} options={STATUSES} />
+            <Select label="Maintenance Status" value={statusFilter} onChange={value => setStatusFilter(value as LiveMapStatus)} options={STATUSES} />
             <Select label="Operational Priority" value={priorityFilter} onChange={value => setPriorityFilter(value as RepairPriority | 'All')} options={['All', ...PRIORITIES]} />
             <Select label="Discovery Timeline" value={dateFilter} onChange={setDateFilter} options={['All', 'Last 24h', 'Last 7 Days', 'Last 30 Days']} />
         </div>

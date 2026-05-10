@@ -22,7 +22,6 @@ import MaintenanceOverview from './pages/MaintenanceOverview';
 import LiveMap from './pages/LiveMap';
 import ReportMaintenanceHistory from './pages/ReportMaintenanceHistory';
 import FilteredReportList from './pages/FilteredReportList';
-import PotholeDetail from './pages/PotholeDetail';
 import StaffReportDetail from './pages/StaffReportDetail';
 
 // Admin pages

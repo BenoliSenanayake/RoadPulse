@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import type { User, UserRole, ProvincialCouncil } from '../types';
 import { authApi } from '../lib/api';
+import { canonicalizeProvince } from '../lib/provinceResolver';
 
 export interface CitizenAccount extends User {
     passwordHash: string; // Simple hash/plain for prototype
@@ -24,14 +25,33 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // Storage Keys
 const USER_KEY = 'rp_user';
+const PROVINCE_KEY = 'provincialCouncil';
 const CITIZEN_ACCOUNTS_KEY = 'rp_citizen_accounts';
+
+const getUserProvince = (source: any, fallback?: string | null) => {
+    return source?.provincialCouncil
+        || source?.provincial_council
+        || source?.selectedProvince
+        || source?.province
+        || fallback
+        || '';
+};
+
+const normalizeStoredUser = (storedUser: any): User => {
+    const rawProvince = getUserProvince(storedUser);
+    const provincialCouncil = rawProvince ? canonicalizeProvince(rawProvince) : undefined;
+    return {
+        ...storedUser,
+        provincialCouncil
+    };
+};
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // Current Session
     const [user, setUser] = useState<User | null>(() => {
         try {
             const saved = localStorage.getItem(USER_KEY);
-            return saved ? JSON.parse(saved) : null;
+            return saved ? normalizeStoredUser(JSON.parse(saved)) : null;
         } catch (e) {
             console.error("[Auth] Failed to parse user from storage", e);
             localStorage.removeItem(USER_KEY);
@@ -56,6 +76,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         localStorage.setItem(CITIZEN_ACCOUNTS_KEY, JSON.stringify(citizenAccounts));
     }, [citizenAccounts]);
 
+    const persistSessionUser = (sessionUser: User) => {
+        setUser(sessionUser);
+        localStorage.setItem(USER_KEY, JSON.stringify(sessionUser));
+        if (sessionUser.provincialCouncil) {
+            localStorage.setItem(PROVINCE_KEY, sessionUser.provincialCouncil);
+            sessionStorage.setItem(PROVINCE_KEY, sessionUser.provincialCouncil);
+        } else {
+            localStorage.removeItem(PROVINCE_KEY);
+            sessionStorage.removeItem(PROVINCE_KEY);
+        }
+    };
+
     const login = async (email: string, password?: string, provincialCouncil?: ProvincialCouncil) => {
         const portalMode = import.meta.env.VITE_PORTAL_MODE || 'citizen';
 
@@ -70,19 +102,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 if (!response || !response.user) {
                     return { success: false, error: 'Login failed.' };
                 }
+                if (response.user.role !== 'MAINTENANCE_OFFICER') {
+                    return { success: false, error: 'Unauthorized: This portal is only for maintenance officers.' };
+                }
+
+                const officerProvince = canonicalizeProvince(getUserProvince(response.user, provincialCouncil));
+                if (officerProvince === 'Unassigned') {
+                    return { success: false, error: 'Officer province is missing. Please sign in again.' };
+                }
 
                 const sessionUser: User = {
                     id: response.user.id,
                     name: response.user.name,
                     email: response.user.email,
-                    role: response.user.role,
-                    provincialCouncil: response.user.provincialCouncil,
+                    role: 'MAINTENANCE_OFFICER',
+                    provincialCouncil: officerProvince,
                     status: 'ACTIVE',
                     createdAt: new Date().toISOString()
                 };
 
-                setUser(sessionUser);
-                localStorage.setItem(USER_KEY, JSON.stringify(sessionUser));
+                persistSessionUser(sessionUser);
                 return { success: true, user: sessionUser };
             } catch (e: any) {
                 return { success: false, error: e.message || 'Invalid credentials.' };
@@ -102,13 +141,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                     name: response.user.name,
                     email: response.user.email,
                     role: response.user.role,
-                    provincialCouncil: response.user.provincialCouncil,
+                    provincialCouncil: getUserProvince(response.user) ? canonicalizeProvince(getUserProvince(response.user)) : undefined,
                     status: 'ACTIVE',
                     createdAt: new Date().toISOString()
                 };
 
-                setUser(sessionUser);
-                localStorage.setItem(USER_KEY, JSON.stringify(sessionUser));
+                persistSessionUser(sessionUser);
                 return { success: true, user: sessionUser };
             } catch (e: any) {
                 return { success: false, error: e.message || 'Invalid credentials.' };
@@ -128,8 +166,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                         status: 'ACTIVE',
                         createdAt: new Date().toISOString()
                     };
-                    setUser(sessionUser);
-                    localStorage.setItem(USER_KEY, JSON.stringify(sessionUser));
+                    persistSessionUser(sessionUser);
                     return { success: true, user: sessionUser };
                 }
                 return { success: false, error: 'Invalid password' };
@@ -189,8 +226,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             status: 'ACTIVE',
             createdAt: new Date().toISOString()
         };
-        setUser(sessionUser);
-        localStorage.setItem(USER_KEY, JSON.stringify(sessionUser));
+        persistSessionUser(sessionUser);
 
         return { success: true };
     };
@@ -198,6 +234,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const logout = () => {
         setUser(null);
         localStorage.removeItem(USER_KEY);
+        localStorage.removeItem(PROVINCE_KEY);
+        sessionStorage.removeItem(PROVINCE_KEY);
     };
 
     const hasRole = (roles: UserRole[]) => {

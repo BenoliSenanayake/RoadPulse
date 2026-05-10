@@ -182,9 +182,9 @@ export const EvidenceViewer: React.FC<EvidenceViewerProps> = ({
                             <div className={cn(
                                 "p-1.5 rounded-lg text-white",
                                 badges.status === 'New' ? 'bg-blue-600' :
-                                    badges.status === 'Confirmed' ? 'bg-amber-500' :
-                                        badges.status === 'Scheduled' ? 'bg-purple-500' :
-                                            badges.status === 'Fixed' ? 'bg-emerald-600' : 'bg-red-500'
+                                    badges.status === 'Verified' ? 'bg-emerald-500' :
+                                        badges.status === 'In Progress' ? 'bg-blue-600' :
+                                            badges.status === 'Completed' ? 'bg-emerald-600' : 'bg-red-500'
                             )}>
                                 <Clock size={16} />
                             </div>
