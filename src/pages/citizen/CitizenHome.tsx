@@ -27,33 +27,60 @@ const FeatureCard = ({ icon: Icon, title, desc }: { icon: React.ElementType; tit
 const CitizenHome = () => {
     return (
         <div className="pb-16 md:pb-8">
-            <section className="relative bg-slate-900 text-white overflow-hidden">
-                <div className="absolute inset-0 bg-[radial-gradient(ellipse_70%_60%_at_70%_-10%,rgba(59,130,246,0.18),transparent)] pointer-events-none" />
-                <div className="relative z-10 max-w-5xl mx-auto px-5 py-12 sm:px-8 sm:py-16">
-                    <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold mb-3 leading-snug tracking-tight">
-                        Report road damage in minutes
-                    </h1>
-                    <p className="text-slate-400 text-sm sm:text-base font-normal leading-relaxed max-w-lg mb-8">
-                        Help keep local roads safer by sending a clear photo and location. RoadPulse will guide you through each step when you are ready.
-                    </p>
+            <section className="relative bg-slate-950 text-white overflow-hidden py-16 sm:py-24">
+                <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(59,130,246,0.25),transparent)] pointer-events-none" />
+                <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-blue-500/50 to-transparent" />
+                
+                <div className="relative z-10 max-w-5xl mx-auto px-6 text-center lg:text-left flex flex-col lg:flex-row items-center justify-between gap-12">
+                    <div className="max-w-2xl">
+                        <div className="inline-flex items-center gap-2 px-3 py-1 bg-blue-500/10 border border-blue-500/20 rounded-full mb-6">
+                            <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-400">Public Service Platform</span>
+                        </div>
+                        <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black mb-6 leading-[1.1] tracking-tight">
+                            Fixing Sri Lanka's <br className="hidden sm:block" />
+                            <span className="text-blue-500">Roads Together.</span>
+                        </h1>
+                        <p className="text-slate-400 text-base sm:text-lg font-bold leading-relaxed max-w-xl mb-10 uppercase tracking-tight">
+                            Snap, Tag, and Track. Your reports help maintenance teams prioritize repairs in your province.
+                        </p>
 
-                    <div className="flex flex-col sm:flex-row gap-3">
-                        <Link
-                            to="/citizen/report"
-                            id="hero-cta-report"
-                            className="inline-flex items-center justify-center gap-2 px-6 py-3.5 bg-blue-500 hover:bg-blue-400 text-white rounded-xl font-semibold text-sm transition-colors shadow-lg shadow-blue-600/20"
-                        >
-                            <PlusCircle size={18} />
-                            Report a Pothole
-                        </Link>
-                        <Link
-                            to="/citizen/my-reports"
-                            id="hero-cta-reports"
-                            className="inline-flex items-center justify-center gap-2 px-6 py-3.5 bg-white/10 hover:bg-white/15 border border-white/10 text-white/90 rounded-xl font-semibold text-sm transition-colors"
-                        >
-                            <FileText size={18} />
-                            My Reports
-                        </Link>
+                        <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
+                            <Link
+                                to="/citizen/report"
+                                id="hero-cta-report"
+                                className="inline-flex items-center justify-center gap-3 px-10 py-5 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-black text-xs transition-all shadow-2xl shadow-blue-600/30 active:scale-95 uppercase tracking-widest"
+                            >
+                                <PlusCircle size={20} />
+                                Report Pothole
+                            </Link>
+                            <Link
+                                to="/citizen/my-reports"
+                                id="hero-cta-reports"
+                                className="inline-flex items-center justify-center gap-3 px-10 py-5 bg-white/5 hover:bg-white/10 border border-white/10 text-white rounded-2xl font-black text-xs transition-all active:scale-95 uppercase tracking-widest backdrop-blur-sm"
+                            >
+                                <FileText size={20} />
+                                My Activity
+                            </Link>
+                        </div>
+                    </div>
+
+                    <div className="hidden lg:block relative w-80 h-80">
+                        <div className="absolute inset-0 bg-blue-600/20 rounded-[3rem] blur-3xl animate-pulse" />
+                        <div className="relative bg-slate-900 border border-white/10 rounded-[3rem] w-full h-full p-8 shadow-2xl flex flex-col justify-center gap-6 overflow-hidden">
+                            <div className="space-y-2">
+                                <div className="h-1 w-12 bg-blue-500 rounded-full" />
+                                <div className="h-4 w-full bg-white/5 rounded-lg" />
+                                <div className="h-4 w-2/3 bg-white/5 rounded-lg" />
+                            </div>
+                            <div className="aspect-video bg-white/5 rounded-2xl border border-white/5 flex items-center justify-center">
+                                <Camera size={32} className="text-white/20" />
+                            </div>
+                            <div className="flex justify-between items-center">
+                                <div className="h-8 w-24 bg-blue-600/50 rounded-xl" />
+                                <div className="w-8 h-8 rounded-full bg-white/10" />
+                            </div>
+                        </div>
                     </div>
                 </div>
             </section>

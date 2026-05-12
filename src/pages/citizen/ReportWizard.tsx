@@ -150,33 +150,32 @@ const ReportWizard = () => {
     const stepIndex = STEPS_INFO.findIndex(s => s.id === step);
 
     if (step === 'SUBMITTING') return (
-        <div className="min-h-[70vh] flex flex-col items-center justify-center text-center p-8 animate-fade-in-up">
-            <div className="relative mb-10">
-                <div className="w-24 h-24 border-8 border-slate-100 border-t-blue-600 rounded-full animate-spin" />
+        <div className="min-h-[80vh] flex flex-col items-center justify-center text-center p-8 animate-fade-in-up">
+            <div className="relative mb-12">
+                <div className="w-32 h-32 border-[12px] border-slate-100 border-t-blue-600 rounded-full animate-spin" />
                 <div className="absolute inset-0 flex items-center justify-center">
-                    <ShieldCheck size={32} className="text-blue-500 animate-pulse" />
+                    <ShieldCheck size={40} className="text-blue-500 animate-pulse" />
                 </div>
             </div>
-            <h2 className="text-2xl font-black text-slate-900 mb-2 uppercase tracking-tight">AI Analysis in Progress</h2>
-            <p className="text-sm text-slate-500 max-w-xs mx-auto font-medium leading-relaxed">
-                Our system is verifying the road damage and routing your report to the correct provincial team.
+            <h2 className="text-3xl font-black text-slate-900 mb-3 uppercase tracking-tight">Verifying Report</h2>
+            <p className="text-sm text-slate-500 max-w-xs mx-auto font-bold leading-relaxed uppercase tracking-tight">
+                Our system is processing your submission and routing it to the provincial maintenance division.
             </p>
         </div>
     );
 
     if (step === 'SUCCESS') return (
-        <div className="min-h-[70vh] flex flex-col items-center justify-center text-center p-8 animate-fade-in-up">
-            <div className="w-24 h-24 bg-emerald-100 text-emerald-600 rounded-[2rem] flex items-center justify-center mb-8 shadow-2xl shadow-emerald-500/20 animate-bounce-slow">
-                <CheckCircle2 size={48} />
+        <div className="min-h-[80vh] flex flex-col items-center justify-center text-center p-8 animate-fade-in-up">
+            <div className="w-28 h-28 bg-emerald-500 text-white rounded-[2.5rem] flex items-center justify-center mb-10 shadow-2xl shadow-emerald-500/30 animate-bounce-slow">
+                <CheckCircle2 size={56} />
             </div>
-            <h2 className="text-3xl font-black text-slate-900 mb-4 uppercase tracking-tight">Report Verified!</h2>
-            <p className="text-slate-500 mb-10 max-w-md font-medium leading-relaxed">
-                Great job! Your report has been successfully analyzed and submitted. We're redirecting you to your report tracking dashboard.
+            <h2 className="text-4xl font-black text-slate-900 mb-4 uppercase tracking-tight">Report Logged</h2>
+            <p className="text-slate-500 mb-12 max-w-md font-bold leading-relaxed uppercase tracking-tight text-xs">
+                Your contribution has been successfully recorded in the RoadPulse database. Redirecting to your dashboard.
             </p>
-            <div className="flex gap-4">
-                <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
-                    <Loader2 size={14} className="animate-spin" /> Redirecting...
-                </div>
+            <div className="flex items-center gap-3 px-6 py-3 bg-slate-50 rounded-2xl border border-slate-100">
+                <Loader2 size={14} className="animate-spin text-blue-600" />
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Syncing telemetry...</span>
             </div>
         </div>
     );
@@ -338,40 +337,43 @@ const ReportWizard = () => {
                     <div className="space-y-6 animate-fade-in-up">
                         {!previewUrl ? (
                             /* Empty State - Clean Card Upload Area */
-                            <div className="bg-white border border-slate-200 rounded-[2.5rem] p-12 shadow-xl shadow-slate-900/5 text-center space-y-8">
-                                <div className="w-20 h-20 bg-blue-50 rounded-[2rem] flex items-center justify-center mx-auto text-blue-600 border border-blue-100 shadow-inner">
-                                    <Camera size={36} />
+                            <div className="bg-white border-2 border-dashed border-slate-200 rounded-[2.5rem] p-10 sm:p-16 shadow-2xl shadow-slate-900/5 text-center space-y-8 group hover:border-blue-400 transition-all duration-500">
+                                <div className="w-24 h-24 bg-blue-50 rounded-[2.5rem] flex items-center justify-center mx-auto text-blue-600 border border-blue-100 shadow-inner group-hover:scale-110 group-hover:rotate-6 transition-all duration-500">
+                                    <Camera size={40} />
                                 </div>
-                                <div className="space-y-2">
-                                    <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Upload Road Photo</h3>
-                                    <p className="text-sm text-slate-500 font-medium leading-relaxed max-w-[240px] mx-auto">
-                                        Choose a clear photo showing the pothole and road edges.
+                                <div className="space-y-3">
+                                    <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Capture Evidence</h3>
+                                    <p className="text-[11px] text-slate-500 font-bold leading-relaxed max-w-[200px] mx-auto uppercase tracking-widest">
+                                        Take a clear photo of the road damage to begin
                                     </p>
                                 </div>
                                 
-                                <div className="space-y-4">
+                                <div className="pt-4">
                                     <label className="cursor-pointer block">
-                                        <div className="w-full py-5 bg-blue-600 text-white rounded-2xl font-black text-sm shadow-xl shadow-blue-600/20 hover:bg-blue-700 transition-all active:scale-[0.98] flex items-center justify-center gap-3">
-                                            Choose Photo
+                                        <div className="w-full py-5 bg-slate-900 text-white rounded-2xl font-black text-xs shadow-2xl shadow-slate-900/20 hover:bg-black transition-all active:scale-[0.98] flex items-center justify-center gap-3 uppercase tracking-[0.2em]">
+                                            Open Camera
                                         </div>
                                         <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handleImageChange} />
                                     </label>
                                     
-                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                        JPG, PNG or WEBP supported
-                                    </p>
+                                    <button 
+                                        onClick={() => setShowGuidance(true)}
+                                        className="mt-6 text-[10px] font-black text-blue-600 hover:text-blue-700 uppercase tracking-widest flex items-center justify-center gap-2 mx-auto"
+                                    >
+                                        <Info size={14} /> View photo guidelines
+                                    </button>
                                 </div>
-                            </div>
-                        ) : (
+                                 ) : (
                             /* Selected State - Preview and Controls */
-                            <div className="bg-white border border-slate-200 rounded-[2.5rem] p-6 shadow-xl shadow-slate-900/5 space-y-6">
-                                <div className="relative aspect-[4/3] rounded-3xl overflow-hidden border border-slate-100 shadow-inner bg-slate-50">
-                                    <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />
+                            <div className="bg-white border border-slate-100 rounded-[2.5rem] p-6 shadow-2xl shadow-slate-900/5 space-y-6 animate-in fade-in zoom-in-95 duration-500">
+                                <div className="relative aspect-[4/3] rounded-[2rem] overflow-hidden border border-slate-200 shadow-inner bg-slate-50 group">
+                                    <img src={previewUrl} alt="Preview" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                                     {qualityHints.length > 0 && (
-                                        <div className="absolute top-4 left-4 right-4 bg-amber-50/95 backdrop-blur-md border border-amber-200 p-3 rounded-2xl flex items-start gap-3 shadow-lg">
-                                            <AlertTriangle size={16} className="text-amber-500 shrink-0 mt-0.5" />
+                                        <div className="absolute top-4 left-4 right-4 bg-white/90 backdrop-blur-md border border-amber-200 p-4 rounded-2xl flex items-start gap-3 shadow-xl">
+                                            <AlertTriangle size={18} className="text-amber-500 shrink-0 mt-0.5" />
                                             <div className="space-y-0.5">
-                                                <p className="text-[9px] font-black text-amber-900 uppercase tracking-widest">Photo Hint</p>
+                                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Photo Guidance</p>
                                                 {qualityHints.map((hint, i) => (
                                                     <p key={i} className="text-[11px] text-amber-700 font-bold leading-tight">{hint}</p>
                                                 ))}
@@ -382,62 +384,42 @@ const ReportWizard = () => {
                                 
                                 <div className="flex items-center justify-between px-2">
                                     <div className="flex items-center gap-3 min-w-0">
-                                        <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-400 shrink-0">
-                                            <ImageIcon size={20} />
+                                        <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 border border-blue-100 shrink-0 shadow-sm">
+                                            <ImageIcon size={22} />
                                         </div>
                                         <div className="min-w-0">
-                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest truncate">Selected Image</p>
-                                            <p className="text-xs font-bold text-slate-900 truncate max-w-[120px] sm:max-w-[200px]">
-                                                {imageFile?.name || 'pothole-report.jpg'}
+                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Evidence Captured</p>
+                                            <p className="text-sm font-black text-slate-900 truncate max-w-[140px] sm:max-w-[240px]">
+                                                {imageFile?.name || 'pothole-unit-01.jpg'}
                                             </p>
                                         </div>
                                     </div>
                                     
                                     <button 
                                         onClick={() => { setImageFile(null); setPreviewUrl(''); setQualityHints([]); }}
-                                        className="p-2 text-rose-500 hover:bg-rose-50 rounded-xl transition-colors flex items-center gap-2 text-[10px] font-black uppercase tracking-widest"
+                                        className="p-3 bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white rounded-xl transition-all shadow-sm flex items-center justify-center"
+                                        title="Remove Image"
                                     >
-                                        <Trash2 size={16} /> Remove
+                                        <Trash2 size={18} />
                                     </button>
                                 </div>
-
+ 
                                 <div className="grid grid-cols-2 gap-4 pt-2">
                                     <label className="cursor-pointer block">
-                                        <div className="w-full py-4 bg-slate-50 border border-slate-200 text-slate-600 rounded-2xl font-black text-xs hover:bg-slate-100 transition-all active:scale-[0.98] flex items-center justify-center gap-2">
-                                            <RefreshCw size={14} /> Change
+                                        <div className="w-full py-4 bg-white border border-slate-200 text-slate-600 rounded-2xl font-black text-[11px] hover:bg-slate-50 transition-all active:scale-[0.98] flex items-center justify-center gap-2 uppercase tracking-widest shadow-sm">
+                                            <RefreshCw size={14} /> Retake
                                         </div>
                                         <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handleImageChange} />
                                     </label>
                                     <button
                                         onClick={() => setStep('LOCATION')}
-                                        className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black text-xs shadow-xl active:scale-[0.98] transition-all flex items-center justify-center gap-2 group uppercase tracking-widest"
+                                        className="w-full py-4 bg-blue-600 text-white rounded-2xl font-black text-[11px] shadow-xl shadow-blue-600/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2 group uppercase tracking-widest"
                                     >
-                                        Next Step <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+                                        Confirm <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
                                     </button>
                                 </div>
                             </div>
                         )}
-
-                        {/* Guidance Card - Minimal & Clean */}
-                        <div className="bg-slate-50 rounded-[2rem] p-6 border border-slate-100 space-y-4 shadow-sm">
-                            <div className="flex items-start gap-4">
-                                <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-blue-600 shadow-sm shrink-0 border border-slate-100">
-                                    <Info size={18} />
-                                </div>
-                                <div className="space-y-1">
-                                    <h4 className="text-xs font-black text-slate-900 uppercase tracking-tight">Photo tips</h4>
-                                    <p className="text-[11px] text-slate-500 font-bold leading-relaxed">
-                                        Use road edge markings where possible. This helps our AI estimate the damage scale accurately.
-                                    </p>
-                                </div>
-                            </div>
-                            <button 
-                                onClick={() => setShowGuidance(true)}
-                                className="w-full py-2 text-[10px] font-black uppercase tracking-widest text-blue-600 hover:text-blue-700 transition-colors flex items-center justify-center gap-2 underline underline-offset-4"
-                            >
-                                View Guidelines
-                            </button>
-                        </div>
                     </div>
                 )}
 
