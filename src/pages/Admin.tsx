@@ -171,7 +171,7 @@ const AdminPage = () => {
         <div className="space-y-6 animate-in fade-in duration-700">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
                 <div>
-                    <h1 className="section-heading mb-1">Internal Operations</h1>
+                    <h1 className="section-heading mb-1">Internal Reports</h1>
                     <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">System-level personnel, protocols, and security logs</p>
                 </div>
             </div>
@@ -237,7 +237,7 @@ const AdminPage = () => {
                                 <div className="p-2 rounded-xl bg-slate-900 text-white shadow-lg shadow-slate-900/10">
                                     <FileText size={14} />
                                 </div>
-                                <h4 className="text-[10px] font-black text-slate-900 uppercase tracking-widest leading-none mt-0.5">Tactical Audit Trail</h4>
+                                <h4 className="text-[10px] font-black text-slate-900 uppercase tracking-widest leading-none mt-0.5">System Activity Log</h4>
                             </div>
 
                             <div className="flex flex-wrap items-center gap-3">
@@ -250,7 +250,7 @@ const AdminPage = () => {
                                     onChange={(e) => setFilterType(e.target.value)}
                                 >
                                     <option value="ALL">All Nodes</option>
-                                    <option value="REPORT">Intelligence</option>
+                                    <option value="REPORT">Reports</option>
                                     <option value="POTHOLE">Deployments</option>
                                 </select>
                                 <select
@@ -258,11 +258,11 @@ const AdminPage = () => {
                                     value={filterAction}
                                     onChange={(e) => setFilterAction(e.target.value)}
                                 >
-                                    <option value="ALL">All Vector Actions</option>
+                                    <option value="ALL">All Actions</option>
                                     <option value="SUBMITTED">Submitted</option>
                                     <option value="AI_ACCEPTED">AI Validated</option>
                                     <option value="AI_REJECTED">AI Dismissed</option>
-                                    <option value="MANUAL_ACCEPTED">Command Auth</option>
+                                    <option value="MANUAL_ACCEPTED">Manual Verification</option>
                                     <option value="MANUAL_REJECTED">Command Denied</option>
                                     <option value="STATUS_CHANGED">State Shift</option>
                                 </select>

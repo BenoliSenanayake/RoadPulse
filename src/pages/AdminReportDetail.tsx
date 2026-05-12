@@ -203,7 +203,7 @@ const AdminReportDetail = () => {
                                 />
                                 <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-all duration-700 flex items-end p-10">
                                     <div className="text-white translate-y-4 group-hover:translate-y-0 transition-transform duration-700">
-                                        <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-60 mb-2">Geolocation Confirmed</p>
+                                        <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-60 mb-2">Registered Coordinates</p>
                                         <p className="text-lg font-black tracking-tight">{report.district}, Sri Lanka</p>
                                     </div>
                                 </div>
@@ -413,7 +413,7 @@ const AdminReportDetail = () => {
                             <div className="h-10 w-10 bg-white/5 rounded-xl flex items-center justify-center border border-white/10">
                                 <Shield className="text-blue-400" size={20} />
                             </div>
-                            <h4 className="text-[10px] font-black uppercase tracking-[0.2em]">Intake Intelligence</h4>
+                            <h4 className="text-[10px] font-black uppercase tracking-[0.2em]">Governance Metadata</h4>
                         </div>
                         <p className="relative z-10 text-[11px] font-bold text-slate-400 leading-relaxed uppercase tracking-tight mb-8">
                             Unit <span className="text-white">#{report.id.split('-')[1]}</span> has been jurisdictionalized to the <span className="text-white">{report.provincialCouncil}</span>. Corrections made here are logged as permanent administrative overrides in the system audit stream.

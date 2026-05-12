@@ -197,7 +197,7 @@ const PotholesTable = () => {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="flex flex-col gap-2">
                     <div className="flex items-center gap-3">
-                        <h1 className="section-heading">Tactical Inventory</h1>
+                        <h1 className="section-heading">Pothole Inventory</h1>
                         {province && province !== 'Unassigned' && (
                             <div className="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-1.5 text-[10px] font-black uppercase tracking-widest text-emerald-700 flex items-center gap-2">
                                 <MapPin size={12} /> {getProvinceShortName(province)}
@@ -261,7 +261,7 @@ const PotholesTable = () => {
                 <div className="p-6 bg-slate-50/50 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4">
                     <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
                         <div className="w-1.5 h-1.5 rounded-full bg-slate-300" />
-                        Showing {filteredPotholes.length} of {potholes.length} Intelligence Records
+                        Showing {filteredPotholes.length} of {potholes.length} System Records
                     </div>
                     <div className="flex items-center gap-3">
                         <button className="px-6 py-2.5 bg-white border border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-400 disabled:opacity-50 shadow-premium transition-all" disabled>Prev</button>

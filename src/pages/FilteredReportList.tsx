@@ -233,7 +233,7 @@ const FilteredReportList = () => {
                 <div className="flex h-64 items-center justify-center rounded-3xl border border-slate-100 bg-white">
                     <div className="flex flex-col items-center gap-3">
                         <Loader2 className="animate-spin text-slate-300" size={32} />
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Syncing database...</p>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Updating Records...</p>
                     </div>
                 </div>
             ) : reports.length === 0 ? (

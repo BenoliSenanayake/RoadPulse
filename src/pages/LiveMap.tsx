@@ -470,7 +470,7 @@ const LiveMap = () => {
                 <div className="fixed inset-0 z-[3000] bg-slate-950/50 backdrop-blur-sm md:hidden">
                     <div className="absolute inset-y-0 right-0 w-[86%] max-w-sm overflow-y-auto bg-white p-6 shadow-2xl">
                         <div className="mb-6 flex items-center justify-between border-b border-slate-100 pb-5">
-                            <h3 className="text-sm font-black text-slate-950 uppercase tracking-tight">Geospatial Intelligence</h3>
+                            <h3 className="text-sm font-black text-slate-950 uppercase tracking-tight">Geospatial Overview</h3>
                             <button onClick={() => setIsFilterDrawerOpen(false)} className="rounded-xl bg-slate-50 p-2 text-slate-500">
                                 <X size={18} />
                             </button>

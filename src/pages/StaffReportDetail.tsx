@@ -305,7 +305,6 @@ const StaffReportDetail = () => {
                             <DetailBlock icon={User} label="Submitted By" value={report.citizenId || 'Anonymous'} />
                             <DetailBlock icon={ShieldCheck} label="Province" value={report.provincialCouncil ? getProvinceShortName(report.provincialCouncil) : 'Unknown'} />
                             <DetailBlock icon={MapPin} label="District" value={report.district || 'Unknown'} />
-                            <DetailBlock icon={ImageIcon} label="Road Boundaries" value="Visible" color="text-emerald-600" />
                         </div>
                     </section>
 
@@ -359,10 +358,10 @@ const StaffReportDetail = () => {
                                     </p>
                                 </div>
                             </div>
-                            <div className="mt-4 p-4 bg-blue-50 border border-blue-100 rounded-2xl flex items-center gap-3">
-                                <Info size={16} className="text-blue-600 shrink-0" />
-                                <p className="text-[10px] font-black text-blue-700 uppercase tracking-tight leading-relaxed">
-                                    Reliability Note: Photo contains visible lane markings (Scale Ref: Yes). This report is highly reliable for depth estimation.
+                            <div className="mt-4 p-4 bg-slate-50 border border-slate-100 rounded-2xl flex items-center gap-3">
+                                <Info size={16} className="text-slate-400 shrink-0" />
+                                <p className="text-[10px] font-black text-slate-500 uppercase tracking-tight leading-relaxed">
+                                    Officer Guidance: Please verify visual evidence against reported coordinates before scheduling repairs.
                                 </p>
                             </div>
                         </section>
@@ -467,7 +466,7 @@ const StaffReportDetail = () => {
                             <div className="h-8 w-8 bg-white/5 rounded-lg flex items-center justify-center border border-white/10">
                                 <ShieldCheck className="text-emerald-400" size={16} />
                             </div>
-                            <h4 className="text-[10px] font-black uppercase tracking-[0.2em]">Report Intelligence</h4>
+                            <h4 className="text-[10px] font-black uppercase tracking-[0.2em]">System Metadata</h4>
                         </div>
                         <div className="relative z-10 space-y-3">
                             <div className="flex items-center justify-between py-2 border-b border-white/5">
