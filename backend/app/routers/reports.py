@@ -7,6 +7,7 @@ import logging
 from datetime import datetime
 from app.database import get_db
 from app import schemas, models, crud
+from app.config import settings
 from app.services.roboflow_service import analyze_pothole_image
 from app.services.province_resolver import resolve_province_and_district
 from app.security import get_current_user, require_admin, require_staff, require_citizen
@@ -80,7 +81,7 @@ async def create_report(
             f.write(content)
         print(f">>> Image saved: {file_path} ({len(content)} bytes)")
             
-        image_url = f"http://localhost:8000/static/{filename}"
+        image_url = f"{settings.BACKEND_PUBLIC_URL}/static/{filename}"
         
         # ── AI Analysis (non-blocking — failure must NOT block submission) ──
         classification = "NEEDS_MANUAL_REVIEW"

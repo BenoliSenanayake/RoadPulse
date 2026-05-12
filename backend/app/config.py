@@ -6,6 +6,7 @@ class Settings(BaseSettings):
     ROBOFLOW_API_KEY: str
     SECRET_KEY: str
     ENVIRONMENT: str = "development"
+    BACKEND_PUBLIC_URL: str = "http://localhost:8000"
 
     model_config = SettingsConfigDict(
         env_file=os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env"),
