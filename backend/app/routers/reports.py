@@ -299,21 +299,23 @@ def update_status(
     if update.notes:
         crud.update_report_notes(db, report_id, update.notes)
 
-    status_update = schemas.StatusUpdateCreate(
-        status=next_status or old_status,
-        priority=update.priority,
-        notes=update.notes
-    )
-    crud.create_status_update(db, status_update, report_id, current_user.id)
-    
+    # Create Audit Log
     crud.create_audit_log(
-        db=db,
+        db,
         report_id=report_id,
         user_id=current_user.id,
-        action="STATUS_UPDATED",
+        action=f"Status Update: {old_status} -> {next_status or old_status}",
         old_status=old_status,
         new_status=next_status or old_status,
         notes=update.notes
+    )
+
+    # Create Status Update History
+    crud.create_status_update(
+        db,
+        update=update,
+        report_id=report_id,
+        officer_id=current_user.id
     )
     
     logger.info(f"Report {report_id} status updated by {current_user.role} {current_user.email}")

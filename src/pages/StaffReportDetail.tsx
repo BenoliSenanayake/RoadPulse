@@ -71,7 +71,6 @@ const StaffReportDetail = () => {
 
     // Editable fields
     const [selectedPriority, setSelectedPriority] = useState<RepairPriority>('Medium');
-    const [selectedStatus, setSelectedStatus] = useState<string>('New');
     const [maintenanceNotes, setMaintenanceNotes] = useState('');
 
     const loadReport = async () => {
@@ -85,7 +84,6 @@ const StaffReportDetail = () => {
             }
 
             const staffProvince = normalizeProvince(user?.provincialCouncil);
-            console.log(`[ReportDetail Debug] Officer:`, user?.email, staffProvince);
             
             const data = await reportsApi.getById(id);
             if (!data) {
@@ -94,18 +92,15 @@ const StaffReportDetail = () => {
             }
             
             const reportProvince = normalizeProvince(data.provincialCouncil);
-            console.log(`[ReportDetail Debug] Report Province:`, reportProvince);
 
             // Access control: staff can only see their province's reports
             if (user?.role === 'MAINTENANCE_OFFICER' && staffProvince !== 'unassigned' &&
                 reportProvince !== 'unassigned' && staffProvince !== reportProvince) {
-                console.warn(`[Access Denied] Staff (${staffProvince}) tried to access Report (${reportProvince})`);
                 setError('Access Restricted: This report belongs to another Provincial Council.');
                 return;
             }
             setReport(data);
             setSelectedPriority(data.priority || 'Medium');
-            setSelectedStatus(data.status);
             setMaintenanceNotes(data.maintenanceNotes || '');
         } catch (err: any) {
             setError(`Failed to load: ${err.message || 'Unknown error'}`);
@@ -118,21 +113,17 @@ const StaffReportDetail = () => {
         loadReport();
     }, [id]);
 
-    const handleSave = async () => {
+    const handleUpdateMetadata = async () => {
         if (!report || !id) return;
         setSaving(true);
         setSaved(false);
         try {
-            const statusChanged = canonicalizeStatus(selectedStatus) !== canonicalizeStatus(report.status);
-            const updated = statusChanged
-                ? await reportsApi.updateStatus(id, selectedStatus as CitizenReport['status'], maintenanceNotes, selectedPriority)
-                : await reportsApi.update(id, {
-                    priority: selectedPriority,
-                    maintenanceNotes: maintenanceNotes,
-                });
+            const updated = await reportsApi.update(id, {
+                priority: selectedPriority,
+                maintenanceNotes: maintenanceNotes,
+            });
             if (updated) {
                 setReport(updated);
-                setSelectedStatus(updated.status);
                 setSelectedPriority(updated.priority || selectedPriority);
                 setMaintenanceNotes(updated.maintenanceNotes || maintenanceNotes);
                 setSaved(true);
@@ -154,7 +145,6 @@ const StaffReportDetail = () => {
             const updated = await reportsApi.updateStatus(id, nextStatus, note, selectedPriority);
             if (updated) {
                 setReport(updated);
-                setSelectedStatus(updated.status);
                 setSelectedPriority(updated.priority || selectedPriority);
                 setMaintenanceNotes(updated.maintenanceNotes || note);
                 setSaved(true);
@@ -197,6 +187,8 @@ const StaffReportDetail = () => {
     const submittedTime = format(new Date(report.createdAt), 'hh:mm:ss a');
     const description = report.description?.replace(/^\[.*?\]\s*/, '') || 'Road Damage Report';
     const lifecycleActions = getLifecycleActions(report.status);
+    const reportStatus = canonicalizeStatus(report.status);
+    const isMetadataEditable = ['Verified', 'Scheduled', 'In Progress'].includes(reportStatus);
 
     const getPriorityColor = (p: string) => {
         switch (p) {
@@ -247,7 +239,7 @@ const StaffReportDetail = () => {
                 </div>
                 {saved && (
                     <div className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-700 rounded-2xl border border-emerald-100 text-xs font-black uppercase tracking-widest animate-fade-in-up">
-                        <CheckCircle2 size={16} /> Changes Saved
+                        <CheckCircle2 size={16} /> Update Successful
                     </div>
                 )}
             </div>
@@ -385,69 +377,15 @@ const StaffReportDetail = () => {
                                 <Activity size={18} />
                             </div>
                             <div>
-                                <h2 className="text-sm font-black text-slate-950 uppercase tracking-tight">Record Management</h2>
-                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Update status & priority</p>
+                                <h2 className="text-sm font-black text-slate-950 uppercase tracking-tight">Report Management</h2>
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Lifecycle Actions</p>
                             </div>
                         </div>
 
                         <div className="space-y-7">
-                            {/* Priority Selector */}
-                            <div className="space-y-3">
-                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] block px-1">Report Priority</label>
-                                <div className="grid grid-cols-2 gap-2">
-                                    {PRIORITIES.map(p => (
-                                        <button
-                                            key={p}
-                                            onClick={() => setSelectedPriority(p)}
-                                            className={cn(
-                                                "py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border shadow-sm",
-                                                selectedPriority === p
-                                                    ? getPriorityColor(p)
-                                                    : "bg-white text-slate-400 border-slate-100 hover:bg-slate-50 hover:border-slate-200"
-                                            )}
-                                        >
-                                            {p}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Status Selector */}
-                            <div className="space-y-3">
-                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] block px-1">Lifecycle Status</label>
-                                <div className="grid grid-cols-2 gap-2">
-                                    {STATUSES.map(s => (
-                                        <button
-                                            key={s}
-                                            onClick={() => setSelectedStatus(s)}
-                                            className={cn(
-                                                "py-3 rounded-2xl text-[9px] font-black uppercase tracking-widest transition-all border",
-                                                selectedStatus === s
-                                                    ? "bg-slate-950 text-white border-slate-950 shadow-xl shadow-slate-900/10 scale-[1.02]"
-                                                    : "bg-slate-50 text-slate-400 border-slate-100 hover:bg-white hover:border-slate-200"
-                                            )}
-                                        >
-                                            {s}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Maintenance Notes */}
-                            <div className="space-y-3">
-                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] block px-1">Field Notes</label>
-                                <textarea
-                                    value={maintenanceNotes}
-                                    onChange={(e) => setMaintenanceNotes(e.target.value)}
-                                    rows={5}
-                                    placeholder="Add observations, repair notes, or scheduling details..."
-                                    className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-bold text-slate-700 outline-none transition-all focus:border-emerald-400 focus:bg-white focus:ring-4 focus:ring-emerald-500/10 resize-none"
-                                />
-                            </div>
-
-                            {lifecycleActions.length > 0 && (
+                            {lifecycleActions.length > 0 ? (
                                 <div className="space-y-3">
-                                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] block px-1">Lifecycle Actions</label>
+                                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] block px-1">Required Actions</label>
                                     <div className="space-y-2">
                                         {lifecycleActions.map(action => {
                                             const Icon = action.icon;
@@ -467,17 +405,57 @@ const StaffReportDetail = () => {
                                         })}
                                     </div>
                                 </div>
+                            ) : (
+                                <div className="p-6 bg-slate-50 border border-slate-100 rounded-2xl text-center">
+                                    <CheckCircle2 size={24} className="mx-auto mb-2 text-emerald-500" />
+                                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Workflow Finalized</p>
+                                </div>
                             )}
+
+                            {/* Priority Selector (Only for active reports) */}
+                            <div className={cn("space-y-3", !isMetadataEditable && "opacity-50 pointer-events-none")}>
+                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] block px-1">Update Priority</label>
+                                <div className="grid grid-cols-2 gap-2">
+                                    {PRIORITIES.map(p => (
+                                        <button
+                                            key={p}
+                                            onClick={() => setSelectedPriority(p)}
+                                            className={cn(
+                                                "py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border shadow-sm",
+                                                selectedPriority === p
+                                                    ? getPriorityColor(p)
+                                                    : "bg-white text-slate-400 border-slate-100 hover:bg-slate-50 hover:border-slate-200"
+                                            )}
+                                        >
+                                            {p}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Maintenance Notes */}
+                            <div className="space-y-3">
+                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] block px-1">Action Notes</label>
+                                <textarea
+                                    value={maintenanceNotes}
+                                    onChange={(e) => setMaintenanceNotes(e.target.value)}
+                                    rows={5}
+                                    placeholder="Add observations or notes..."
+                                    className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-bold text-slate-700 outline-none transition-all focus:border-emerald-400 focus:bg-white focus:ring-4 focus:ring-emerald-500/10 resize-none"
+                                />
+                            </div>
                         </div>
 
-                        <button
-                            onClick={handleSave}
-                            disabled={saving}
-                            className="mt-8 flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-900 py-4 text-xs font-black uppercase tracking-widest text-white shadow-xl shadow-slate-900/20 transition-all hover:bg-black active:scale-[0.98] disabled:opacity-60"
-                        >
-                            {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-                            {saving ? 'Saving...' : 'Update Record'}
-                        </button>
+                        {isMetadataEditable && (
+                            <button
+                                onClick={handleUpdateMetadata}
+                                disabled={saving}
+                                className="mt-8 flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-900 py-4 text-xs font-black uppercase tracking-widest text-white shadow-xl shadow-slate-900/20 transition-all hover:bg-black active:scale-[0.98] disabled:opacity-60"
+                            >
+                                {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                                {saving ? 'Saving...' : 'Update Notes & Priority'}
+                            </button>
+                        )}
                     </section>
 
                     {/* Report Metadata Card */}
