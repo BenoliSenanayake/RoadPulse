@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { 
     FileClock, 
     Search, 
@@ -20,6 +20,7 @@ import { PROVINCIAL_COUNCILS, getProvinceShortName } from '../lib/provinceResolv
 import { cn } from '../lib/utils';
 import { format, formatDistanceToNow } from 'date-fns';
 import type { AuditLog, AuditLogAction, UserRole, ProvincialCouncil } from '../types';
+import { Pagination } from '../components/Pagination';
 
 const AuditLogs = () => {
     const [logs, setLogs] = useState<AuditLog[]>([]);
@@ -28,12 +29,25 @@ const AuditLogs = () => {
     const [actionFilter, setActionFilter] = useState<AuditLogAction | 'ALL'>('ALL');
     const [roleFilter, setRoleFilter] = useState<UserRole | 'SYSTEM' | 'ALL'>('ALL');
     const [provinceFilter, setProvinceFilter] = useState<ProvincialCouncil | 'ALL'>('ALL');
+    
+    // Pagination
+    const [page, setPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+    const [totalItems, setTotalItems] = useState(0);
+    const limit = 10;
 
     const loadLogs = async () => {
         setLoading(true);
         try {
-            const data = await auditLogsApi.list();
-            setLogs(data);
+            const response = await auditLogsApi.list({
+                page,
+                limit,
+                action: actionFilter === 'ALL' ? undefined : actionFilter,
+                search: searchTerm
+            });
+            setLogs(response.data);
+            setTotalPages(response.total_pages);
+            setTotalItems(response.total);
         } catch (error) {
             console.error("Failed to load audit logs", error);
         } finally {
@@ -43,19 +57,12 @@ const AuditLogs = () => {
 
     useEffect(() => {
         loadLogs();
-    }, []);
+    }, [page, actionFilter, searchTerm]);
 
-    const filteredLogs = useMemo(() => {
-        return logs.filter(log => {
-            const matchesSearch = log.entityId.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                                 (log.details || '').toLowerCase().includes(searchTerm.toLowerCase());
-            const matchesAction = actionFilter === 'ALL' || log.action === actionFilter;
-            const matchesRole = roleFilter === 'ALL' || log.actor === roleFilter;
-            const matchesProvince = provinceFilter === 'ALL' || log.province === provinceFilter;
-            
-            return matchesSearch && matchesAction && matchesRole && matchesProvince;
-        }).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-    }, [logs, searchTerm, actionFilter, roleFilter, provinceFilter]);
+    // Reset page on filter change
+    useEffect(() => {
+        setPage(1);
+    }, [actionFilter, searchTerm]);
 
     const getActionIcon = (action: AuditLogAction) => {
         switch (action) {
@@ -82,7 +89,7 @@ const AuditLogs = () => {
                     <div className="bg-slate-900 px-6 py-3 rounded-2xl flex items-center gap-4 shadow-xl shadow-slate-900/10">
                         <div className="flex flex-col">
                             <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest leading-none">Global Events</p>
-                            <p className="text-xl font-black text-white tracking-tight">{logs.length}</p>
+                            <p className="text-xl font-black text-white tracking-tight">{totalItems}</p>
                         </div>
                         <div className="w-px h-8 bg-white/10" />
                         <Terminal className="text-blue-400" size={20} />
@@ -97,21 +104,21 @@ const AuditLogs = () => {
             <div className="bg-white p-8 rounded-[2.5rem] border border-slate-50 shadow-sm">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
                     <div className="relative group lg:col-span-1">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" size={14} />
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
                         <input 
                             type="text" 
                             placeholder="Search details or ID..." 
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-[11px] font-black uppercase tracking-widest text-slate-900 outline-none transition-all focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/5"
+                            className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-[11px] font-black uppercase tracking-widest text-slate-900 outline-none transition-all focus:border-blue-500 focus:bg-white"
                         />
                     </div>
                     <div className="relative group">
-                        <Filter className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" size={14} />
+                        <Filter className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
                         <select 
                             value={actionFilter}
                             onChange={(e) => setActionFilter(e.target.value as any)}
-                            className="w-full pl-11 pr-10 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-700 outline-none focus:border-blue-500 focus:bg-white transition-all appearance-none cursor-pointer"
+                            className="w-full pl-11 pr-10 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-700 outline-none appearance-none cursor-pointer"
                         >
                             <option value="ALL">All Protocols</option>
                             <option value="SUBMITTED">Submitted</option>
@@ -123,32 +130,29 @@ const AuditLogs = () => {
                         </select>
                         <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none" size={14} />
                     </div>
+                    {/* Role and Province filters are currently frontend-only if needed, or we add to backend. 
+                        For now, I'll hide them or keep them as stubs to match UI style but backend only supports action and search. */}
                     <div className="relative group">
-                        <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" size={14} />
+                        <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
                         <select 
                             value={roleFilter}
                             onChange={(e) => setRoleFilter(e.target.value as any)}
-                            className="w-full pl-11 pr-10 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-700 outline-none focus:border-blue-500 focus:bg-white transition-all appearance-none cursor-pointer"
+                            className="w-full pl-11 pr-10 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-700 outline-none appearance-none cursor-pointer disabled:opacity-50"
+                            disabled
                         >
                             <option value="ALL">All Actors</option>
-                            <option value="ADMIN">Administrators</option>
-                            <option value="MAINTENANCE_OFFICER">Staff Officers</option>
-                            <option value="CITIZEN">Citizens</option>
-                            <option value="SYSTEM">AI Engine</option>
                         </select>
                         <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none" size={14} />
                     </div>
                     <div className="relative group">
-                        <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" size={14} />
+                        <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
                         <select 
                             value={provinceFilter}
                             onChange={(e) => setProvinceFilter(e.target.value as any)}
-                            className="w-full pl-11 pr-10 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-700 outline-none focus:border-blue-500 focus:bg-white transition-all appearance-none cursor-pointer"
+                            className="w-full pl-11 pr-10 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-700 outline-none appearance-none cursor-pointer disabled:opacity-50"
+                            disabled
                         >
                             <option value="ALL">All Provinces</option>
-                            {PROVINCIAL_COUNCILS.map(pc => (
-                                <option key={pc} value={pc}>{pc}</option>
-                            ))}
                         </select>
                         <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none" size={14} />
                     </div>
@@ -156,8 +160,7 @@ const AuditLogs = () => {
                         onClick={() => {
                             setSearchTerm('');
                             setActionFilter('ALL');
-                            setRoleFilter('ALL');
-                            setProvinceFilter('ALL');
+                            setPage(1);
                         }}
                         className="btn-premium bg-slate-100 text-slate-600 hover:bg-slate-200"
                     >
@@ -181,8 +184,8 @@ const AuditLogs = () => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-50">
-                            {!loading && filteredLogs.length > 0 ? (
-                                filteredLogs.map((log) => (
+                            {!loading && logs.length > 0 ? (
+                                logs.map((log) => (
                                     <tr key={log.id} className="hover:bg-slate-50/50 transition-all duration-300 group">
                                         <td className="whitespace-nowrap">
                                             <div className="flex flex-col">
@@ -236,7 +239,7 @@ const AuditLogs = () => {
                                         </td>
                                         <td className="text-right px-8">
                                             <span className="text-[10px] font-black text-blue-600 uppercase bg-blue-50 px-2.5 py-1 rounded-xl border border-blue-100 shadow-sm">
-                                                {log.entityId.split('-')[1] || log.entityId}
+                                                {log.entityId.split('-')[0] === 'rep' ? log.entityId.split('-')[1] : log.entityId.split('-')[0]}
                                             </span>
                                         </td>
                                     </tr>
@@ -266,8 +269,14 @@ const AuditLogs = () => {
                     </table>
                 </div>
 
-                <div className="p-6 bg-slate-50/50 border-t border-slate-50 flex items-center justify-center">
-                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em]">Protocol Log v2.4 Integrity Verified</p>
+                <div className="p-6 bg-slate-50/50 border-t border-slate-50">
+                    <Pagination 
+                        currentPage={page}
+                        totalPages={totalPages}
+                        onPageChange={setPage}
+                        totalItems={totalItems}
+                        limit={limit}
+                    />
                 </div>
             </div>
         </div>

@@ -3,7 +3,8 @@ import type {
     PotholeEvent, 
     PotholeStatus, 
     RepairScheduleInput,
-    AuditLog
+    AuditLog,
+    PaginatedResponse
 } from '../types';
 import { canonicalizeStatus } from './status';
 
@@ -208,21 +209,41 @@ async function withFallback<T>(apiCall: () => Promise<T>, mockFallback: () => Pr
 // ==========================================
 
 export const reportsApi = {
-    list: async (filters?: { status?: string; citizenId?: string; provincialCouncil?: string }): Promise<CitizenReport[]> => {
+    list: async (filters?: { 
+        page?: number; 
+        limit?: number; 
+        status?: string; 
+        category?: string;
+        citizenId?: string; 
+        provincialCouncil?: string;
+        district?: string;
+        priority?: string;
+        search?: string;
+    }): Promise<PaginatedResponse<CitizenReport>> => {
         return withFallback(
             async () => {
-                const params: any = {};
+                const params: any = {
+                    page: filters?.page || 1,
+                    limit: filters?.limit || 10,
+                };
                 if (filters?.status) params.status = filters.status;
+                if (filters?.category) params.category = filters.category;
                 if (filters?.citizenId) params.citizenId = filters.citizenId;
                 if (filters?.provincialCouncil) params.provincialCouncil = filters.provincialCouncil;
+                if (filters?.district) params.district = filters.district;
+                if (filters?.priority) params.priority = filters.priority;
+                if (filters?.search) params.search = filters.search;
                 
                 const query = new URLSearchParams(params).toString();
                 console.log(`[API] GET /reports?${query} called`);
                 const res = await apiClient.get(`/reports?${query}`);
-                console.log(`[API] GET /reports returned ${res.length} items`);
-                return Array.isArray(res) ? res.map(mapBackendReportToFrontend) : [];
+                
+                return {
+                    ...res,
+                    data: Array.isArray(res.data) ? res.data.map(mapBackendReportToFrontend) : []
+                };
             },
-            async () => [] // Returns empty if no mock allowed
+            async () => ({ data: [], total: 0, page: 1, limit: 10, total_pages: 0 })
         );
     },
     getById: async (id: string): Promise<CitizenReport | null> => {
@@ -305,17 +326,28 @@ export const reportsApi = {
 };
 
 export const potholesApi = {
-    list: async (filters?: { status?: string; provincialCouncil?: string }): Promise<PotholeEvent[]> => {
+    list: async (filters?: { 
+        page?: number; 
+        limit?: number; 
+        status?: string; 
+        provincialCouncil?: string 
+    }): Promise<PaginatedResponse<PotholeEvent>> => {
         return withFallback(
             async () => {
-                const params: any = {};
+                const params: any = {
+                    page: filters?.page || 1,
+                    limit: filters?.limit || 1000, // Large limit for map if needed, or implement true tiling
+                };
                 if (filters?.status) params.status = filters.status;
                 if (filters?.provincialCouncil) params.provincialCouncil = filters.provincialCouncil;
                 const query = new URLSearchParams(params).toString();
                 const res = await apiClient.get(`/reports?${query}`);
-                return Array.isArray(res) ? res.map(mapReportToPotholeEvent) : [];
+                return {
+                    ...res,
+                    data: Array.isArray(res.data) ? res.data.map(mapReportToPotholeEvent) : []
+                };
             },
-            async () => []
+            async () => ({ data: [], total: 0, page: 1, limit: 10, total_pages: 0 })
         );
     },
     getById: async (id: string): Promise<PotholeEvent | null> => {
@@ -387,11 +419,11 @@ export const authApi = {
             return { success: false, error: e.message };
         }
     },
-    listUsers: async (): Promise<any[]> => {
+    listUsers: async (page: number = 1, limit: number = 10): Promise<PaginatedResponse<any>> => {
         try {
-            return await apiClient.get('/auth/users');
+            return await apiClient.get(`/auth/users?page=${page}&limit=${limit}`);
         } catch {
-            return [];
+            return { data: [], total: 0, page: 1, limit: 10, total_pages: 0 };
         }
     },
     updateUserStatus: async (userId: string, status: 'ACTIVE' | 'DISABLED'): Promise<void> => {
@@ -413,13 +445,23 @@ export const normalizeAuditLog = (data: any): AuditLog => ({
 });
 
 export const auditLogsApi = {
-    list: async (): Promise<AuditLog[]> => {
+    list: async (filters?: { page?: number; limit?: number; action?: string; search?: string }): Promise<PaginatedResponse<AuditLog>> => {
         return withFallback(
             async () => {
-                const res = await apiClient.get('/reports/history');
-                return Array.isArray(res) ? res.map(normalizeAuditLog) : [];
+                const params = new URLSearchParams({
+                    page: String(filters?.page || 1),
+                    limit: String(filters?.limit || 10),
+                });
+                if (filters?.action) params.append('action', filters.action);
+                if (filters?.search) params.append('search', filters.search);
+                
+                const res = await apiClient.get(`/reports/history?${params.toString()}`);
+                return {
+                    ...res,
+                    data: Array.isArray(res.data) ? res.data.map(normalizeAuditLog) : []
+                };
             },
-            async () => []
+            async () => ({ data: [], total: 0, page: 1, limit: 10, total_pages: 0 })
         );
     }
 };

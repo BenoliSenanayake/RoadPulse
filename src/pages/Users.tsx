@@ -19,6 +19,7 @@ import { PROVINCIAL_COUNCILS } from '../lib/provinceResolver';
 import { cn } from '../lib/utils';
 import { format } from 'date-fns';
 import type { User, UserRole, ProvincialCouncil } from '../types';
+import { Pagination } from '../components/Pagination';
 
 const Users = () => {
     const [users, setUsers] = useState<User[]>([]);
@@ -28,11 +29,25 @@ const Users = () => {
     const [provinceFilter, setProvinceFilter] = useState<ProvincialCouncil | 'ALL'>('ALL');
     const [actionLoading, setActionLoading] = useState<string | null>(null);
 
+    // Pagination
+    const [page, setPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+    const [totalItems, setTotalItems] = useState(0);
+    const limit = 10;
+
     const loadUsers = async () => {
         setLoading(true);
         try {
-            const data = await authApi.listUsers();
-            setUsers(data);
+            const response = await authApi.listUsers({
+                page,
+                limit,
+                search: searchTerm,
+                role: roleFilter === 'ALL' ? undefined : roleFilter,
+                provincialCouncil: provinceFilter === 'ALL' ? undefined : provinceFilter
+            });
+            setUsers(response.data);
+            setTotalPages(response.total_pages);
+            setTotalItems(response.total);
         } catch (error) {
             console.error("Failed to load users", error);
         } finally {
@@ -42,23 +57,12 @@ const Users = () => {
 
     useEffect(() => {
         loadUsers();
-    }, []);
+    }, [page, roleFilter, provinceFilter, searchTerm]);
 
-    const filteredUsers = useMemo(() => {
-        return users.filter(user => {
-            const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                                 user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                                 user.id.toLowerCase().includes(searchTerm.toLowerCase());
-            const matchesRole = roleFilter === 'ALL' || user.role === roleFilter;
-            const matchesProvince = provinceFilter === 'ALL' || user.provincialCouncil === provinceFilter;
-            
-            return matchesSearch && matchesRole && matchesProvince;
-        }).sort((a, b) => {
-            const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-            const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-            return dateB - dateA;
-        });
-    }, [users, searchTerm, roleFilter, provinceFilter]);
+    // Reset page on filter change
+    useEffect(() => {
+        setPage(1);
+    }, [roleFilter, provinceFilter, searchTerm]);
 
     const handleToggleStatus = async (userId: string, currentStatus: 'ACTIVE' | 'DISABLED') => {
         const nextStatus = currentStatus === 'ACTIVE' ? 'DISABLED' : 'ACTIVE';
@@ -73,14 +77,16 @@ const Users = () => {
         }
     };
 
+    // Note: Stats would ideally come from a summary endpoint, but for now we'll use totalItems from the first page fetch.
+    // If we need detailed stats, we'd need another API call.
     const stats = useMemo(() => {
         return {
-            total: users.length,
-            active: users.filter(u => u.status === 'ACTIVE').length,
+            total: totalItems,
+            active: users.filter(u => u.status === 'ACTIVE').length, // This is only for the current page
             maintenance: users.filter(u => u.role === 'MAINTENANCE_OFFICER').length,
             admins: users.filter(u => u.role === 'ADMIN').length,
         };
-    }, [users]);
+    }, [totalItems, users]);
 
     return (
         <div className="space-y-10">
@@ -94,10 +100,6 @@ const Users = () => {
                     <button onClick={loadUsers} className="btn-premium bg-white text-slate-600 border border-slate-100 shadow-sm hover:bg-slate-50">
                         <RefreshCw size={14} className={cn("text-blue-500", loading && "animate-spin")} />
                         Refresh Personnel
-                    </button>
-                    <button className="btn-premium bg-slate-900 text-white shadow-xl shadow-slate-900/10 hover:bg-slate-800">
-                        <UserCog size={14} className="text-blue-400" />
-                        Access Controls
                     </button>
                 </div>
             </div>
@@ -116,7 +118,7 @@ const Users = () => {
                 <div className="bg-white p-7 rounded-[2.5rem] border border-slate-50 shadow-sm flex items-start justify-between group hover:-translate-y-1 transition-all duration-500">
                     <div>
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Operational</p>
-                        <h3 className="text-4xl font-black text-emerald-600 tracking-tighter">{stats.active}</h3>
+                        <h3 className="text-4xl font-black text-emerald-600 tracking-tighter">LIVE</h3>
                     </div>
                     <div className="p-4 bg-emerald-500 text-white rounded-2xl shadow-xl">
                         <UserCheck size={20} />
@@ -124,8 +126,8 @@ const Users = () => {
                 </div>
                 <div className="bg-white p-7 rounded-[2.5rem] border border-slate-50 shadow-sm flex items-start justify-between group hover:-translate-y-1 transition-all duration-500">
                     <div>
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Field Staff</p>
-                        <h3 className="text-4xl font-black text-blue-600 tracking-tighter">{stats.maintenance}</h3>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Active Directory</p>
+                        <h3 className="text-4xl font-black text-blue-600 tracking-tighter">SYS</h3>
                     </div>
                     <div className="p-4 bg-blue-600 text-white rounded-2xl shadow-xl">
                         <HardHat size={20} />
@@ -134,7 +136,7 @@ const Users = () => {
                 <div className="bg-white p-7 rounded-[2.5rem] border border-slate-50 shadow-sm flex items-start justify-between group hover:-translate-y-1 transition-all duration-500">
                     <div>
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Governance</p>
-                        <h3 className="text-4xl font-black text-indigo-600 tracking-tighter">{stats.admins}</h3>
+                        <h3 className="text-4xl font-black text-indigo-600 tracking-tighter">OFF</h3>
                     </div>
                     <div className="p-4 bg-indigo-600 text-white rounded-2xl shadow-xl">
                         <ShieldCheck size={20} />
@@ -146,21 +148,21 @@ const Users = () => {
             <div className="bg-white p-8 rounded-[2.5rem] border border-slate-50 shadow-sm">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     <div className="relative group lg:col-span-1">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" size={14} />
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
                         <input 
                             type="text" 
-                            placeholder="Search Name or ID..." 
+                            placeholder="Search Name or Email..." 
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-[11px] font-black uppercase tracking-widest text-slate-900 outline-none transition-all focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/5"
+                            className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-[11px] font-black uppercase tracking-widest text-slate-900 outline-none transition-all focus:border-blue-500 focus:bg-white"
                         />
                     </div>
                     <div className="relative group">
-                        <UserCog className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" size={14} />
+                        <UserCog className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
                         <select 
                             value={roleFilter}
                             onChange={(e) => setRoleFilter(e.target.value as any)}
-                            className="w-full pl-11 pr-10 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-700 outline-none focus:border-blue-500 focus:bg-white transition-all appearance-none cursor-pointer"
+                            className="w-full pl-11 pr-10 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-700 outline-none appearance-none cursor-pointer"
                         >
                             <option value="ALL">All Clearances</option>
                             <option value="ADMIN">Administrator</option>
@@ -170,11 +172,11 @@ const Users = () => {
                         <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none" size={14} />
                     </div>
                     <div className="relative group">
-                        <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" size={14} />
+                        <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
                         <select 
                             value={provinceFilter}
                             onChange={(e) => setProvinceFilter(e.target.value as any)}
-                            className="w-full pl-11 pr-10 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-700 outline-none focus:border-blue-500 focus:bg-white transition-all appearance-none cursor-pointer"
+                            className="w-full pl-11 pr-10 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-700 outline-none appearance-none cursor-pointer"
                         >
                             <option value="ALL">All Jurisdictions</option>
                             {PROVINCIAL_COUNCILS.map(pc => (
@@ -188,6 +190,7 @@ const Users = () => {
                             setSearchTerm('');
                             setRoleFilter('ALL');
                             setProvinceFilter('ALL');
+                            setPage(1);
                         }}
                         className="btn-premium bg-slate-100 text-slate-600 hover:bg-slate-200"
                     >
@@ -211,8 +214,8 @@ const Users = () => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-50">
-                            {!loading && filteredUsers.length > 0 ? (
-                                filteredUsers.map((user) => (
+                            {!loading && users.length > 0 ? (
+                                users.map((user) => (
                                     <tr key={user.id} className="hover:bg-slate-50/50 transition-all duration-300 group">
                                         <td className="whitespace-nowrap">
                                             <div className="flex items-center gap-4">
@@ -313,6 +316,16 @@ const Users = () => {
                         </tbody>
                     </table>
                 </div>
+
+                <div className="p-6 bg-slate-50/50 border-t border-slate-50">
+                    <Pagination 
+                        currentPage={page}
+                        totalPages={totalPages}
+                        onPageChange={setPage}
+                        totalItems={totalItems}
+                        limit={limit}
+                    />
+                </div>
             </div>
 
             {/* Governance Summary */}
@@ -326,7 +339,7 @@ const Users = () => {
                     </div>
                     <div>
                         <h4 className="text-2xl font-black uppercase tracking-tight">Governance Oversight</h4>
-                        <p className="text-sm font-bold text-slate-400 uppercase tracking-widest mt-1">Full jurisdiction over {stats.maintenance} authorized maintenance officers</p>
+                        <p className="text-sm font-bold text-slate-400 uppercase tracking-widest mt-1">Full jurisdiction over authorized maintenance officers</p>
                     </div>
                 </div>
                 <div className="relative z-10 flex items-center gap-4">

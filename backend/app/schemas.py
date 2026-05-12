@@ -1,6 +1,8 @@
 from pydantic import BaseModel
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, TypeVar, Generic
 from datetime import datetime
+
+T = TypeVar("T")
 
 class UserBase(BaseModel):
     name: str
@@ -114,3 +116,20 @@ class StatusUpdateRead(BaseModel):
     
     class Config:
         from_attributes = True
+
+# Pagination Schemas
+class PaginatedResponse(BaseModel, Generic[T]):
+    data: List[T]
+    total: int
+    page: int
+    limit: int
+    total_pages: int
+
+class PaginatedReportResponse(PaginatedResponse[CitizenReportRead]):
+    pass
+
+class PaginatedUserResponse(PaginatedResponse[UserRead]):
+    pass
+
+class PaginatedAuditLogResponse(PaginatedResponse[AuditLogRead]):
+    pass

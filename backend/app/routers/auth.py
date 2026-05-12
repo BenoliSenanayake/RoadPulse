@@ -104,6 +104,28 @@ def check_email(email: str, db: Session = Depends(get_db)):
     user = db.query(models.User).filter(models.User.email == email).first()
     return {"exists": user is not None}
 
-@router.get("/users", response_model=List[schemas.UserRead])
-def get_users(db: Session = Depends(get_db), current_user: models.User = Depends(require_admin)):
-    return db.query(models.User).all()
+@router.get("/users", response_model=schemas.PaginatedUserResponse)
+def get_users(
+    page: int = 1,
+    limit: int = 10,
+    db: Session = Depends(get_db), 
+    current_user: models.User = Depends(require_admin)
+):
+    logger.info(f"GET /auth/users (paginated) called by {current_user.email}, Page: {page}")
+    
+    query = db.query(models.User)
+    total = query.count()
+    total_pages = (total + limit - 1) // limit if limit > 0 else 0
+    
+    results = query.order_by(models.User.created_at.desc()) \
+                  .offset((page - 1) * limit) \
+                  .limit(limit) \
+                  .all()
+                  
+    return {
+        "data": results,
+        "total": total,
+        "page": page,
+        "limit": limit,
+        "total_pages": total_pages
+    }

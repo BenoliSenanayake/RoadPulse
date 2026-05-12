@@ -178,71 +178,146 @@ async def create_report(
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Failed to save report: {str(e)}")
 
-@router.get("", response_model=List[schemas.CitizenReportRead])
+@router.get("", response_model=schemas.PaginatedReportResponse)
 def get_reports(
+    page: int = 1,
+    limit: int = 10,
     provincialCouncil: Optional[str] = None, 
     citizenId: Optional[str] = None,
     status: Optional[str] = None,
+    category: Optional[str] = None,
+    district: Optional[str] = None,
+    priority: Optional[str] = None,
+    search: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    logger.info(f"GET /reports called by User: {current_user.email}, Role: {current_user.role}, UserProvince: {current_user.provincial_council}")
+    logger.info(f"GET /reports (paginated) called. Category: {category}, Status: {status}, Page: {page}")
     
     query = db.query(models.CitizenReport)
     
-    # Apply role-based filtering
+    # ── Role-Based Jurisdictional Filtering ──
     if current_user.role == "ADMIN":
-        # Admin can see all, but can also apply filters
-        if provincialCouncil and provincialCouncil not in ['null', 'undefined']:
+        if provincialCouncil and provincialCouncil not in ['null', 'undefined', 'All']:
             query = query.filter(models.CitizenReport.provincial_council == provincialCouncil)
-        if citizenId and citizenId not in ['null', 'undefined']:
-            query = query.filter(models.CitizenReport.citizen_id == citizenId)
-    
     elif current_user.role == "MAINTENANCE_OFFICER":
-        # Staff can only see their province
-        staff_province = current_user.provincial_council
-        if not staff_province:
-            logger.warning(f"Staff user {current_user.email} has no assigned province!")
-            return [] # Or raise error
-        
-        query = query.filter(models.CitizenReport.provincial_council == staff_province)
-        logger.info(f"Applying provincial isolation for staff: {staff_province}")
-        
+        if not current_user.provincial_council:
+            return {"data": [], "total": 0, "page": page, "limit": limit, "total_pages": 0}
+        query = query.filter(models.CitizenReport.provincial_council == current_user.provincial_council)
     elif current_user.role == "CITIZEN":
-        # Citizen can only see their own reports
         query = query.filter(models.CitizenReport.citizen_id == current_user.id)
-        logger.info(f"Applying citizen isolation for: {current_user.id}")
 
-    # Common status filter
-    if status and status not in ['null', 'undefined']:
-        query = query.filter(models.CitizenReport.status == normalize_report_status(status))
+    # ── Category Filtering ──
+    if category and category != 'all':
+        if category == 'verified':
+            query = query.filter(models.CitizenReport.status == 'Verified')
+        elif category == 'manual-review':
+            # Matches frontend isManualReviewReport
+            query = query.filter(
+                (models.CitizenReport.status == 'New') | 
+                (models.CitizenReport.ai_classification == 'NEEDS_MANUAL_REVIEW')
+            )
+        elif category == 'scheduled':
+            query = query.filter(models.CitizenReport.status == 'Scheduled')
+        elif category == 'in-progress':
+            query = query.filter(models.CitizenReport.status == 'In Progress')
+        elif category == 'completed':
+            query = query.filter(models.CitizenReport.status == 'Completed')
+        elif category == 'rejected':
+            query = query.filter(models.CitizenReport.status == 'Rejected')
+        elif category == 'overdue':
+            # Hardcoded 14 days for now to match staffReportFilters.ts
+            from datetime import timedelta
+            cutoff = datetime.utcnow() - timedelta(days=14)
+            query = query.filter(
+                models.CitizenReport.status.in_(['New', 'Verified', 'Scheduled']),
+                models.CitizenReport.submitted_at < cutoff
+            )
+
+    # ── Field Filtering ──
+    if status and status not in ['null', 'undefined', 'All']:
+        try:
+            normalized = normalize_report_status(status)
+            query = query.filter(models.CitizenReport.status == normalized)
+        except HTTPException: pass
+            
+    if district and district not in ['null', 'undefined', 'All']:
+        query = query.filter(models.CitizenReport.district == district)
         
-    results = query.order_by(models.CitizenReport.submitted_at.desc()).all()
-    logger.info(f"GET /reports returning {len(results)} records for {current_user.role} {current_user.email}")
-    return results
+    if priority and priority not in ['null', 'undefined', 'All']:
+        query = query.filter(models.CitizenReport.priority == priority)
+        
+    if search:
+        search_filter = f"%{search}%"
+        query = query.filter(
+            (models.CitizenReport.id.ilike(search_filter)) |
+            (models.CitizenReport.district.ilike(search_filter)) |
+            (models.CitizenReport.description.ilike(search_filter))
+        )
+        
+    # ── Execution ──
+    total = query.count()
+    total_pages = (total + limit - 1) // limit if limit > 0 else 0
+    
+    results = query.order_by(models.CitizenReport.submitted_at.desc()) \
+                  .offset((page - 1) * limit) \
+                  .limit(limit) \
+                  .all()
+                  
+    return {
+        "data": results,
+        "total": total,
+        "page": page,
+        "limit": limit,
+        "total_pages": total_pages
+    }
 
-@router.get("/history", response_model=List[schemas.AuditLogRead])
-def get_reports_history(db: Session = Depends(get_db), current_user: models.User = Depends(require_staff)):
-    logger.info(f"GET /history called by {current_user.email} ({current_user.role})")
+@router.get("/history", response_model=schemas.PaginatedAuditLogResponse)
+def get_reports_history(
+    page: int = 1,
+    limit: int = 10,
+    action: Optional[str] = None,
+    search: Optional[str] = None,
+    db: Session = Depends(get_db), 
+    current_user: models.User = Depends(require_staff)
+):
+    logger.info(f"GET /history (paginated) called by {current_user.email}, Page: {page}")
     
-    if current_user.role == "ADMIN":
-        return crud.list_audit_logs(db)
+    query = db.query(models.AuditLog)
     
-    # Filter logs by reports that belong to the officer's province
-    # This requires a join or subquery in the CRUD or here
-    # For now, I'll return all if admin, or filter in logic if needed
-    # But usually history is viewed per report in detail view anyway.
-    # If this is the "Global" audit log, only Admins should see it.
-    
+    # Jurisdictional Filtering
     if current_user.role == "MAINTENANCE_OFFICER":
-        # Maintenance officers should probably only see logs related to their province
-        # But crud.list_audit_logs doesn't support filtering yet.
-        # I'll implement a filtered version or keep it simple for now.
-        return db.query(models.AuditLog).join(models.CitizenReport).filter(
+        query = query.join(models.CitizenReport).filter(
             models.CitizenReport.provincial_council == current_user.provincial_council
-        ).all()
+        )
         
-    return crud.list_audit_logs(db)
+    # Content Filtering
+    if action and action != 'ALL':
+        query = query.filter(models.AuditLog.action == action)
+        
+    if search:
+        search_filter = f"%{search}%"
+        query = query.filter(
+            (models.AuditLog.notes.ilike(search_filter)) |
+            (models.AuditLog.report_id.ilike(search_filter)) |
+            (models.AuditLog.user_id.ilike(search_filter))
+        )
+        
+    total = query.count()
+    total_pages = (total + limit - 1) // limit if limit > 0 else 0
+    
+    results = query.order_by(models.AuditLog.created_at.desc()) \
+                  .offset((page - 1) * limit) \
+                  .limit(limit) \
+                  .all()
+                  
+    return {
+        "data": results,
+        "total": total,
+        "page": page,
+        "limit": limit,
+        "total_pages": total_pages
+    }
 
 @router.get("/{report_id}", response_model=schemas.CitizenReportRead)
 def get_report(
