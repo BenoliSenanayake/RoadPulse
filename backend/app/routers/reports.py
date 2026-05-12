@@ -244,10 +244,31 @@ def get_reports_history(db: Session = Depends(get_db), current_user: models.User
     return crud.list_audit_logs(db)
 
 @router.get("/{report_id}", response_model=schemas.CitizenReportRead)
-def get_report(report_id: str, db: Session = Depends(get_db)):
+def get_report(
+    report_id: str, 
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
     report = crud.get_report_by_id(db, report_id)
     if not report:
         raise HTTPException(status_code=404, detail="Report not found")
+        
+    # Authorization check
+    if current_user.role == "ADMIN":
+        return report
+        
+    if current_user.role == "MAINTENANCE_OFFICER":
+        if report.provincial_council != current_user.provincial_council:
+            logger.warning(f"Unauthorized Access: Officer {current_user.email} tried to view report {report_id} from {report.provincial_council}")
+            raise HTTPException(status_code=403, detail="Access Restricted: This report is outside your assigned province.")
+        return report
+        
+    if current_user.role == "CITIZEN":
+        if report.citizen_id != current_user.id:
+            logger.warning(f"Unauthorized Access: Citizen {current_user.email} tried to view report {report_id} owned by {report.citizen_id}")
+            raise HTTPException(status_code=403, detail="Access Restricted: You can only view your own reports.")
+        return report
+        
     return report
 
 @router.patch("/{report_id}/status", response_model=schemas.CitizenReportRead)

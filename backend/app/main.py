@@ -4,6 +4,8 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 from .database import engine, Base, get_db
 from .routers import auth, reports, ai
+from .security import require_admin
+from .models import User
 import os
 import logging
 
@@ -58,8 +60,9 @@ def debug_db(db: Session = Depends(get_db)):
     except Exception as e:
         return {"database_connected": False, "error": str(e)}
 
+
 @app.get("/debug/reports")
-def debug_reports(db: Session = Depends(get_db)):
+def debug_reports(db: Session = Depends(get_db), current_user: User = Depends(require_admin)):
     from .models import CitizenReport
     count = db.query(CitizenReport).count()
     latest = db.query(CitizenReport).order_by(CitizenReport.submitted_at.desc()).limit(10).all()
