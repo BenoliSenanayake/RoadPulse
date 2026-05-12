@@ -10,10 +10,9 @@ import {
     Database,
     Download,
     Eye,
-    ShieldAlert,
     Ban,
     CheckCircle,
-    CalendarClock
+    ArrowRight
 } from 'lucide-react';
 import Papa from 'papaparse';
 import { cn } from '../lib/utils';

@@ -32,12 +32,12 @@ const ProvinceMonitoring = () => {
     const loadData = async () => {
         setLoading(true);
         try {
-            const [rData, pData] = await Promise.all([
-                reportsApi.list(),
-                potholesApi.list()
+            const [rResponse, pResponse] = await Promise.all([
+                reportsApi.list({ limit: 1000 }),
+                potholesApi.list({ limit: 1000 })
             ]);
-            setReports(rData);
-            setPotholes(pData);
+            setReports(rResponse.data || []);
+            setPotholes(pResponse.data || []);
         } catch (error) {
             console.error("Failed to load province data", error);
         } finally {

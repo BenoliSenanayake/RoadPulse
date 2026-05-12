@@ -65,8 +65,7 @@ const PotholeDetail = () => {
 
             if (item.reportId) {
                 try {
-                    const matched = await reportsApi.list({ status: undefined }); // Fetch all to find specific one
-                    const found = matched.find(r => r.id === item.reportId) || null;
+                    const found = await reportsApi.getById(item.reportId);
                     setReport(found);
                 } catch (e) {
                     console.error("Failed to load report evidence:", e);

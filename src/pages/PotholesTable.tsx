@@ -39,8 +39,12 @@ const PotholesTable = () => {
             const staffProvince = normalizeProvince(province);
             console.log(`[PotholesTable Debug] Current User:`, user?.email, staffProvince);
             
-            // Fetch all and filter on frontend for maximum reliability
-            const data = await potholesApi.list();
+            // Fetch with province filter
+            const response = await potholesApi.list({ 
+                provincialCouncil: province,
+                limit: 1000 // Fetch a larger chunk for the table
+            });
+            const data = response.data || [];
             console.log(`[PotholesTable] Raw telemetry: ${data.length} records.`);
             
             const filtered = data.filter(p => normalizeProvince(p.provincialCouncil) === staffProvince);

@@ -31,7 +31,6 @@ import { cn } from '../lib/utils';
 import type { CitizenReport, RepairPriority } from '../types';
 
 const PRIORITIES: RepairPriority[] = ['Low', 'Medium', 'High', 'Urgent'];
-const STATUSES = ['New', 'Verified', 'Scheduled', 'In Progress', 'Completed', 'Rejected'] as const;
 
 const getLifecycleActions = (status: CitizenReport['status']) => {
     switch (canonicalizeStatus(status)) {

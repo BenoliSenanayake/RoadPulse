@@ -59,8 +59,12 @@ const RepairsPage = () => {
             const staffProvince = normalizeProvince(province);
             console.log(`[Repairs Debug] Current User:`, user?.email, staffProvince);
             
-            // Fetch all and filter on frontend for maximum reliability
-            const data = await potholesApi.list();
+            // Fetch with province filter
+            const response = await potholesApi.list({ 
+                provincialCouncil: province,
+                limit: 1000 
+            });
+            const data = response.data || [];
             console.log(`[Repairs] Raw telemetry: ${data.length} records.`);
             
             const filtered = data.filter(p => normalizeProvince(p.provincialCouncil) === staffProvince);

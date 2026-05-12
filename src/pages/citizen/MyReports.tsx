@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { formatDistanceToNow, format } from 'date-fns';
-import { ArrowRight, Clock, Inbox, MapPin, PlusCircle, AlertTriangle, Loader2 } from 'lucide-react';
+import { formatDistanceToNow } from 'date-fns';
+import { ArrowRight, Clock, Inbox, MapPin, PlusCircle, AlertTriangle } from 'lucide-react';
 import { reportsApi } from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
 import type { CitizenReport } from '../../types';

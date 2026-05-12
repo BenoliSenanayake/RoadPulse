@@ -55,8 +55,12 @@ const ReviewQueue = () => {
             const staffProvince = normalizeProvince(province);
             console.log(`[ReviewQueue Debug] Current User:`, user?.email, staffProvince);
             
-            // Fetch all and filter on frontend for maximum reliability
-            const data = await reportsApi.list();
+            // Fetch from backend with province filter
+            const response = await reportsApi.list({ 
+                provincialCouncil: province,
+                limit: 100 // Fetch a larger chunk for the review queue
+            });
+            const data = response.data || [];
             console.log(`[ReviewQueue] Raw telemetry: ${data.length} reports.`);
             
             const filtered = filterReportsForProvince(data, province);
@@ -98,8 +102,9 @@ const ReviewQueue = () => {
         if (window.confirm(`Are you sure you want to manually ${action} this report?`)) {
             setLoading(true);
             reportsApi.review(id, action, (action === 'reject' || action === 'request_info') ? rejectionReason : undefined)
-                .then(() => reportsApi.list())
-                .then(fresh => {
+                .then(() => reportsApi.list({ provincialCouncil: province, limit: 100 }))
+                .then(response => {
+                    const fresh = response.data || [];
                     const sorted = filterReportsForProvince(fresh, province)
                         .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
                     setReports(sorted);

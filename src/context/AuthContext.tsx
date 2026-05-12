@@ -227,8 +227,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         // Use the ID returned directly from signup; fall back to listUsers() if missing.
         let backendUserId: string | undefined = result.userId;
         if (!backendUserId) {
-            const users = await authApi.listUsers();
-            backendUserId = users.find((u: any) => u.email === data.email)?.id;
+            const response = await authApi.listUsers({ search: data.email });
+            backendUserId = response.data?.find((u: any) => u.email === data.email)?.id;
         }
 
         const newCitizen: CitizenAccount = {

@@ -6,7 +6,7 @@ import {
     Locate, Navigation, ArrowRight, ArrowLeft,
     AlertCircle, X, LogIn, Camera,
     ShieldCheck, Activity, Loader2, Info, CheckCircle, AlertTriangle,
-    Trash2, RefreshCw, FileText, Image as ImageIcon
+    Trash2, RefreshCw, Image as ImageIcon
 } from 'lucide-react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -78,7 +78,6 @@ const ReportWizard = () => {
     const [lon, setLon] = useState(79.8612);
     const [roadName, setRoadName] = useState('');
     const [description, setDescription] = useState('');
-    const [, setSubmittedReportId] = useState('');
 
     const [error, setError] = useState('');
     const [isMapModalOpen, setIsMapModalOpen] = useState(false);
@@ -100,7 +99,6 @@ const ReportWizard = () => {
         setImageFile(file);
         const compressed = await compressImage(file);
         setPreviewUrl(compressed);
-        // Removed auto-advance to allow user to see preview and quality hints
     };
 
     const handleGetLocation = () => {
@@ -131,16 +129,11 @@ const ReportWizard = () => {
             if (imageFile) formData.append('image', imageFile);
 
             const report = await reportsApi.submit(formData);
-            setSubmittedReportId(report.id);
             
-            if (report.id) {
-                setTimeout(() => {
-                    navigate(`/citizen/status/${report.id}`, { replace: true });
-                }, 2000);
-                setStep('SUCCESS');
-            } else {
-                setStep('SUCCESS');
-            }
+            setTimeout(() => {
+                navigate(`/citizen/status/${report.id}`, { replace: true });
+            }, 2000);
+            setStep('SUCCESS');
         } catch (err: any) {
             setError(`Submission failed: ${err.message || 'Please check your connection and try again.'}`);
             setStep('REVIEW');
@@ -220,14 +213,13 @@ const ReportWizard = () => {
 
     return (
         <div className="max-w-xl mx-auto px-6 py-8 lg:py-12 pb-32 overflow-hidden">
-            {/* Zero-Scroll Optimized Guidance Modal */}
+            {/* Guidance Modal */}
             {showGuidance && step === 'PHOTO' && (
                 <div className="fixed inset-0 z-[200] bg-slate-950/90 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 animate-fade-in">
                     <div className="bg-white rounded-[1.5rem] w-full max-w-2xl flex flex-col shadow-2xl relative animate-fade-in-up">
                         <button onClick={() => setShowGuidance(false)} className="absolute top-3 right-3 p-1.5 text-slate-300 hover:text-slate-900 transition-colors z-10">
                             <X size={18} />
                         </button>
-                        
                         <div className="p-5 sm:p-6 space-y-4">
                             <div className="space-y-1 text-center sm:text-left">
                                 <div className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-blue-50 rounded-full">
@@ -239,52 +231,33 @@ const ReportWizard = () => {
                                     Align between visible road edge markings to help our officers estimate pothole size accurately.
                                 </p>
                             </div>
-
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                {/* Correct Example */}
                                 <div className="space-y-2">
                                     <div className="h-32 sm:h-36 rounded-lg overflow-hidden border-2 border-emerald-500 shadow-sm relative group">
                                         <img src={correctExample} alt="Correct" className="w-full h-full object-cover" />
                                         <div className="absolute top-1.5 left-1.5 bg-emerald-500 text-white p-0.5 rounded shadow-lg">
                                             <CheckCircle size={12} />
                                         </div>
-                                        <div className="absolute bottom-0 left-0 right-0 bg-emerald-500 text-white text-[7px] font-black uppercase tracking-[0.2em] py-0.5 text-center">Correct</div>
                                     </div>
                                     <ul className="text-[9px] text-slate-600 space-y-1 font-bold">
                                         <li className="flex items-center gap-1.5"><div className="w-1 h-1 rounded-full bg-emerald-500" />Centered within boundaries</li>
                                         <li className="flex items-center gap-1.5"><div className="w-1 h-1 rounded-full bg-emerald-500" />Edge markings visible</li>
-                                        <li className="flex items-center gap-1.5"><div className="w-1 h-1 rounded-full bg-emerald-500" />Full context / Level camera</li>
                                     </ul>
                                 </div>
-
-                                {/* Incorrect Example */}
                                 <div className="space-y-2">
                                     <div className="h-32 sm:h-36 rounded-lg overflow-hidden border-2 border-rose-500 shadow-sm relative group">
                                         <img src={incorrectExample} alt="Incorrect" className="w-full h-full object-cover" />
                                         <div className="absolute top-1.5 left-1.5 bg-rose-500 text-white p-0.5 rounded shadow-lg">
                                             <X size={12} />
                                         </div>
-                                        <div className="absolute bottom-0 left-0 right-0 bg-rose-500 text-white text-[7px] font-black uppercase tracking-[0.2em] py-0.5 text-center">Incorrect</div>
                                     </div>
                                     <ul className="text-[9px] text-slate-600 space-y-1 font-bold">
-                                        <li className="flex items-center gap-1.5"><div className="w-1 h-1 rounded-full bg-rose-500" />Cropped / Tilted / Blurry</li>
                                         <li className="flex items-center gap-1.5"><div className="w-1 h-1 rounded-full bg-rose-500" />Missing road boundaries</li>
                                         <li className="flex items-center gap-1.5"><div className="w-1 h-1 rounded-full bg-rose-500" />Too close to pothole</li>
                                     </ul>
                                 </div>
                             </div>
-
-                            <div className="bg-slate-50 rounded-lg p-3 flex items-center gap-3 border border-slate-100">
-                                <Camera size={14} className="text-blue-600 shrink-0" />
-                                <p className="text-[9px] font-black text-slate-600 uppercase tracking-tight">
-                                    Capture the pothole between visible road edge markings whenever possible.
-                                </p>
-                            </div>
-
-                            <button 
-                                onClick={() => setShowGuidance(false)}
-                                className="w-full py-3 bg-slate-900 text-white rounded-xl font-black text-xs shadow-xl active:scale-[0.98] transition-all uppercase tracking-widest"
-                            >
+                            <button onClick={() => setShowGuidance(false)} className="w-full py-3 bg-slate-900 text-white rounded-xl font-black text-xs shadow-xl active:scale-[0.98] transition-all uppercase tracking-widest">
                                 Start Capturing
                             </button>
                         </div>
@@ -292,7 +265,7 @@ const ReportWizard = () => {
                 </div>
             )}
 
-            {/* ── Header ── */}
+            {/* Header */}
             <div className="text-center space-y-2 mb-10 animate-fade-in-up">
                 <h1 className="text-3xl font-black text-slate-900 uppercase tracking-tight">
                     {step === 'PHOTO' ? 'Report Road Damage' : 'Report in Progress'}
@@ -305,7 +278,7 @@ const ReportWizard = () => {
                 </p>
             </div>
 
-            {/* ── Progress Indicator ── */}
+            {/* Progress Indicator */}
             {step !== 'PHOTO' && (
                 <div className="flex items-center justify-between mb-12 bg-white/60 backdrop-blur-md p-3 rounded-3xl border border-slate-100 shadow-sm animate-fade-in-up">
                     {STEPS_INFO.map((s, i) => (
@@ -323,20 +296,16 @@ const ReportWizard = () => {
                             )}>
                                 {s.label}
                             </span>
-                            {i < 3 && (
-                                <div className="absolute top-6 -right-1/2 w-full h-[2px] bg-slate-50 -z-10" />
-                            )}
                         </div>
                     ))}
                 </div>
             )}
 
-            {/* ── Step Content ── */}
+            {/* Step Content */}
             <div className="animate-fade-in-up">
                 {step === 'PHOTO' && (
                     <div className="space-y-6 animate-fade-in-up">
                         {!previewUrl ? (
-                            /* Empty State - Clean Card Upload Area */
                             <div className="bg-white border-2 border-dashed border-slate-200 rounded-[2.5rem] p-10 sm:p-16 shadow-2xl shadow-slate-900/5 text-center space-y-8 group hover:border-blue-400 transition-all duration-500">
                                 <div className="w-24 h-24 bg-blue-50 rounded-[2.5rem] flex items-center justify-center mx-auto text-blue-600 border border-blue-100 shadow-inner group-hover:scale-110 group-hover:rotate-6 transition-all duration-500">
                                     <Camera size={40} />
@@ -347,7 +316,6 @@ const ReportWizard = () => {
                                         Take a clear photo of the road damage to begin
                                     </p>
                                 </div>
-                                
                                 <div className="pt-4">
                                     <label className="cursor-pointer block">
                                         <div className="w-full py-5 bg-slate-900 text-white rounded-2xl font-black text-xs shadow-2xl shadow-slate-900/20 hover:bg-black transition-all active:scale-[0.98] flex items-center justify-center gap-3 uppercase tracking-[0.2em]">
@@ -355,20 +323,15 @@ const ReportWizard = () => {
                                         </div>
                                         <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handleImageChange} />
                                     </label>
-                                    
-                                    <button 
-                                        onClick={() => setShowGuidance(true)}
-                                        className="mt-6 text-[10px] font-black text-blue-600 hover:text-blue-700 uppercase tracking-widest flex items-center justify-center gap-2 mx-auto"
-                                    >
+                                    <button onClick={() => setShowGuidance(true)} className="mt-6 text-[10px] font-black text-blue-600 hover:text-blue-700 uppercase tracking-widest flex items-center justify-center gap-2 mx-auto">
                                         <Info size={14} /> View photo guidelines
                                     </button>
                                 </div>
-                                 ) : (
-                            /* Selected State - Preview and Controls */
+                            </div>
+                        ) : (
                             <div className="bg-white border border-slate-100 rounded-[2.5rem] p-6 shadow-2xl shadow-slate-900/5 space-y-6 animate-in fade-in zoom-in-95 duration-500">
                                 <div className="relative aspect-[4/3] rounded-[2rem] overflow-hidden border border-slate-200 shadow-inner bg-slate-50 group">
                                     <img src={previewUrl} alt="Preview" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
-                                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                                     {qualityHints.length > 0 && (
                                         <div className="absolute top-4 left-4 right-4 bg-white/90 backdrop-blur-md border border-amber-200 p-4 rounded-2xl flex items-start gap-3 shadow-xl">
                                             <AlertTriangle size={18} className="text-amber-500 shrink-0 mt-0.5" />
@@ -381,7 +344,6 @@ const ReportWizard = () => {
                                         </div>
                                     )}
                                 </div>
-                                
                                 <div className="flex items-center justify-between px-2">
                                     <div className="flex items-center gap-3 min-w-0">
                                         <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 border border-blue-100 shrink-0 shadow-sm">
@@ -389,32 +351,23 @@ const ReportWizard = () => {
                                         </div>
                                         <div className="min-w-0">
                                             <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Evidence Captured</p>
-                                            <p className="text-sm font-black text-slate-900 truncate max-w-[140px] sm:max-w-[240px]">
+                                            <p className="text-sm font-black text-slate-900 truncate max-w-[140px]">
                                                 {imageFile?.name || 'pothole-unit-01.jpg'}
                                             </p>
                                         </div>
                                     </div>
-                                    
-                                    <button 
-                                        onClick={() => { setImageFile(null); setPreviewUrl(''); setQualityHints([]); }}
-                                        className="p-3 bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white rounded-xl transition-all shadow-sm flex items-center justify-center"
-                                        title="Remove Image"
-                                    >
+                                    <button onClick={() => { setImageFile(null); setPreviewUrl(''); setQualityHints([]); }} className="p-3 bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white rounded-xl transition-all shadow-sm">
                                         <Trash2 size={18} />
                                     </button>
                                 </div>
- 
                                 <div className="grid grid-cols-2 gap-4 pt-2">
                                     <label className="cursor-pointer block">
-                                        <div className="w-full py-4 bg-white border border-slate-200 text-slate-600 rounded-2xl font-black text-[11px] hover:bg-slate-50 transition-all active:scale-[0.98] flex items-center justify-center gap-2 uppercase tracking-widest shadow-sm">
+                                        <div className="w-full py-4 bg-white border border-slate-200 text-slate-600 rounded-2xl font-black text-[11px] hover:bg-slate-50 transition-all active:scale-[0.98] flex items-center justify-center gap-2 uppercase tracking-widest">
                                             <RefreshCw size={14} /> Retake
                                         </div>
                                         <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handleImageChange} />
                                     </label>
-                                    <button
-                                        onClick={() => setStep('LOCATION')}
-                                        className="w-full py-4 bg-blue-600 text-white rounded-2xl font-black text-[11px] shadow-xl shadow-blue-600/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2 group uppercase tracking-widest"
-                                    >
+                                    <button onClick={() => setStep('LOCATION')} className="w-full py-4 bg-blue-600 text-white rounded-2xl font-black text-[11px] shadow-xl shadow-blue-600/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2 group uppercase tracking-widest">
                                         Confirm <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
                                     </button>
                                 </div>
@@ -425,28 +378,17 @@ const ReportWizard = () => {
 
                 {step === 'LOCATION' && (
                     <div className="space-y-6">
-
-
                         <div className="bg-white border border-slate-100 rounded-[2.5rem] p-8 shadow-2xl shadow-slate-900/5 space-y-6">
-                            <button
-                                onClick={handleGetLocation}
-                                className="group w-full py-5 bg-blue-600 text-white rounded-2xl font-black text-sm shadow-xl shadow-blue-600/20 active:scale-[0.98] transition-all flex items-center justify-center gap-3"
-                            >
+                            <button onClick={handleGetLocation} className="group w-full py-5 bg-blue-600 text-white rounded-2xl font-black text-sm shadow-xl shadow-blue-600/20 active:scale-[0.98] transition-all flex items-center justify-center gap-3">
                                 <Locate size={20} className="group-hover:rotate-90 transition-transform duration-700" /> 
                                 Detect My Current GPS
                             </button>
-
                             <div className="flex items-center gap-4 text-slate-200 text-[10px] font-black uppercase tracking-[0.2em]">
                                 <div className="flex-1 h-px bg-slate-100" /> OR <div className="flex-1 h-px bg-slate-100" />
                             </div>
-
-                            <button
-                                onClick={() => setIsMapModalOpen(true)}
-                                className="w-full py-4 border border-slate-200 bg-slate-50 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-2xl font-black text-sm transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
-                            >
+                            <button onClick={() => setIsMapModalOpen(true)} className="w-full py-4 border border-slate-200 bg-slate-50 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-2xl font-black text-sm transition-all flex items-center justify-center gap-2 active:scale-[0.98]">
                                 <MapPin size={16} /> Manual Pin Selection
                             </button>
-
                             {lat !== 6.9271 && (
                                 <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-100 flex items-center justify-between animate-fade-in-up">
                                     <div className="flex items-center gap-3">
@@ -462,8 +404,6 @@ const ReportWizard = () => {
                                 </div>
                             )}
                         </div>
-
-                        {/* Map Modal */}
                         {isMapModalOpen && (
                             <div className="fixed inset-0 z-[100] bg-white flex flex-col animate-fade-in-up">
                                 <div className="p-5 flex items-center justify-between border-b border-slate-100 bg-white/90 backdrop-blur-md sticky top-0 z-10">
@@ -488,30 +428,22 @@ const ReportWizard = () => {
                                         <Marker position={[lat, lon]} icon={L.icon({ iconUrl: icon, shadowUrl: iconShadow, iconSize: [38, 60], iconAnchor: [19, 60] })} />
                                     </MapContainer>
                                     <div className="absolute bottom-0 left-0 right-0 z-[1000] p-8 bg-gradient-to-t from-white via-white/90 to-transparent">
-                                        <button
-                                            onClick={() => setIsMapModalOpen(false)}
-                                            className="w-full py-5 bg-slate-900 text-white rounded-2xl font-black text-sm shadow-2xl active:scale-[0.98] transition-all"
-                                        >
+                                        <button onClick={() => setIsMapModalOpen(false)} className="w-full py-5 bg-slate-900 text-white rounded-2xl font-black text-sm shadow-2xl active:scale-[0.98] transition-all">
                                             Confirm Pinned Location
                                         </button>
                                     </div>
                                 </div>
                             </div>
                         )}
-
                         <div className="flex gap-4">
                             <button onClick={() => setStep('PHOTO')} className="p-5 bg-white border border-slate-200 text-slate-400 rounded-2xl hover:bg-slate-50 transition-all hover:text-slate-900">
                                 <ArrowLeft size={24} />
                             </button>
                             <button
-                                onClick={() => {
-                                    if (lat === 6.9271) { setError('Please specify location.'); return; }
-                                    setError(''); setStep('DETAILS');
-                                }}
+                                onClick={() => { if (lat === 6.9271) { setError('Please specify location.'); return; } setError(''); setStep('DETAILS'); }}
                                 className="flex-1 bg-slate-900 text-white rounded-2xl font-black text-sm shadow-xl active:scale-[0.98] transition-all flex items-center justify-center gap-3 group uppercase tracking-widest"
                             >
-                                Continue Details 
-                                <ArrowRight size={20} className="group-hover:translate-x-2 transition-transform" />
+                                Continue Details <ArrowRight size={20} className="group-hover:translate-x-2 transition-transform" />
                             </button>
                         </div>
                     </div>
@@ -523,12 +455,6 @@ const ReportWizard = () => {
                             <div className="flex gap-5 items-center pb-8 border-b border-slate-50">
                                 <div className="w-24 h-24 rounded-2xl overflow-hidden border border-slate-100 shadow-inner shrink-0 relative group">
                                     <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />
-                                    <button
-                                        onClick={() => { setStep('PHOTO'); setPreviewUrl(''); }}
-                                        className="absolute -top-2 -right-2 w-8 h-8 bg-rose-500 text-white rounded-full flex items-center justify-center shadow-lg border-2 border-white scale-0 group-hover:scale-100 transition-transform"
-                                    >
-                                        <X size={14} />
-                                    </button>
                                 </div>
                                 <div>
                                     <div className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-emerald-50 rounded-lg border border-emerald-100 mb-2">
@@ -539,7 +465,6 @@ const ReportWizard = () => {
                                     <p className="text-[10px] font-mono font-bold text-slate-400">{lat.toFixed(5)}, {lon.toFixed(5)}</p>
                                 </div>
                             </div>
-
                             <div className="space-y-6">
                                 <div>
                                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3 ml-1">Street / Landmark Name</label>
@@ -562,20 +487,15 @@ const ReportWizard = () => {
                                 </div>
                             </div>
                         </div>
-
                         <div className="flex gap-4">
                             <button onClick={() => setStep('LOCATION')} className="p-5 bg-white border border-slate-200 text-slate-400 rounded-2xl hover:bg-slate-50 transition-all hover:text-slate-900">
                                 <ArrowLeft size={24} />
                             </button>
                             <button
-                                onClick={() => {
-                                    if (!description.trim() && !roadName.trim()) { setError('Please provide a landmark or description.'); return; }
-                                    setError(''); setStep('REVIEW');
-                                }}
+                                onClick={() => { if (!description.trim() && !roadName.trim()) { setError('Please provide a landmark or description.'); return; } setError(''); setStep('REVIEW'); }}
                                 className="flex-1 bg-slate-900 text-white rounded-2xl font-black text-sm shadow-xl active:scale-[0.98] transition-all flex items-center justify-center gap-3 group uppercase tracking-widest"
                             >
-                                Final Review
-                                <ArrowRight size={20} className="group-hover:translate-x-2 transition-transform" />
+                                Final Review <ArrowRight size={20} className="group-hover:translate-x-2 transition-transform" />
                             </button>
                         </div>
                     </div>
@@ -597,7 +517,6 @@ const ReportWizard = () => {
                                     </div>
                                 </div>
                             </div>
-
                             <div className="p-8 space-y-8">
                                 <div className="grid grid-cols-2 gap-8">
                                     <div className="space-y-1">
@@ -611,14 +530,12 @@ const ReportWizard = () => {
                                         </div>
                                     )}
                                 </div>
-                                
                                 {description && (
                                     <div className="space-y-1">
                                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Citizen Report Summary</p>
                                         <p className="text-sm text-slate-600 leading-relaxed font-bold italic">"{description}"</p>
                                     </div>
                                 )}
-
                                 <div className="bg-blue-600 rounded-[2rem] p-6 text-white shadow-xl shadow-blue-600/20 relative overflow-hidden group">
                                     <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-2xl" />
                                     <div className="flex items-start gap-4 relative z-10">
@@ -635,15 +552,11 @@ const ReportWizard = () => {
                                 </div>
                             </div>
                         </div>
-
                         <div className="flex gap-4">
                             <button onClick={() => setStep('DETAILS')} className="p-5 bg-white border border-slate-200 text-slate-400 rounded-2xl hover:bg-slate-50 transition-all hover:text-slate-900">
                                 <ArrowLeft size={24} />
                             </button>
-                            <button
-                                onClick={handleSubmit}
-                                className="flex-1 bg-blue-600 text-white rounded-[2rem] font-black text-base shadow-2xl shadow-blue-600/30 active:scale-[0.98] transition-all flex items-center justify-center gap-3 group uppercase tracking-widest"
-                            >
+                            <button onClick={handleSubmit} className="flex-1 bg-blue-600 text-white rounded-[2rem] font-black text-base shadow-2xl shadow-blue-600/30 active:scale-[0.98] transition-all flex items-center justify-center gap-3 group uppercase tracking-widest">
                                 <Navigation size={22} className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" /> 
                                 Confirm & Submit
                             </button>

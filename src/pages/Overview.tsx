@@ -18,7 +18,7 @@ import {
     UserPlus
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { PROVINCIAL_COUNCILS, getProvinceShortName } from '../lib/provinceResolver';
+import { getProvinceShortName } from '../lib/provinceResolver';
 import { potholesApi, reportsApi, authApi, auditLogsApi } from '../lib/api';
 import { formatDistanceToNow, isAfter, subDays } from 'date-fns';
 import { cn } from '../lib/utils';
@@ -61,18 +61,18 @@ const Overview = () => {
     const loadData = async () => {
         setLoading(true);
         try {
-            const [pData, rData, uData, aData, sData] = await Promise.all([
-                potholesApi.list(),
-                reportsApi.list(),
-                authApi.listUsers(),
-                auditLogsApi.list(),
+            const [pResponse, rResponse, uResponse, aResponse, sData] = await Promise.all([
+                potholesApi.list({ limit: 1000 }),
+                reportsApi.list({ limit: 1000 }),
+                authApi.listUsers({ limit: 1000 }),
+                auditLogsApi.list({ limit: 1000 }),
                 reportsApi.getProvinceStats()
             ]);
-            console.log(`[Admin Overview] Live Data Sync: ${rData.length} reports, ${pData.length} pothole events, ${uData.length} users.`);
-            setPotholes(pData.data || []);
-            setReports(rData.data || []);
-            setUsers(uData.data || []);
-            setAuditLogs(aData.data || []);
+            console.log(`[Admin Overview] Live Data Sync: ${rResponse.data?.length} reports, ${pResponse.data?.length} pothole events.`);
+            setPotholes(pResponse.data || []);
+            setReports(rResponse.data || []);
+            setUsers(uResponse.data || []);
+            setAuditLogs(aResponse.data || []);
             setProvinceStats(sData || []);
         } catch (error) {
             console.error("[Admin Overview] Failed to load live overview data", error);

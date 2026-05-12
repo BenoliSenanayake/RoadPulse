@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
-    reportsApi, 
-    auditLogsApi 
+    reportsApi
 } from '../lib/api';
 import { 
     ChevronLeft, 

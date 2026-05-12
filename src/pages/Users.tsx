@@ -64,8 +64,8 @@ const Users = () => {
         setPage(1);
     }, [roleFilter, provinceFilter, searchTerm]);
 
-    const handleToggleStatus = async (userId: string, currentStatus: 'ACTIVE' | 'DISABLED') => {
-        const nextStatus = currentStatus === 'ACTIVE' ? 'DISABLED' : 'ACTIVE';
+    const handleToggleStatus = async (userId: string, currentStatus: 'ACTIVE' | 'DEACTIVATED') => {
+        const nextStatus = currentStatus === 'ACTIVE' ? 'DEACTIVATED' : 'ACTIVE';
         setActionLoading(userId);
         try {
             await authApi.updateUserStatus(userId, nextStatus);

@@ -9,14 +9,15 @@ import {
     ChevronRight,
     XCircle,
     RefreshCw,
-    Bug
+    Bug,
+    CalendarClock
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { reportsApi } from '../lib/api';
 import type { CitizenReport } from '../types';
 import { cn } from '../lib/utils';
 import { useAuth } from '../context/AuthContext';
-import { getProvinceShortName, normalizeProvince } from '../lib/provinceResolver';
+import { getProvinceShortName } from '../lib/provinceResolver';
 import {
     filterReportsForProvince,
     hasOfficerProvince,
@@ -51,9 +52,9 @@ const MaintenanceOverview = () => {
                 return;
             }
 
-            const staffProvince = normalizeProvince(province);
             
-            const reportData = await reportsApi.list();
+            const response = await reportsApi.list({ provincialCouncil: province, limit: 1000 });
+            const reportData = response.data || [];
             
             setRawReports(reportData);
             

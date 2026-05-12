@@ -58,7 +58,8 @@ export const ActivityTimeline = ({ entityId }: ActivityTimelineProps) => {
         const fetchLogs = async () => {
             setLoading(true);
             try {
-                const logs = await auditLogsApi.list();
+                const response = await auditLogsApi.list({ limit: 1000, search: entityId });
+                const logs = response.data || [];
                 const sortedLogs = logs
                     .filter((log: any) => log.entityId === entityId)
                     .sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());

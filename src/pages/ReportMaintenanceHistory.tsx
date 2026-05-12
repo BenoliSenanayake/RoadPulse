@@ -69,10 +69,13 @@ const ReportMaintenanceHistory = () => {
             const staffProvince = normalizeProvince(province);
             console.log('[History Debug] Current User:', user?.email, staffProvince);
 
-            const [reportData, logData] = await Promise.all([
-                reportsApi.list(),
-                auditLogsApi.list()
+            const [rResponse, lResponse] = await Promise.all([
+                reportsApi.list({ provincialCouncil: province, limit: 1000 }),
+                auditLogsApi.list({ limit: 1000 })
             ]);
+
+            const reportData = rResponse.data || [];
+            const logData = lResponse.data || [];
 
             const filteredReports = filterReportsForProvince(reportData, province);
             console.log(`[History] Raw telemetry: ${reportData.length} reports.`);

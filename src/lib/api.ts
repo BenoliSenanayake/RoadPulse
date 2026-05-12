@@ -434,9 +434,24 @@ export const authApi = {
             return { success: false, error: e.message };
         }
     },
-    listUsers: async (page: number = 1, limit: number = 10): Promise<PaginatedResponse<any>> => {
+    listUsers: async (filters?: { 
+        page?: number; 
+        limit?: number;
+        search?: string;
+        role?: string;
+        provincialCouncil?: string;
+    }): Promise<PaginatedResponse<any>> => {
         try {
-            return await apiClient.get(`/auth/users?page=${page}&limit=${limit}`);
+            const params: any = {
+                page: filters?.page || 1,
+                limit: filters?.limit || 10,
+            };
+            if (filters?.search) params.search = filters.search;
+            if (filters?.role) params.role = filters.role;
+            if (filters?.provincialCouncil) params.provincialCouncil = filters.provincialCouncil;
+            
+            const query = new URLSearchParams(params).toString();
+            return await apiClient.get(`/auth/users?${query}`);
         } catch {
             return { data: [], total: 0, page: 1, limit: 10, total_pages: 0 };
         }

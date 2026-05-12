@@ -16,7 +16,7 @@ import {
     RefreshCw
 } from 'lucide-react';
 import { auditLogsApi } from '../lib/api';
-import { PROVINCIAL_COUNCILS, getProvinceShortName } from '../lib/provinceResolver';
+import { getProvinceShortName } from '../lib/provinceResolver';
 import { cn } from '../lib/utils';
 import { format, formatDistanceToNow } from 'date-fns';
 import type { AuditLog, AuditLogAction, UserRole, ProvincialCouncil } from '../types';

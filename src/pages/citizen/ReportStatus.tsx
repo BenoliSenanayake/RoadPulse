@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { reportsApi } from '../../lib/api';
-import { ArrowLeft, MapPin, Calendar, CheckCircle2, Clock, Wrench, CircleDot, XCircle, ShieldCheck, CalendarClock, Loader2 } from 'lucide-react';
+import { ArrowLeft, MapPin, Calendar, CheckCircle2, Clock, Wrench, CircleDot, XCircle, ShieldCheck, CalendarClock, Activity } from 'lucide-react';
 import { format } from 'date-fns';
 import type { CitizenReport } from '../../types';
 import { canonicalizeStatus } from '../../lib/status';

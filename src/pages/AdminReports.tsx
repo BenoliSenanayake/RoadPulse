@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
     Search, 
@@ -6,7 +6,6 @@ import {
     ChevronDown, 
     Eye, 
     Download,
-    Calendar,
     MapPin,
     AlertCircle,
     CheckCircle2,
@@ -14,8 +13,6 @@ import {
     Wrench,
     XCircle,
     RefreshCw,
-    ChevronRight,
-    ChevronLeft,
     ArrowUpDown
 } from 'lucide-react';
 import { reportsApi } from '../lib/api';
@@ -44,7 +41,6 @@ const AdminReports = () => {
     const limit = 10;
 
     // Sorting
-    const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' }>({ key: 'submitted_at', direction: 'desc' });
 
     const loadData = async () => {
         setLoading(true);
@@ -77,12 +73,6 @@ const AdminReports = () => {
         setPage(1);
     }, [provinceFilter, districtFilter, statusFilter, searchTerm]);
 
-    const handleSort = (key: string) => {
-        setSortConfig(prev => ({
-            key,
-            direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
-        }));
-    };
 
     const getStatusIcon = (status: string) => {
         switch (status) {
@@ -179,7 +169,7 @@ const AdminReports = () => {
                     <table className="table-premium">
                         <thead>
                             <tr>
-                                <th onClick={() => handleSort('id')} className="cursor-pointer group">
+                                <th className="cursor-pointer group">
                                     <div className="flex items-center gap-2">
                                         Unit ID
                                         <ArrowUpDown size={12} className="opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -188,7 +178,7 @@ const AdminReports = () => {
                                 <th>Jurisdiction</th>
                                 <th>District</th>
                                 <th>Location Telemetry</th>
-                                <th onClick={() => handleSort('submitted_at')} className="cursor-pointer group">
+                                <th className="cursor-pointer group">
                                     <div className="flex items-center gap-2">
                                         Timestamp
                                         <ArrowUpDown size={12} className="opacity-0 group-hover:opacity-100 transition-opacity" />

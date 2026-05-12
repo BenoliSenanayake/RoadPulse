@@ -104,20 +104,13 @@ const LiveMap = () => {
             const staffProvince = normalizeProvince(province);
             console.log(`[LiveMap Debug] Current User:`, user?.email, staffProvince);
 
-            const data = await reportsApi.list();
+            const response = await reportsApi.list({ provincialCouncil: province, limit: 1000 });
+            const data = response.data || [];
             console.log(`[LiveMap] Raw telemetry: ${data.length} records.`);
             
             const provinceReports = filterReportsForProvince(data, province);
             console.log(`[LiveMap] Province-filtered for ${staffProvince}: ${provinceReports.length} records.`);
-            console.log('Selected District:', areaFilter);
-            console.log(
-                'Province Filtered Reports:',
-                provinceReports.map(report => ({
-                    id: report.id,
-                    district: report.district,
-                    normalized: normalizeDistrict(report.district),
-                }))
-            );
+            
             logStaffReportFilter('Live Map', province, data, provinceReports);
             setDebugCounts({ allReports: data.length, provinceReports: provinceReports.length });
             
@@ -141,7 +134,8 @@ const LiveMap = () => {
         // Real-time synchronization: Poll every 30 seconds
         const interval = setInterval(() => {
             if (!hasOfficerProvince(province)) return;
-            reportsApi.list().then(data => {
+            reportsApi.list({ provincialCouncil: province, limit: 1000 }).then(response => {
+                const data = response.data || [];
                 const provinceReports = filterReportsForProvince(data, province);
                 logStaffReportFilter('Live Map Poll', province, data, provinceReports);
                 setDebugCounts({ allReports: data.length, provinceReports: provinceReports.length });
