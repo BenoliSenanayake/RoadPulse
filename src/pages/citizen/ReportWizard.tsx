@@ -67,7 +67,7 @@ const STEPS_INFO = [
 ];
 
 const ReportWizard = () => {
-    const { user } = useAuth();
+    const { user, isAuthenticated } = useAuth();
     const navigate = useNavigate();
     const [step, setStep] = useState<Step>('PHOTO');
     const [showGuidance, setShowGuidance] = useState(true);
@@ -112,7 +112,8 @@ const ReportWizard = () => {
     };
 
     const handleSubmit = async () => {
-        if (!user) {
+        if (!isAuthenticated || !user) {
+            console.error('[ReportWizard] Submission blocked: User not authenticated.');
             navigate('/login', { state: { from: { pathname: '/citizen/report' } }, replace: true });
             return;
         }

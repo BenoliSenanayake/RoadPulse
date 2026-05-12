@@ -66,7 +66,7 @@ def login(request: schemas.LoginRequest, db: Session = Depends(get_db)):
         }
     }
 
-@router.post("/signup", response_model=schemas.UserRead)
+@router.post("/signup")
 def signup(user: schemas.UserCreate, db: Session = Depends(get_db)):
     if db.query(models.User).filter(models.User.email == user.email).first():
         raise HTTPException(status_code=400, detail="Email already registered")
@@ -81,7 +81,21 @@ def signup(user: schemas.UserCreate, db: Session = Depends(get_db)):
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
-    return db_user
+    
+    # Generate token immediately for auto-login
+    access_token = create_access_token(data={"sub": db_user.email, "role": db_user.role})
+    
+    return {
+        "token": access_token,
+        "token_type": "bearer",
+        "user": {
+            "id": db_user.id,
+            "name": db_user.name,
+            "email": db_user.email,
+            "role": db_user.role,
+            "provincialCouncil": db_user.provincial_council
+        }
+    }
 
 @router.get("/staff/verify")
 def verify_staff(email: str, db: Session = Depends(get_db)):

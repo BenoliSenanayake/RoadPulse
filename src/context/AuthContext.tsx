@@ -26,7 +26,6 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 // Storage Keys
 const USER_KEY = 'rp_user';
 const PROVINCE_KEY = 'provincialCouncil';
-const CITIZEN_ACCOUNTS_KEY = 'rp_citizen_accounts';
 
 const getUserProvince = (source: any, fallback?: string | null) => {
     return source?.provincialCouncil
@@ -59,24 +58,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
     });
 
-    // Persistent Accounts
-    const [citizenAccounts, setCitizenAccounts] = useState<CitizenAccount[]>(() => {
-        try {
-            const saved = localStorage.getItem(CITIZEN_ACCOUNTS_KEY);
-            return saved ? JSON.parse(saved) : [];
-        } catch (e) {
-            console.error("[Auth] Failed to parse accounts from storage", e);
-            localStorage.removeItem(CITIZEN_ACCOUNTS_KEY);
-            return [];
-        }
-    });
-
-    // Keep localStorage in sync with accounts state
     useEffect(() => {
-        localStorage.setItem(CITIZEN_ACCOUNTS_KEY, JSON.stringify(citizenAccounts));
-    }, [citizenAccounts]);
+        const token = localStorage.getItem('roadpulse_token');
+        console.log(`[Auth Context] Initialized. User: ${user?.email || 'None'}, Role: ${user?.role || 'None'}, Token Present: ${!!token}`);
+    }, []);
 
     const persistSessionUser = (sessionUser: User, token?: string) => {
+        console.log(`[Auth Context] Persisting session for ${sessionUser.email}. Token provided: ${!!token}`);
         setUser(sessionUser);
         localStorage.setItem(USER_KEY, JSON.stringify(sessionUser));
         if (token) {
@@ -159,9 +147,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         // Citizen login logic
         if (portalMode === 'citizen') {
             try {
-                // Try backend login first to get JWT
+                console.log(`[Auth Context] Citizen login attempt: ${email}`);
                 const response = await authApi.login(email, password);
-                if (response && response.user && response.user.role === 'CITIZEN') {
+                if (response && response.user && response.token) {
                     const sessionUser: User = {
                         id: response.user.id,
                         name: response.user.name,
@@ -173,83 +161,47 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                     persistSessionUser(sessionUser, response.token);
                     return { success: true, user: sessionUser };
                 }
-            } catch (e) {
-                console.warn("[Auth] Backend login failed for citizen, checking local accounts", e);
+                return { success: false, error: 'Invalid login response from backend.' };
+            } catch (e: any) {
+                console.error("[Auth Context] Citizen login failed:", e);
+                return { success: false, error: e.message || 'Login failed.' };
             }
-
-            // Fallback to local accounts for prototype compatibility
-            const citizen = citizenAccounts.find(u => u.email === email);
-            if (citizen) {
-                if (citizen.passwordHash === password) {
-                    const sessionUser: User = {
-                        id: citizen.id,
-                        name: citizen.name,
-                        email: citizen.email,
-                        role: 'CITIZEN',
-                        status: 'ACTIVE',
-                        createdAt: new Date().toISOString()
-                    };
-                    persistSessionUser(sessionUser);
-                    return { success: true, user: sessionUser };
-                }
-                return { success: false, error: 'Invalid password' };
-            }
-            return { success: false, error: 'Account not found' };
         }
 
         return { success: false, error: 'Unknown portal mode' };
     };
 
     const signup = async (data: Omit<CitizenAccount, 'id' | 'role' | 'createdAt'>) => {
+        console.log(`[Auth Context] Citizen signup attempt: ${data.email}`);
+        
         // 1. Check if email is a reserved staff email pattern
         if (data.email.endsWith('@roadpulse.lk')) {
             return { success: false, error: 'Staff emails cannot be used for citizen registration.' };
         }
 
-        // 2. Check if email already taken in mock staff or existing accounts
-        const emailExists = await authApi.checkEmailExists(data.email);
-        if (citizenAccounts.some(u => u.email === data.email) || emailExists) {
-            return { success: false, error: 'Email identity already registered in the network.' };
-        }
-
         const signupData = {
             name: data.name,
             email: data.email,
-            password: data.passwordHash, // Backend expects 'password'
+            password: data.passwordHash,
             role: 'CITIZEN'
         };
 
         const result = await authApi.signup(signupData);
-        if (!result.success) {
-            return { success: false, error: 'Registration failed at backend.' };
+        if (!result.success || !result.user || !result.token) {
+            return { success: false, error: result.error || 'Registration failed at backend.' };
         }
 
-        // Use the ID returned directly from signup; fall back to listUsers() if missing.
-        let backendUserId: string | undefined = result.userId;
-        if (!backendUserId) {
-            const response = await authApi.listUsers({ search: data.email });
-            backendUserId = response.data?.find((u: any) => u.email === data.email)?.id;
-        }
-
-        const newCitizen: CitizenAccount = {
-            ...data,
-            id: backendUserId || `cit-${Date.now()}`,
-            role: 'CITIZEN',
-            createdAt: new Date().toISOString()
-        };
-
-        setCitizenAccounts(prev => [...prev, newCitizen]);
-
-        // Auto-login (Backend signup doesn't return token usually, so we might need to login or handle it)
         const sessionUser: User = {
-            id: newCitizen.id,
-            name: newCitizen.name,
-            email: newCitizen.email,
+            id: result.user.id,
+            name: result.user.name,
+            email: result.user.email,
             role: 'CITIZEN',
             status: 'ACTIVE',
             createdAt: new Date().toISOString()
         };
-        persistSessionUser(sessionUser);
+
+        persistSessionUser(sessionUser, result.token);
+        console.log(`[Auth Context] Signup successful for ${data.email}. Session started.`);
 
         return { success: true };
     };
@@ -284,7 +236,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             login,
             signup,
             logout,
-            isAuthenticated: !!user,
+            isAuthenticated: !!user && !!localStorage.getItem('roadpulse_token'),
             hasRole,
             getHomePath
         }}>

@@ -120,6 +120,9 @@ const apiClient = {
         const token = localStorage.getItem('roadpulse_token');
         if (token) {
             headers['Authorization'] = `Bearer ${token}`;
+            console.log(`[apiClient] Auth token found in storage. Header injected.`);
+        } else {
+            console.warn(`[apiClient] No auth token found in storage for endpoint request.`);
         }
         return headers;
     },
@@ -426,10 +429,14 @@ export const authApi = {
             return false;
         }
     },
-    signup: async (data: any): Promise<{ success: boolean; userId?: string; error?: string }> => {
+    signup: async (data: any): Promise<{ success: boolean; user?: any; token?: string; error?: string }> => {
         try {
-            const user = await apiClient.post('/auth/signup', data);
-            return { success: true, userId: user?.id };
+            const response = await apiClient.post('/auth/signup', data);
+            return { 
+                success: true, 
+                user: response.user,
+                token: response.token
+            };
         } catch (e: any) {
             return { success: false, error: e.message };
         }

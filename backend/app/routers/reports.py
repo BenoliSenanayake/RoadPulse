@@ -66,7 +66,10 @@ async def create_report(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(require_citizen)
 ):
-    logger.info(f"POST /reports called by {current_user.email}")
+    # ── LOGGING: Auth Audit ──
+    logger.info(f"Report Submission Start - User: {current_user.email} (ID: {current_user.id})")
+    logger.info(f"Payload: Lat={latitude}, Lon={longitude}, Image={image.filename}")
+    
     resolved_citizen_id = current_user.id
     
     try:
@@ -76,10 +79,11 @@ async def create_report(
         filename = f"{uuid.uuid4()}.{ext}"
         file_path = os.path.join(UPLOAD_DIR, filename)
         
+        logger.info(f"Saving image to: {file_path}")
         with open(file_path, "wb") as f:
             content = await image.read()
             f.write(content)
-        print(f">>> Image saved: {file_path} ({len(content)} bytes)")
+        logger.info(f"Image saved successfully: {len(content)} bytes")
             
         image_url = f"{settings.BACKEND_PUBLIC_URL}/static/{filename}"
         
@@ -95,20 +99,19 @@ async def create_report(
         }
         
         try:
-            print(">>> Calling AI Analysis...")
+            logger.info("Initiating Roboflow AI Analysis...")
             detection = await analyze_pothole_image(file_path)
             classification = detection.get("aiClassification", "NEEDS_MANUAL_REVIEW")
-            print(f">>> AI Result: {classification} (Conf: {detection.get('aiConfidence')})")
+            logger.info(f"AI Result: {classification} (Conf: {detection.get('aiConfidence')})")
         except Exception as ai_err:
-            print(f">>> WARNING: AI analysis failed (non-fatal): {ai_err}")
-            print(">>> Proceeding with NEEDS_MANUAL_REVIEW classification")
+            logger.error(f"AI analysis failed (non-fatal): {ai_err}")
         
         initial_status = "Verified" if classification == "VERIFIED_POTHOLE" else ("Rejected" if classification == "REJECTED" else "New")
         province, district = resolve_province_and_district(latitude, longitude)
-        print(f">>> Detected Geography: {province} / {district}")
+        logger.info(f"Resolved Geography: {province} / {district}")
 
         # ── Save CitizenReport to DB ──
-        print(">>> DB insert starting...")
+        logger.info("Inserting record into PostgreSQL...")
         report_in = schemas.CitizenReportCreate(
             citizen_id=resolved_citizen_id,
             latitude=latitude,
@@ -131,16 +134,13 @@ async def create_report(
             detection_model=detection.get("detectionModel"),
             detection_timestamp=datetime.utcnow()
         )
-        print(f">>> DB commit success. Created ID: {db_report.id}")
-        print(f">>> Saved province: {db_report.provincial_council}")
-        print(f">>> Saved status: {db_report.status}")
-        print(f">>> Saved district: {db_report.district}")
+        logger.info(f"DB Success - Created ID: {db_report.id}")
         
         # ── Save DetectionResult (non-blocking) ──
         try:
             crud.create_detection_result(db, detection, db_report.id)
         except Exception as det_err:
-            print(f">>> WARNING: Failed to save detection result (non-fatal): {det_err}")
+            logger.warning(f"Detection result persistence failed: {det_err}")
         
         # ── Save AuditLog (non-blocking) ──
         try:
