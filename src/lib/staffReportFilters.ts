@@ -23,9 +23,11 @@ export function isVerifiedReport(report: CitizenReport): boolean {
 
 export function isManualReviewReport(report: CitizenReport): boolean {
     const status = canonicalizeStatus(report.status);
-    return status === 'New'
-        || (report.aiClassification === 'NEEDS_MANUAL_REVIEW'
-            && !['Verified', 'Scheduled', 'In Progress', 'Completed', 'Rejected'].includes(status));
+    return status === 'New' || report.aiClassification === 'NEEDS_MANUAL_REVIEW';
+}
+
+export function isScheduledReport(report: CitizenReport): boolean {
+    return canonicalizeStatus(report.status) === 'Scheduled';
 }
 
 export function isInProgressReport(report: CitizenReport): boolean {

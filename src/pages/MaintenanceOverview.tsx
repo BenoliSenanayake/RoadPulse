@@ -25,6 +25,7 @@ import {
     isManualReviewReport,
     isOverdueReport,
     isRejectedReport,
+    isScheduledReport,
     isVerifiedReport,
     logStaffReportFilter,
     OFFICER_PROVINCE_MISSING
@@ -52,16 +53,12 @@ const MaintenanceOverview = () => {
 
             const staffProvince = normalizeProvince(province);
             
-            console.log(`[Staff Debug] Current User:`, user?.email, staffProvince);
-
             const reportData = await reportsApi.list();
             
             setRawReports(reportData);
-            console.log(`[Staff Overview] Raw telemetry: ${reportData.length} reports.`);
             
             const filteredReports = filterReportsForProvince(reportData, province);
 
-            console.log(`[Staff Overview] Filtered results for ${staffProvince}: ${filteredReports.length} reports.`);
             logStaffReportFilter('Staff Overview', province, reportData, filteredReports);
             
             setReports(filteredReports);
@@ -85,6 +82,7 @@ const MaintenanceOverview = () => {
     const { cards } = useMemo(() => {
         const verified = reports.filter(isVerifiedReport).length;
         const needsReview = reports.filter(isManualReviewReport).length;
+        const scheduled = reports.filter(isScheduledReport).length;
         const inProgress = reports.filter(isInProgressReport).length;
         const completed = reports.filter(isCompletedReport).length;
         const rejected = reports.filter(isRejectedReport).length;
@@ -92,8 +90,9 @@ const MaintenanceOverview = () => {
 
         return {
             cards: [
-                { label: 'Verified Pothole Reports', value: verified, icon: CheckCircle, color: 'bg-emerald-600', filter: 'verified' },
                 { label: 'Manual Review Required', value: needsReview, icon: ShieldAlert, color: 'bg-amber-500', filter: 'manual-review' },
+                { label: 'Verified Pothole Reports', value: verified, icon: CheckCircle, color: 'bg-emerald-600', filter: 'verified' },
+                { label: 'Scheduled Repairs', value: scheduled, icon: CalendarClock, color: 'bg-orange-500', filter: 'scheduled' },
                 { label: 'In Progress Repairs', value: inProgress, icon: Wrench, color: 'bg-blue-600', filter: 'in-progress' },
                 { label: 'Completed Repairs', value: completed, icon: CheckCircle2, color: 'bg-slate-900', filter: 'completed' },
                 { label: 'Overdue Repairs', value: overdue, icon: AlertTriangle, color: 'bg-rose-600', filter: 'overdue' },

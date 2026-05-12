@@ -13,7 +13,8 @@ import {
     Loader2,
     Search,
     XCircle,
-    History
+    History,
+    CalendarClock
 } from 'lucide-react';
 import { reportsApi } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
@@ -27,18 +28,19 @@ import {
     isInProgressReport,
     isManualReviewReport,
     isOverdueReport,
-    isRejectedReport,
+    isScheduledReport,
     isVerifiedReport,
     logStaffReportFilter,
     OFFICER_PROVINCE_MISSING
 } from '../lib/staffReportFilters';
 import type { CitizenReport, RepairPriority } from '../types';
 
-type ReportFilter = 'verified' | 'manual-review' | 'in-progress' | 'completed' | 'overdue' | 'rejected' | 'all';
+type ReportFilter = 'verified' | 'manual-review' | 'scheduled' | 'in-progress' | 'completed' | 'overdue' | 'rejected' | 'all';
 
 const FILTER_LABELS: Record<ReportFilter, string> = {
     'verified': 'Verified Pothole Reports',
     'manual-review': 'Manual Review Required',
+    'scheduled': 'Scheduled Repairs',
     'in-progress': 'In Progress Repairs',
     'completed': 'Completed Repairs',
     'overdue': 'Overdue Repairs',
@@ -49,6 +51,7 @@ const FILTER_LABELS: Record<ReportFilter, string> = {
 const FILTER_ICONS: Record<ReportFilter, any> = {
     'verified': CheckCircle2,
     'manual-review': ShieldAlert,
+    'scheduled': CalendarClock,
     'in-progress': Wrench,
     'completed': CheckCircle2,
     'overdue': AlertTriangle,
@@ -59,6 +62,7 @@ const FILTER_ICONS: Record<ReportFilter, any> = {
 const FILTER_COLORS: Record<ReportFilter, string> = {
     'verified': 'text-emerald-600 bg-emerald-50 border-emerald-100',
     'manual-review': 'text-amber-600 bg-amber-50 border-amber-100',
+    'scheduled': 'text-orange-600 bg-orange-50 border-orange-100',
     'in-progress': 'text-blue-600 bg-blue-50 border-blue-100',
     'completed': 'text-slate-600 bg-slate-50 border-slate-100',
     'overdue': 'text-rose-600 bg-rose-50 border-rose-100',
@@ -110,9 +114,6 @@ const FilteredReportList = () => {
             setTotalReportsFetched(reportData.length);
             const filteredReports = filterReportsForProvince(reportData, province);
             logStaffReportFilter(`Staff Reports ${filter}`, province, reportData, filteredReports);
-            console.log(`[Staff Reports ${filter}] Current category:`, filter);
-            console.log(`[Staff Reports ${filter}] Total reports fetched:`, reportData.length);
-            console.log(`[Staff Reports ${filter}] Province filtered count:`, filteredReports.length);
             setReports(filteredReports);
         } catch (error) {
             console.error("Failed to load reports", error);
@@ -135,6 +136,9 @@ const FilteredReportList = () => {
                 break;
             case 'manual-review':
                 items = reports.filter(isManualReviewReport);
+                break;
+            case 'scheduled':
+                items = reports.filter(isScheduledReport);
                 break;
             case 'in-progress':
                 items = reports.filter(isInProgressReport);
