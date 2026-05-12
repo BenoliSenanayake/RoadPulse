@@ -3,10 +3,10 @@ from sqlalchemy.orm import Session
 from typing import List
 from .. import schemas, models
 from ..database import get_db
+from ..security import verify_password, get_password_hash, create_access_token, require_admin
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-from ..security import verify_password, get_password_hash
 import logging
 
 logger = logging.getLogger(__name__)
@@ -31,18 +31,7 @@ def login(request: schemas.LoginRequest, db: Session = Depends(get_db)):
     if not is_password_valid:
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
-    # 7. FIX ADMIN LOGIN VALIDATION
-    if user.role == "ADMIN":
-        logger.info("Admin login successful")
-        return {"token": "mock-jwt-token", "user": {
-            "id": user.id, 
-            "name": user.name,
-            "email": user.email,
-            "role": user.role,
-            "provincialCouncil": user.provincial_council
-        }}
-
-    # 6. FIX STAFF LOGIN VALIDATION
+    # Access control for staff
     if user.role == "MAINTENANCE_OFFICER":
         stored_province = user.provincial_council
         selected_province = request.provincial_council
@@ -56,23 +45,22 @@ def login(request: schemas.LoginRequest, db: Session = Depends(get_db)):
                 detail="Selected province does not match assigned officer account."
             )
         
-        logger.info("Staff login successful")
-        return {"token": "mock-jwt-token", "user": {
+    logger.info(f"{user.role} login successful for {user.email}")
+    
+    # Generate real JWT token
+    access_token = create_access_token(data={"sub": user.email, "role": user.role})
+    
+    return {
+        "token": access_token, 
+        "token_type": "bearer",
+        "user": {
             "id": user.id, 
             "name": user.name,
             "email": user.email,
             "role": user.role,
             "provincialCouncil": user.provincial_council
-        }}
-
-    # Default for CITIZEN or other roles
-    return {"token": "mock-jwt-token", "user": {
-        "id": user.id, 
-        "name": user.name,
-        "email": user.email,
-        "role": user.role,
-        "provincialCouncil": user.provincial_council
-    }}
+        }
+    }
 
 @router.post("/signup", response_model=schemas.UserRead)
 def signup(user: schemas.UserCreate, db: Session = Depends(get_db)):
@@ -117,5 +105,5 @@ def check_email(email: str, db: Session = Depends(get_db)):
     return {"exists": user is not None}
 
 @router.get("/users", response_model=List[schemas.UserRead])
-def get_users(db: Session = Depends(get_db)):
+def get_users(db: Session = Depends(get_db), current_user: models.User = Depends(require_admin)):
     return db.query(models.User).all()

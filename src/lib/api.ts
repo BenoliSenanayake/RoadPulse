@@ -114,9 +114,19 @@ const mapReportToPotholeEvent = (data: any): PotholeEvent => {
 // BASE API CLIENT
 // ==========================================
 const apiClient = {
+    getHeaders() {
+        const headers: Record<string, string> = {};
+        const token = localStorage.getItem('roadpulse_token');
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+        return headers;
+    },
     async get(endpoint: string) {
         try {
-            const response = await fetch(`${API_BASE_URL}${endpoint}`);
+            const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+                headers: this.getHeaders()
+            });
             if (!response.ok) throw new Error(`API Error: ${response.statusText}`);
             isBackendDown = false;
             return response.json();
@@ -128,42 +138,46 @@ const apiClient = {
     async post(endpoint: string, data: any) {
         const isFormData = data instanceof FormData;
         const url = `${API_BASE_URL}${endpoint}`;
-        console.log(`[apiClient.post] URL: ${url}`);
-        if (isFormData) {
-            const fields: string[] = [];
-            (data as FormData).forEach((_v, k) => fields.push(k));
-            console.log(`[apiClient.post] FormData fields: ${fields.join(', ')}`);
+        
+        const headers: Record<string, string> = this.getHeaders();
+        if (!isFormData) {
+            headers['Content-Type'] = 'application/json';
         }
 
         const options: RequestInit = {
             method: 'POST',
+            headers: headers,
             body: isFormData ? data : JSON.stringify(data),
         };
-        if (!isFormData) {
-            options.headers = { 'Content-Type': 'application/json' };
-        }
         
         const response = await fetch(url, options);
         if (!response.ok) {
-            // Try to extract the real error detail from the backend JSON response
             let detail = response.statusText;
             try {
                 const errBody = await response.json();
                 detail = errBody.detail || JSON.stringify(errBody);
             } catch { /* response wasn't JSON */ }
-            console.error(`[apiClient.post] ${response.status} error: ${detail}`);
             throw new Error(detail);
         }
-        console.log(`[apiClient.post] Success: ${response.status}`);
         return response.json();
     },
     async patch(endpoint: string, data: any) {
+        const headers: Record<string, string> = this.getHeaders();
+        headers['Content-Type'] = 'application/json';
+        
         const response = await fetch(`${API_BASE_URL}${endpoint}`, {
             method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
+            headers: headers,
             body: JSON.stringify(data),
         });
-        if (!response.ok) throw new Error(`API Error: ${response.statusText}`);
+        if (!response.ok) {
+            let detail = response.statusText;
+            try {
+                const errBody = await response.json();
+                detail = errBody.detail || JSON.stringify(errBody);
+            } catch { /* response wasn't JSON */ }
+            throw new Error(detail);
+        }
         return response.json();
     }
 };

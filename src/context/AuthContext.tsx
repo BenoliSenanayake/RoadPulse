@@ -76,9 +76,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         localStorage.setItem(CITIZEN_ACCOUNTS_KEY, JSON.stringify(citizenAccounts));
     }, [citizenAccounts]);
 
-    const persistSessionUser = (sessionUser: User) => {
+    const persistSessionUser = (sessionUser: User, token?: string) => {
         setUser(sessionUser);
         localStorage.setItem(USER_KEY, JSON.stringify(sessionUser));
+        if (token) {
+            localStorage.setItem('roadpulse_token', token);
+        }
         if (sessionUser.provincialCouncil) {
             localStorage.setItem(PROVINCE_KEY, sessionUser.provincialCouncil);
             sessionStorage.setItem(PROVINCE_KEY, sessionUser.provincialCouncil);
@@ -121,7 +124,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                     createdAt: new Date().toISOString()
                 };
 
-                persistSessionUser(sessionUser);
+                persistSessionUser(sessionUser, response.token);
                 return { success: true, user: sessionUser };
             } catch (e: any) {
                 return { success: false, error: e.message || 'Invalid credentials.' };
@@ -146,7 +149,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                     createdAt: new Date().toISOString()
                 };
 
-                persistSessionUser(sessionUser);
+                persistSessionUser(sessionUser, response.token);
                 return { success: true, user: sessionUser };
             } catch (e: any) {
                 return { success: false, error: e.message || 'Invalid credentials.' };
@@ -155,6 +158,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
         // Citizen login logic
         if (portalMode === 'citizen') {
+            try {
+                // Try backend login first to get JWT
+                const response = await authApi.login(email, password);
+                if (response && response.user && response.user.role === 'CITIZEN') {
+                    const sessionUser: User = {
+                        id: response.user.id,
+                        name: response.user.name,
+                        email: response.user.email,
+                        role: 'CITIZEN',
+                        status: 'ACTIVE',
+                        createdAt: new Date().toISOString()
+                    };
+                    persistSessionUser(sessionUser, response.token);
+                    return { success: true, user: sessionUser };
+                }
+            } catch (e) {
+                console.warn("[Auth] Backend login failed for citizen, checking local accounts", e);
+            }
+
+            // Fallback to local accounts for prototype compatibility
             const citizen = citizenAccounts.find(u => u.email === email);
             if (citizen) {
                 if (citizen.passwordHash === password) {
@@ -217,7 +240,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
         setCitizenAccounts(prev => [...prev, newCitizen]);
 
-        // Auto-login
+        // Auto-login (Backend signup doesn't return token usually, so we might need to login or handle it)
         const sessionUser: User = {
             id: newCitizen.id,
             name: newCitizen.name,
@@ -235,6 +258,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUser(null);
         localStorage.removeItem(USER_KEY);
         localStorage.removeItem(PROVINCE_KEY);
+        localStorage.removeItem('roadpulse_token');
         sessionStorage.removeItem(PROVINCE_KEY);
     };
 

@@ -1,6 +1,8 @@
-from fastapi import APIRouter, UploadFile, File
+from fastapi import APIRouter, UploadFile, File, Depends
 from ..schemas import DetectionResult
 from ..services.roboflow_service import analyze_pothole_image
+from ..security import require_staff
+from ..models import User
 import os
 import uuid
 
@@ -8,7 +10,7 @@ router = APIRouter(prefix="/api/ai", tags=["ai"])
 UPLOAD_DIR = "uploads"
 
 @router.post("/analyze", response_model=DetectionResult)
-async def analyze_image(image: UploadFile = File(...)):
+async def analyze_image(image: UploadFile = File(...), current_user: User = Depends(require_staff)):
     """
     Placeholder endpoint for direct image analysis.
     """

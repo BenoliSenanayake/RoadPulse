@@ -5,6 +5,14 @@ from sqlalchemy.orm import Session
 from .database import engine, Base, get_db
 from .routers import auth, reports, ai
 import os
+import logging
+
+# Configure Logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+)
+logger = logging.getLogger(__name__)
 
 # Create DB Tables
 Base.metadata.create_all(bind=engine)

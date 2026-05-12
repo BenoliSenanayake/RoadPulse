@@ -1,13 +1,17 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, status
 from sqlalchemy.orm import Session
 from typing import Optional, List
 import os
 import uuid
+import logging
 from datetime import datetime
 from app.database import get_db
 from app import schemas, models, crud
 from app.services.roboflow_service import analyze_pothole_image
 from app.services.province_resolver import resolve_province_and_district
+from app.security import get_current_user, require_admin, require_staff, require_citizen
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/reports", tags=["reports"])
 
@@ -53,63 +57,16 @@ def normalize_report_status(value: Optional[str]) -> Optional[str]:
 
 @router.post("", response_model=schemas.CitizenReportRead)
 async def create_report(
-    citizen_id: Optional[str] = Form(None),
     latitude: float = Form(...),
     longitude: float = Form(...),
     description: Optional[str] = Form(None),
     address: Optional[str] = Form(None),
     image: UploadFile = File(...),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_citizen)
 ):
-    print("\n" + "="*50)
-    print(">>> POST /reports called")
-    print(f">>> Received citizen_id: {citizen_id}")
-    print(f">>> Received file: {image.filename}")
-    print(f">>> Received location: {latitude}, {longitude}")
-    print(f">>> Received description: {description}")
-    print(f">>> Received address: {address}")
-    
-    # ── Resolve citizen_id: ensure user exists or create stub ──
-    resolved_citizen_id = citizen_id or "Anonymous"
-    from app.models import User
-    existing_user = db.query(User).filter(User.id == resolved_citizen_id).first()
-    if not existing_user:
-        print(f">>> WARNING: citizen_id '{resolved_citizen_id}' not found in users table")
-        if resolved_citizen_id != "Anonymous":
-            # Preserve the provided citizen_id by creating a stub user.
-            # This happens when the frontend uses a locally-generated fallback ID.
-            try:
-                stub_user = User(
-                    id=resolved_citizen_id,
-                    name="Citizen User",
-                    email=f"citizen-{resolved_citizen_id}@roadpulse.lk",
-                    password_hash="nologin",
-                    role="CITIZEN",
-                )
-                db.add(stub_user)
-                db.commit()
-                print(f">>> Created stub user for citizen_id: {resolved_citizen_id}")
-            except Exception as stub_err:
-                db.rollback()
-                print(f">>> WARNING: Could not create stub user ({stub_err}), falling back to Anonymous")
-                resolved_citizen_id = "Anonymous"
-
-        if resolved_citizen_id == "Anonymous":
-            anon_user = db.query(User).filter(User.id == "Anonymous").first()
-            if not anon_user:
-                print(">>> Creating 'Anonymous' placeholder user...")
-                anon_user = User(
-                    id="Anonymous",
-                    name="Anonymous Citizen",
-                    email="anonymous@roadpulse.lk",
-                    password_hash="nologin",
-                    role="CITIZEN",
-                )
-                db.add(anon_user)
-                db.commit()
-                print(">>> Anonymous user created successfully")
-
-    print(f">>> Resolved citizen_id: {resolved_citizen_id}")
+    logger.info(f"POST /reports called by {current_user.email}")
+    resolved_citizen_id = current_user.id
     
     try:
         # ── Save uploaded image ──
@@ -225,24 +182,65 @@ def get_reports(
     provincialCouncil: Optional[str] = None, 
     citizenId: Optional[str] = None,
     status: Optional[str] = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
 ):
-    print(f">>> GET /reports called with filters: PC={provincialCouncil}, Citizen={citizenId}, Status={status}")
+    logger.info(f"GET /reports called by User: {current_user.email}, Role: {current_user.role}, UserProvince: {current_user.provincial_council}")
+    
     query = db.query(models.CitizenReport)
     
-    if provincialCouncil and provincialCouncil != 'null' and provincialCouncil != 'undefined':
-        query = query.filter(models.CitizenReport.provincial_council == provincialCouncil)
-    if citizenId and citizenId != 'null' and citizenId != 'undefined':
-        query = query.filter(models.CitizenReport.citizen_id == citizenId)
-    if status and status != 'null' and status != 'undefined':
+    # Apply role-based filtering
+    if current_user.role == "ADMIN":
+        # Admin can see all, but can also apply filters
+        if provincialCouncil and provincialCouncil not in ['null', 'undefined']:
+            query = query.filter(models.CitizenReport.provincial_council == provincialCouncil)
+        if citizenId and citizenId not in ['null', 'undefined']:
+            query = query.filter(models.CitizenReport.citizen_id == citizenId)
+    
+    elif current_user.role == "MAINTENANCE_OFFICER":
+        # Staff can only see their province
+        staff_province = current_user.provincial_council
+        if not staff_province:
+            logger.warning(f"Staff user {current_user.email} has no assigned province!")
+            return [] # Or raise error
+        
+        query = query.filter(models.CitizenReport.provincial_council == staff_province)
+        logger.info(f"Applying provincial isolation for staff: {staff_province}")
+        
+    elif current_user.role == "CITIZEN":
+        # Citizen can only see their own reports
+        query = query.filter(models.CitizenReport.citizen_id == current_user.id)
+        logger.info(f"Applying citizen isolation for: {current_user.id}")
+
+    # Common status filter
+    if status and status not in ['null', 'undefined']:
         query = query.filter(models.CitizenReport.status == normalize_report_status(status))
         
     results = query.order_by(models.CitizenReport.submitted_at.desc()).all()
-    print(f">>> GET /reports returning {len(results)} records")
+    logger.info(f"GET /reports returning {len(results)} records for {current_user.role} {current_user.email}")
     return results
 
 @router.get("/history", response_model=List[schemas.AuditLogRead])
-def get_reports_history(db: Session = Depends(get_db)):
+def get_reports_history(db: Session = Depends(get_db), current_user: models.User = Depends(require_staff)):
+    logger.info(f"GET /history called by {current_user.email} ({current_user.role})")
+    
+    if current_user.role == "ADMIN":
+        return crud.list_audit_logs(db)
+    
+    # Filter logs by reports that belong to the officer's province
+    # This requires a join or subquery in the CRUD or here
+    # For now, I'll return all if admin, or filter in logic if needed
+    # But usually history is viewed per report in detail view anyway.
+    # If this is the "Global" audit log, only Admins should see it.
+    
+    if current_user.role == "MAINTENANCE_OFFICER":
+        # Maintenance officers should probably only see logs related to their province
+        # But crud.list_audit_logs doesn't support filtering yet.
+        # I'll implement a filtered version or keep it simple for now.
+        return db.query(models.AuditLog).join(models.CitizenReport).filter(
+            models.CitizenReport.provincial_council == current_user.provincial_council
+        ).all()
+        
     return crud.list_audit_logs(db)
 
 @router.get("/{report_id}", response_model=schemas.CitizenReportRead)
@@ -253,13 +251,23 @@ def get_report(report_id: str, db: Session = Depends(get_db)):
     return report
 
 @router.patch("/{report_id}/status", response_model=schemas.CitizenReportRead)
-def update_status(report_id: str, update: schemas.StatusUpdateCreate, officer_id: str = "sys-admin", db: Session = Depends(get_db)):
+def update_status(
+    report_id: str, 
+    update: schemas.StatusUpdateCreate, 
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_staff)
+):
     report = crud.get_report_by_id(db, report_id)
     if not report:
         raise HTTPException(status_code=404, detail="Report not found")
         
+    # Provincial security check for staff
+    if current_user.role == "MAINTENANCE_OFFICER":
+        if report.provincial_council != current_user.provincial_council:
+            logger.warning(f"Access Denied: Officer {current_user.email} ({current_user.provincial_council}) tried to update report {report_id} in {report.provincial_council}")
+            raise HTTPException(status_code=403, detail="Access Restricted: This report belongs to another Provincial Council.")
+
     old_status = report.status
-    
     next_status = normalize_report_status(update.status) if update.status else None
     
     if next_status:
@@ -274,35 +282,55 @@ def update_status(report_id: str, update: schemas.StatusUpdateCreate, officer_id
         priority=update.priority,
         notes=update.notes
     )
-    crud.create_status_update(db, status_update, report_id, officer_id)
+    crud.create_status_update(db, status_update, report_id, current_user.id)
     
     crud.create_audit_log(
         db=db,
         report_id=report_id,
-        user_id=officer_id,
+        user_id=current_user.id,
         action="STATUS_UPDATED",
         old_status=old_status,
         new_status=next_status or old_status,
         notes=update.notes
     )
     
+    logger.info(f"Report {report_id} status updated by {current_user.role} {current_user.email}")
     return crud.get_report_by_id(db, report_id)
 
 @router.patch("/{report_id}/notes", response_model=schemas.CitizenReportRead)
-def update_notes(report_id: str, notes: str, db: Session = Depends(get_db)):
+def update_notes(report_id: str, notes: str, db: Session = Depends(get_db), current_user: models.User = Depends(require_staff)):
+    # Add check
+    report = crud.get_report_by_id(db, report_id)
+    if current_user.role == "MAINTENANCE_OFFICER" and report.provincial_council != current_user.provincial_council:
+         raise HTTPException(status_code=403, detail="Access Restricted")
     return crud.update_report_notes(db, report_id, notes)
 
 @router.patch("/{report_id}/priority", response_model=schemas.CitizenReportRead)
-def update_priority(report_id: str, priority: str, db: Session = Depends(get_db)):
+def update_priority(report_id: str, priority: str, db: Session = Depends(get_db), current_user: models.User = Depends(require_staff)):
+    # Add check
+    report = crud.get_report_by_id(db, report_id)
+    if current_user.role == "MAINTENANCE_OFFICER" and report.provincial_council != current_user.provincial_council:
+         raise HTTPException(status_code=403, detail="Access Restricted")
     return crud.update_report_priority(db, report_id, priority)
 
 @router.patch("/{report_id}", response_model=schemas.CitizenReportRead)
-def update_report(report_id: str, updates: dict, db: Session = Depends(get_db)):
-    print(f">>> PATCH /reports/{report_id} called with updates: {updates}")
+def update_report(
+    report_id: str, 
+    updates: dict, 
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_staff)
+):
+    logger.info(f"PATCH /reports/{report_id} called by {current_user.email}")
     report = crud.get_report_by_id(db, report_id)
     if not report:
         raise HTTPException(status_code=404, detail="Report not found")
     
+    # Provincial security check for staff
+    if current_user.role == "MAINTENANCE_OFFICER":
+        if report.provincial_council != current_user.provincial_council:
+            logger.warning(f"Access Denied: Officer {current_user.email} tried to update report {report_id}")
+            raise HTTPException(status_code=403, detail="Access Restricted: This report belongs to another Provincial Council.")
+
     old_status = report.status
     old_priority = report.priority
     
@@ -345,7 +373,7 @@ def update_report(report_id: str, updates: dict, db: Session = Depends(get_db)):
         crud.create_audit_log(
             db=db,
             report_id=report_id,
-            user_id="sys-admin", # Ideally pass this from auth
+            user_id=current_user.id,
             action=action,
             old_status=old_status,
             new_status=report.status,
