@@ -21,6 +21,12 @@ class UserRead(UserBase):
     class Config:
         from_attributes = True
 
+class UserUpdate(BaseModel):
+    name: Optional[str] = None
+    role: Optional[str] = None
+    provincial_council: Optional[str] = None
+    account_status: Optional[str] = None
+
 class LoginRequest(BaseModel):
     email: str
     password: str
@@ -82,10 +88,14 @@ class CitizenReportRead(CitizenReportBase):
     class Config:
         from_attributes = True
 
-class CitizenReportUpdate(BaseModel):
+    maintenance_notes: Optional[str] = None
+
+class CitizenReportAdminUpdate(BaseModel):
     status: Optional[str] = None
     priority: Optional[str] = None
     maintenance_notes: Optional[str] = None
+    provincial_council: Optional[str] = None
+    district: Optional[str] = None
 
 class AuditLogRead(BaseModel):
     id: str

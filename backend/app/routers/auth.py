@@ -45,6 +45,10 @@ def login(request: schemas.LoginRequest, db: Session = Depends(get_db)):
                 detail="Selected province does not match assigned officer account."
             )
         
+    if user.account_status == "DEACTIVATED":
+        logger.warning(f"Login failed: Account deactivated for email: {request.email}")
+        raise HTTPException(status_code=403, detail="Account deactivated. Contact system administrator.")
+
     logger.info(f"{user.role} login successful for {user.email}")
     
     # Generate real JWT token
@@ -129,3 +133,28 @@ def get_users(
         "limit": limit,
         "total_pages": total_pages
     }
+@router.get("/users/{user_id}", response_model=schemas.UserRead)
+def get_user_detail(user_id: str, db: Session = Depends(get_db), current_user: models.User = Depends(require_admin)):
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
+
+@router.patch("/users/{user_id}", response_model=schemas.UserRead)
+def update_user(user_id: str, update_data: schemas.UserUpdate, db: Session = Depends(get_db), current_user: models.User = Depends(require_admin)):
+    db_user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not db_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    if update_data.name is not None:
+        db_user.name = update_data.name
+    if update_data.role is not None:
+        db_user.role = update_data.role
+    if update_data.provincial_council is not None:
+        db_user.provincial_council = update_data.provincial_council
+    if update_data.account_status is not None:
+        db_user.account_status = update_data.account_status
+        
+    db.commit()
+    db.refresh(db_user)
+    return db_user

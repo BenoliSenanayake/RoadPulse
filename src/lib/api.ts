@@ -255,6 +255,15 @@ export const reportsApi = {
             async () => null
         );
     },
+    getHistory: async (id: string): Promise<AuditLog[]> => {
+        return withFallback(
+            async () => {
+                const res = await apiClient.get(`/reports/${id}/history`);
+                return Array.isArray(res) ? res.map(normalizeAuditLog) : [];
+            },
+            async () => []
+        );
+    },
     submit: async (data: any): Promise<CitizenReport> => {
         console.log('[reportsApi.submit] Called');
         console.log(`[reportsApi.submit] API_BASE_URL: ${API_BASE_URL}`);
@@ -321,6 +330,12 @@ export const reportsApi = {
                 return mapBackendReportToFrontend(res);
             },
             async () => null
+        );
+    },
+    getProvinceStats: async (): Promise<{ province: string; count: number }[]> => {
+        return withFallback(
+            async () => await apiClient.get('/reports/stats/provinces'),
+            async () => []
         );
     }
 };
@@ -426,8 +441,11 @@ export const authApi = {
             return { data: [], total: 0, page: 1, limit: 10, total_pages: 0 };
         }
     },
-    updateUserStatus: async (userId: string, status: 'ACTIVE' | 'DISABLED'): Promise<void> => {
-        console.warn('[authApi.updateUserStatus] Backend status endpoint is unavailable; applying local UI state only.', { userId, status });
+    updateUserStatus: async (userId: string, status: 'ACTIVE' | 'DEACTIVATED'): Promise<void> => {
+        await apiClient.patch(`/auth/users/${userId}`, { account_status: status });
+    },
+    getUserById: async (userId: string): Promise<any> => {
+        return await apiClient.get(`/auth/users/${userId}`);
     }
 };
 

@@ -55,22 +55,25 @@ const Overview = () => {
     const [reports, setReports] = useState<CitizenReport[]>([]);
     const [users, setUsers] = useState<any[]>([]);
     const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+    const [provinceStats, setProvinceStats] = useState<{ province: string; count: number }[]>([]);
     const [loading, setLoading] = useState(true);
 
     const loadData = async () => {
         setLoading(true);
         try {
-            const [pData, rData, uData, aData] = await Promise.all([
+            const [pData, rData, uData, aData, sData] = await Promise.all([
                 potholesApi.list(),
                 reportsApi.list(),
                 authApi.listUsers(),
-                auditLogsApi.list()
+                auditLogsApi.list(),
+                reportsApi.getProvinceStats()
             ]);
             console.log(`[Admin Overview] Live Data Sync: ${rData.length} reports, ${pData.length} pothole events, ${uData.length} users.`);
-            setPotholes(pData);
-            setReports(rData);
-            setUsers(uData);
-            setAuditLogs(aData);
+            setPotholes(pData.data || []);
+            setReports(rData.data || []);
+            setUsers(uData.data || []);
+            setAuditLogs(aData.data || []);
+            setProvinceStats(sData || []);
         } catch (error) {
             console.error("[Admin Overview] Failed to load live overview data", error);
         } finally {
@@ -117,17 +120,11 @@ const Overview = () => {
         return auditLogs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).slice(0, 5);
     }, [auditLogs]);
 
-    const provinceStats = useMemo(() => {
-        return PROVINCIAL_COUNCILS.map(pc => {
-            const pReports = reports.filter(r => r.provincialCouncil === pc);
-            const pPotholes = potholes.filter(p => p.provincialCouncil === pc);
-            return {
-                name: pc,
-                total: pReports.length + pPotholes.filter(p => !p.reportId).length,
-                completed: pPotholes.filter(p => p.status === 'Completed').length
-            };
-        }).sort((a, b) => b.total - a.total).slice(0, 5);
-    }, [reports, potholes]);
+    const sortedProvinceStats = useMemo(() => {
+        return [...provinceStats]
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 5);
+    }, [provinceStats]);
 
     return (
         <div className="space-y-10">
@@ -135,7 +132,7 @@ const Overview = () => {
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                 <div>
                     <h1 className="section-heading">Executive Overview</h1>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mt-2">Real-time system intelligence & jurisdictional telemetry</p>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mt-2">Real-time system data & jurisdictional telemetry</p>
                 </div>
                 <div className="flex items-center gap-3">
                     <button onClick={loadData} className="btn-premium bg-white text-slate-600 border border-slate-100 shadow-sm hover:bg-slate-50">
@@ -285,16 +282,16 @@ const Overview = () => {
                         </div>
 
                         <div className="space-y-6">
-                            {provinceStats.map(stat => (
-                                <div key={stat.name} className="space-y-2">
+                            {sortedProvinceStats.map(stat => (
+                                <div key={stat.province} className="space-y-2">
                                     <div className="flex justify-between items-end">
-                                        <span className="text-[10px] font-black text-slate-700 uppercase tracking-widest truncate max-w-[140px]">{getProvinceShortName(stat.name as any)}</span>
-                                        <span className="text-xs font-black text-slate-900">{stat.total} Reports</span>
+                                        <span className="text-[10px] font-black text-slate-700 uppercase tracking-widest truncate max-w-[140px]">{getProvinceShortName(stat.province as any)}</span>
+                                        <span className="text-xs font-black text-slate-900">{stat.count} Reports</span>
                                     </div>
                                     <div className="h-2 w-full bg-slate-50 rounded-full overflow-hidden border border-slate-100">
                                         <div 
                                             className="h-full bg-blue-600 rounded-full transition-all duration-1000" 
-                                            style={{ width: `${Math.max(15, (stat.completed / (stat.total || 1)) * 100)}%` }} 
+                                            style={{ width: `${Math.min(100, Math.max(15, (stat.count / (stats.totalReports || 1)) * 100))}%` }} 
                                         />
                                     </div>
                                 </div>

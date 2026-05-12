@@ -7,8 +7,15 @@ import {
     FileText,
     UserPlus,
     Filter,
-    Database
+    Database,
+    Download,
+    Eye,
+    ShieldAlert,
+    Ban,
+    CheckCircle,
+    CalendarClock
 } from 'lucide-react';
+import Papa from 'papaparse';
 import { cn } from '../lib/utils';
 import { ResponsiveDataList } from '../components/ResponsiveDataList';
 
@@ -17,10 +24,22 @@ const AdminPage = () => {
     const [filterType, setFilterType] = useState<string>('ALL');
     const [logs, setLogs] = useState<any[]>([]);
     const [users, setUsers] = useState<any[]>([]);
+    const [selectedUser, setSelectedUser] = useState<any | null>(null);
+    const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+    const loadData = async () => {
+        try {
+            const uData = await authApi.listUsers();
+            const aData = await auditLogsApi.list();
+            setUsers(uData.data || []);
+            setLogs(aData.data || []);
+        } catch (e) {
+            console.error("Admin data load failed", e);
+        }
+    };
 
     useEffect(() => {
-        authApi.listUsers().then(setUsers);
-        auditLogsApi.list().then(setLogs);
+        loadData();
     }, []);
 
     const filteredLogs = useMemo(() => {
@@ -35,6 +54,44 @@ const AdminPage = () => {
 
         return currentLogs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
     }, [filterAction, filterType, logs]);
+
+    const handleUserStatusToggle = async (userId: string, currentStatus: string) => {
+        const nextStatus = currentStatus === 'ACTIVE' ? 'DEACTIVATED' : 'ACTIVE';
+        if (!window.confirm(`Are you sure you want to ${nextStatus.toLowerCase()} this user?`)) return;
+        
+        setActionLoading(userId);
+        try {
+            await authApi.updateUserStatus(userId, nextStatus as any);
+            await loadData();
+        } catch (e) {
+            alert("Failed to update user status");
+        } finally {
+            setActionLoading(null);
+        }
+    };
+
+    const exportLogsToCSV = () => {
+        const data = filteredLogs.map(l => ({
+            Timestamp: l.timestamp,
+            Action: l.action,
+            Actor: l.actorName,
+            Role: l.actor,
+            Entity: l.entityType,
+            EntityID: l.entityId,
+            Details: l.details
+        }));
+        
+        const csv = Papa.unparse(data);
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', `roadpulse_audit_logs_${new Date().toISOString().split('T')[0]}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
 
     const userColumns = [
         {
@@ -66,12 +123,44 @@ const AdminPage = () => {
             )
         },
         {
+            header: 'Status',
+            render: (user: any) => (
+                <span className={cn(
+                    "text-[10px] font-black uppercase tracking-widest",
+                    user.account_status === 'ACTIVE' ? 'text-emerald-500' : 'text-rose-500'
+                )}>
+                    {user.account_status || 'ACTIVE'}
+                </span>
+            )
+        },
+        {
             header: 'Ops',
             className: 'text-right',
-            render: () => (
-                <button className="p-2 text-slate-400 hover:text-slate-900 hover:bg-white hover:shadow-sm rounded-lg transition-all">
-                    <Settings size={14} />
-                </button>
+            render: (user: any) => (
+                <div className="flex items-center justify-end gap-2">
+                    {actionLoading === user.id ? (
+                        <div className="h-4 w-4 border-2 border-slate-200 border-t-slate-900 rounded-full animate-spin" />
+                    ) : (
+                        <button 
+                            onClick={() => handleUserStatusToggle(user.id, user.account_status || 'ACTIVE')}
+                            className={cn(
+                                "p-2 rounded-lg transition-all border shadow-sm",
+                                user.account_status === 'ACTIVE' 
+                                    ? "text-rose-500 bg-white border-rose-50 hover:bg-rose-500 hover:text-white" 
+                                    : "text-emerald-500 bg-white border-emerald-50 hover:bg-emerald-500 hover:text-white"
+                            )}
+                            title={user.account_status === 'ACTIVE' ? 'Deactivate Account' : 'Activate Account'}
+                        >
+                            {user.account_status === 'ACTIVE' ? <Ban size={14} /> : <CheckCircle size={14} />}
+                        </button>
+                    )}
+                    <button 
+                        onClick={() => setSelectedUser(user)}
+                        className="p-2 text-slate-400 hover:text-slate-900 hover:bg-white hover:shadow-sm border border-transparent hover:border-slate-100 rounded-lg transition-all"
+                    >
+                        <Eye size={14} />
+                    </button>
+                </div>
             )
         }
     ];
@@ -171,10 +260,79 @@ const AdminPage = () => {
         <div className="space-y-6 animate-in fade-in duration-700">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
                 <div>
-                    <h1 className="section-heading mb-1">Internal Reports</h1>
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">System-level personnel, protocols, and security logs</p>
+                    <h1 className="section-heading">Executive Overview</h1>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mt-2">Real-time system data & jurisdictional telemetry</p>
                 </div>
             </div>
+
+            {selectedUser && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-sm animate-in fade-in duration-300">
+                    <div className="bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+                        <div className="p-8 border-b border-slate-50 flex items-center justify-between bg-slate-50/50">
+                            <div className="flex items-center gap-4">
+                                <div className="p-3 bg-slate-900 text-white rounded-2xl">
+                                    <Users size={20} />
+                                </div>
+                                <div>
+                                    <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest leading-none mb-1">Personnel Detail</h3>
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Account & Clearance Information</p>
+                                </div>
+                            </div>
+                            <button onClick={() => setSelectedUser(null)} className="p-2 text-slate-400 hover:text-slate-900 transition-colors">
+                                <ArrowRight size={20} className="rotate-180" />
+                            </button>
+                        </div>
+                        
+                        <div className="p-10 space-y-8">
+                            <div className="grid grid-cols-2 gap-8">
+                                <div className="space-y-1">
+                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Full Name</p>
+                                    <p className="text-sm font-black text-slate-900">{selectedUser.name}</p>
+                                </div>
+                                <div className="space-y-1">
+                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">System Role</p>
+                                    <p className="text-sm font-black text-slate-900 uppercase tracking-tight">{selectedUser.role?.replace(/_/g, ' ')}</p>
+                                </div>
+                                <div className="space-y-1">
+                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Digital ID</p>
+                                    <p className="text-xs font-bold text-slate-600 truncate">{selectedUser.email}</p>
+                                </div>
+                                <div className="space-y-1">
+                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Status</p>
+                                    <div className="flex items-center gap-2">
+                                        <div className={cn("w-1.5 h-1.5 rounded-full", selectedUser.account_status === 'ACTIVE' ? 'bg-emerald-500' : 'bg-rose-500')} />
+                                        <p className="text-[10px] font-black text-slate-900 uppercase">{selectedUser.account_status || 'ACTIVE'}</p>
+                                    </div>
+                                </div>
+                                <div className="space-y-1 col-span-2">
+                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Assigned Jurisdiction</p>
+                                    <p className="text-xs font-bold text-slate-900 uppercase tracking-widest">{selectedUser.provincialCouncil || 'GLOBAL OVERSIGHT'}</p>
+                                </div>
+                            </div>
+                            
+                            <div className="pt-8 border-t border-slate-50 flex gap-4">
+                                <button 
+                                    onClick={() => {
+                                        handleUserStatusToggle(selectedUser.id, selectedUser.account_status || 'ACTIVE');
+                                        setSelectedUser(null);
+                                    }}
+                                    className={cn(
+                                        "flex-1 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border shadow-lg shadow-slate-900/5",
+                                        selectedUser.account_status === 'ACTIVE' 
+                                            ? "bg-rose-50 text-rose-600 border-rose-100 hover:bg-rose-600 hover:text-white" 
+                                            : "bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-600 hover:text-white"
+                                    )}
+                                >
+                                    {selectedUser.account_status === 'ACTIVE' ? 'Deactivate Personnel' : 'Authorize Personnel'}
+                                </button>
+                                <button onClick={() => setSelectedUser(null)} className="px-8 py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-black transition-all shadow-xl shadow-slate-900/10">
+                                    Close
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
                 {/* System Stats Sidebar */}
@@ -207,6 +365,12 @@ const AdminPage = () => {
                             </button>
                         </nav>
                     </div>
+                    <button 
+                        onClick={exportLogsToCSV}
+                        className="px-5 py-3 bg-white border border-slate-200 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-900 hover:text-white transition-all flex items-center gap-2 shadow-sm"
+                    >
+                        <Download size={14} /> Export CSV
+                    </button>
                 </div>
 
                 {/* User Management & Audit Log */}
@@ -239,6 +403,13 @@ const AdminPage = () => {
                                 </div>
                                 <h4 className="text-[10px] font-black text-slate-900 uppercase tracking-widest leading-none mt-0.5">System Activity Log</h4>
                             </div>
+
+                            <button 
+                                onClick={exportLogsToCSV}
+                                className="px-4 py-2 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-900 hover:text-white transition-all flex items-center gap-2"
+                            >
+                                <Download size={12} /> Export CSV
+                            </button>
 
                             <div className="flex flex-wrap items-center gap-3">
                                 <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-400 border border-slate-100">

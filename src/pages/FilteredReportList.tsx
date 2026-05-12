@@ -14,8 +14,10 @@ import {
     Search,
     XCircle,
     History,
-    CalendarClock
+    CalendarClock,
+    Download
 } from 'lucide-react';
+import Papa from 'papaparse';
 import { reportsApi } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import { StatusPill } from '../components/StatusPill';
@@ -174,6 +176,31 @@ const FilteredReportList = () => {
         }
     };
 
+    const exportToCSV = () => {
+        const data = reports.map(r => ({
+            ID: r.id,
+            Status: r.status,
+            Priority: r.priority,
+            District: r.district,
+            Province: r.provincialCouncil,
+            Latitude: r.lat,
+            Longitude: r.lon,
+            SubmittedAt: r.createdAt,
+            Notes: r.maintenanceNotes
+        }));
+        
+        const csv = Papa.unparse(data);
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', `roadpulse_reports_${filter}_${new Date().toISOString().split('T')[0]}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
     if (!filter || !FILTER_LABELS[filter]) return <Navigate to="/staff/overview" replace />;
 
     const Icon = FILTER_ICONS[filter];
@@ -226,6 +253,12 @@ const FilteredReportList = () => {
                             className="pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-bold text-slate-900 focus:outline-none focus:ring-4 focus:ring-slate-900/5 focus:border-slate-400 transition-all w-full sm:w-64"
                         />
                     </div>
+                    <button 
+                        onClick={exportToCSV}
+                        className="px-5 py-3 bg-white border border-slate-200 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-900 hover:text-white transition-all flex items-center gap-2 shadow-sm"
+                    >
+                        <Download size={14} /> Export CSV
+                    </button>
                 </div>
             </div>
 

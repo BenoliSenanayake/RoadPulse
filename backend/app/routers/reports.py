@@ -271,6 +271,16 @@ def get_reports(
         "limit": limit,
         "total_pages": total_pages
     }
+@router.get("/stats/provinces")
+def get_province_stats(db: Session = Depends(get_db), current_user: models.User = Depends(require_admin)):
+    """Returns report counts grouped by province."""
+    from sqlalchemy import func
+    stats = db.query(
+        models.CitizenReport.provincial_council,
+        func.count(models.CitizenReport.id).label("count")
+    ).group_by(models.CitizenReport.provincial_council).all()
+    
+    return [{"province": s[0] or "Unassigned", "count": s[1]} for s in stats]
 
 @router.get("/history", response_model=schemas.PaginatedAuditLogResponse)
 def get_reports_history(
@@ -318,6 +328,19 @@ def get_reports_history(
         "limit": limit,
         "total_pages": total_pages
     }
+
+@router.get("/{report_id}/history", response_model=List[schemas.AuditLogRead])
+def get_report_history(report_id: str, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    """Returns all audit logs for a specific report."""
+    # Auth check
+    report = db.query(models.CitizenReport).filter(models.CitizenReport.id == report_id).first()
+    if not report:
+        raise HTTPException(status_code=404, detail="Report not found")
+        
+    if current_user.role == "MAINTENANCE_OFFICER" and report.provincial_council != current_user.provincial_council:
+        raise HTTPException(status_code=403, detail="Access Restricted")
+        
+    return db.query(models.AuditLog).filter(models.AuditLog.report_id == report_id).order_by(models.AuditLog.created_at.desc()).all()
 
 @router.get("/{report_id}", response_model=schemas.CitizenReportRead)
 def get_report(
@@ -460,7 +483,7 @@ def update_report(
     db.refresh(report)
     
     # Create Audit Log for significant changes
-    if "status" in changed_fields or "priority" in changed_fields or "provincial_council" in changed_fields:
+    if "status" in changed_fields or "priority" in changed_fields or "provincial_council" in changed_fields or "district" in changed_fields:
         action = "REPORT_UPDATED"
         if "status" in changed_fields:
             action = "STATUS_CHANGED"

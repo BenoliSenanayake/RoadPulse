@@ -46,7 +46,7 @@ const AdminReportDetail = () => {
         try {
             const [reportData, logsData] = await Promise.all([
                 reportsApi.getById(id),
-                auditLogsApi.list()
+                reportsApi.getHistory(id)
             ]);
             
             if (reportData) {
@@ -55,9 +55,7 @@ const AdminReportDetail = () => {
                 setEditedDistrict(reportData.district || '');
                 setEditedStatus(reportData.status);
                 setEditedPriority(reportData.priority || 'Medium');
-                
-                const reportLogs = logsData.filter((l: any) => l.entityId === id);
-                setLogs(reportLogs.sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
+                setLogs(logsData);
             }
         } catch (error) {
             console.error("Failed to load report details", error);
@@ -85,9 +83,8 @@ const AdminReportDetail = () => {
             const updated = await reportsApi.update(id, updates);
             if (updated) {
                 setReport(updated);
-                const logsData = await auditLogsApi.list();
-                const reportLogs = logsData.filter((l: any) => l.entityId === id);
-                setLogs(reportLogs.sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
+                const logsData = await reportsApi.getHistory(id);
+                setLogs(logsData);
                 setAdminNote('');
             }
         } catch (error) {
