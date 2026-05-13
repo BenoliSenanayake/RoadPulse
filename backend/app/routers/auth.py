@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from typing import List
 from .. import schemas, models
 from ..database import get_db
@@ -13,22 +14,30 @@ logger = logging.getLogger(__name__)
 
 @router.post("/login")
 def login(request: schemas.LoginRequest, db: Session = Depends(get_db)):
-    # 8. ADD TEMPORARY LOGIN DEBUG LOGS
-    logger.info(f"Login attempt received for email: {request.email}")
+    # Normalize inputs
+    email_normalized = request.email.strip().lower()
     
-    user = db.query(models.User).filter(models.User.email == request.email).first()
+    logger.info(f"Login attempt received for email: {email_normalized}")
+    
+    # Use normalized email for lookup
+    user = db.query(models.User).filter(models.User.email == email_normalized).first()
     
     if not user:
-        logger.warning(f"Login failed: User not found for email: {request.email}")
+        # Check if we have a case-insensitive match if direct match failed (fallback for legacy data)
+        user = db.query(models.User).filter(func.lower(models.User.email) == email_normalized).first()
+        
+    if not user:
+        logger.warning(f"Login failed: User not found for email: {email_normalized}")
         raise HTTPException(status_code=401, detail="Invalid credentials")
     
-    # 5. VERIFY PASSWORD HASHING
+    # Verify password
     is_password_valid = verify_password(request.password, user.password_hash)
     
-    # Log user found and role
-    logger.info(f"User found: True, Role: {user.role}, Password valid: {is_password_valid}")
+    # 11. ADD TEMPORARY SAFE DEBUG LOGS
+    logger.info(f"Auth Diagnostics - Email: {email_normalized}, User Found: True, Role: {user.role}, Password Valid: {is_password_valid}")
 
     if not is_password_valid:
+        logger.warning(f"Login failed: Incorrect password for {email_normalized}")
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     # Access control for staff
@@ -36,20 +45,20 @@ def login(request: schemas.LoginRequest, db: Session = Depends(get_db)):
         stored_province = user.provincial_council
         selected_province = request.provincial_council
         
-        logger.info(f"Staff login: Stored province: {stored_province}, Selected province: {selected_province}")
+        logger.info(f"Staff login diagnostics: Stored province: {stored_province}, Selected province: {selected_province}")
         
         if stored_province != selected_province:
-            logger.warning(f"Province mismatch for {request.email}. Expected {stored_province}, got {selected_province}")
+            logger.warning(f"Province mismatch for {email_normalized}. Expected {stored_province}, got {selected_province}")
             raise HTTPException(
                 status_code=401, 
                 detail="Selected province does not match assigned officer account."
             )
         
     if user.account_status == "DEACTIVATED":
-        logger.warning(f"Login failed: Account deactivated for email: {request.email}")
+        logger.warning(f"Login failed: Account deactivated for email: {email_normalized}")
         raise HTTPException(status_code=403, detail="Account deactivated. Contact system administrator.")
 
-    logger.info(f"{user.role} login successful for {user.email}")
+    logger.info(f"{user.role} login successful for {email_normalized}")
     
     # Generate real JWT token
     access_token = create_access_token(data={"sub": user.email, "role": user.role})
@@ -68,12 +77,16 @@ def login(request: schemas.LoginRequest, db: Session = Depends(get_db)):
 
 @router.post("/signup")
 def signup(user: schemas.UserCreate, db: Session = Depends(get_db)):
-    if db.query(models.User).filter(models.User.email == user.email).first():
+    # Normalize email
+    email_normalized = user.email.strip().lower()
+    
+    if db.query(models.User).filter(models.User.email == email_normalized).first() or \
+       db.query(models.User).filter(func.lower(models.User.email) == email_normalized).first():
         raise HTTPException(status_code=400, detail="Email already registered")
 
     db_user = models.User(
-        name=user.name,
-        email=user.email,
+        name=user.name.strip(),
+        email=email_normalized,
         password_hash=get_password_hash(user.password),
         role=user.role,
         provincial_council=user.provincial_council
@@ -100,7 +113,8 @@ def signup(user: schemas.UserCreate, db: Session = Depends(get_db)):
 @router.get("/staff/verify")
 def verify_staff(email: str, db: Session = Depends(get_db)):
     """Verify a staff or admin user by email. Used by frontend AuthContext for officer/admin login."""
-    user = db.query(models.User).filter(models.User.email == email).first()
+    email_normalized = email.strip().lower()
+    user = db.query(models.User).filter(func.lower(models.User.email) == email_normalized).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     if user.role not in ("MAINTENANCE_OFFICER", "ADMIN"):
