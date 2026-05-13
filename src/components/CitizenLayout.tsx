@@ -34,12 +34,12 @@ export const CitizenLayout = ({ children, hideFooter = false }: { children: Reac
 
     return (
         <div className="min-h-screen bg-white font-sans text-slate-900">
-            <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-100">
+            <header className="sticky top-0 z-50 border-b border-slate-200 bg-white">
                 <div className="max-w-5xl mx-auto px-4 h-14 sm:h-16 flex items-center justify-between gap-4">
                     {/* Logo */}
                     <Link to="/citizen" aria-label="RoadPulse Home" className="flex items-center gap-2 shrink-0 group">
-                        <img src={logo} alt="RoadPulse Logo" className="w-7 h-7 sm:w-8 sm:h-8 object-contain group-hover:scale-110 transition-transform" />
-                        <span className="text-base sm:text-lg font-extrabold tracking-tight text-slate-900">RoadPulse</span>
+                        <img src={logo} alt="RoadPulse Logo" className="h-7 w-7 object-contain sm:h-8 sm:w-8" />
+                        <span className="text-base font-semibold tracking-tight text-slate-950 sm:text-lg">RoadPulse</span>
                     </Link>
 
                     {/* Desktop Nav */}
@@ -49,7 +49,7 @@ export const CitizenLayout = ({ children, hideFooter = false }: { children: Reac
                                 key={item.path}
                                 to={item.path}
                                 className={cn(
-                                    "px-4 py-2 rounded-lg text-sm font-semibold transition-colors",
+                                    "px-3.5 py-2 rounded-lg text-sm font-medium transition-colors",
                                     location.pathname === item.path
                                         ? "text-slate-900 bg-slate-100"
                                         : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
@@ -64,7 +64,7 @@ export const CitizenLayout = ({ children, hideFooter = false }: { children: Reac
                     <div className="hidden md:flex items-center gap-2 shrink-0">
                         {isAuthenticated && user ? (
                             <>
-                                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-100">
+                                <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5">
                                     <div className="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center text-slate-600">
                                         <User size={13} />
                                     </div>
@@ -85,7 +85,7 @@ export const CitizenLayout = ({ children, hideFooter = false }: { children: Reac
                             <Link
                                 to="/login"
                                 state={{ from: location }}
-                                className="inline-flex items-center gap-1.5 px-4 py-2 bg-slate-900 text-white rounded-lg text-sm font-semibold hover:bg-slate-800 transition-colors"
+                                    className="inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-800"
                             >
                                 <LogIn size={15} />
                                 Sign In
@@ -170,7 +170,7 @@ export const CitizenLayout = ({ children, hideFooter = false }: { children: Reac
                         <div className="max-w-4xl mx-auto space-y-16">
                             {/* Steps */}
                             <section>
-                                <h2 className="text-center text-xs font-semibold uppercase tracking-widest text-slate-400 mb-10">How it works</h2>
+                                <h2 className="mb-10 text-center text-sm font-semibold text-slate-700">How it works</h2>
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                                     {[
                                         { step: "1", title: "Take a Photo", desc: "Snap a clear photo of the road damage from a safe location.", icon: PlusCircle },

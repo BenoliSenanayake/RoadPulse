@@ -16,7 +16,7 @@ import {
     ArrowUpDown
 } from 'lucide-react';
 import { reportsApi } from '../lib/api';
-import { StatusPill } from '../components/StatusPill';
+import { StatusPill, type StatusType } from '../components/StatusPill';
 import { cn } from '../lib/utils';
 import { PROVINCIAL_COUNCILS, getProvinceShortName } from '../lib/provinceResolver';
 import type { CitizenReport } from '../types';
@@ -85,36 +85,36 @@ const AdminReports = () => {
     };
 
     return (
-        <div className="space-y-10">
+        <div className="space-y-8">
             {/* Header Area */}
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                 <div>
-                    <h1 className="section-heading">Global Telemetry Stream</h1>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mt-2">Centralized governance for citizen reports and infrastructure events</p>
+                    <h1 className="section-heading">Report Management</h1>
+                    <p className="mt-2 text-sm text-slate-600">Centralized governance for citizen reports and infrastructure events.</p>
                 </div>
                 <div className="flex items-center gap-3">
-                    <button className="btn-premium bg-white text-slate-600 border border-slate-100 shadow-sm hover:bg-slate-50">
+                    <button className="btn-premium border border-slate-300 bg-white text-slate-700 hover:bg-slate-50">
                         <Download size={14} className="text-slate-400" />
-                        Export Audit
+                        Export
                     </button>
-                    <button onClick={loadData} className="btn-premium bg-slate-900 text-white shadow-xl shadow-slate-900/10 hover:bg-slate-800">
-                        <RefreshCw size={14} className={cn("text-blue-400", loading && "animate-spin")} />
-                        Synchronize
+                    <button onClick={loadData} className="btn-premium bg-slate-900 text-white hover:bg-slate-800">
+                        <RefreshCw size={14} className={cn(loading && "animate-spin")} />
+                        Refresh
                     </button>
                 </div>
             </div>
 
             {/* Filter Bar */}
-            <div className="bg-white p-8 rounded-[2.5rem] border border-slate-50 shadow-sm">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
+            <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
                     <div className="relative xl:col-span-2 group">
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
                         <input 
                             type="text" 
-                            placeholder="Search Report ID or District..." 
+                            placeholder="Search report ID or district..." 
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-[11px] font-black uppercase tracking-widest text-slate-900 outline-none transition-all focus:border-blue-500 focus:bg-white"
+                            className="w-full rounded-lg border border-slate-200 bg-slate-50 py-3 pl-10 pr-4 text-sm font-medium text-slate-900 outline-none transition-all focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-200"
                         />
                     </div>
 
@@ -123,7 +123,7 @@ const AdminReports = () => {
                         <select 
                             value={provinceFilter}
                             onChange={(e) => setProvinceFilter(e.target.value)}
-                            className="w-full pl-11 pr-10 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-700 outline-none appearance-none cursor-pointer"
+                            className="w-full cursor-pointer appearance-none rounded-lg border border-slate-200 bg-slate-50 py-3 pl-10 pr-10 text-sm font-medium text-slate-700 outline-none focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-200"
                         >
                             <option value="All">All Provinces</option>
                             {PROVINCIAL_COUNCILS.map(pc => (
@@ -136,10 +136,10 @@ const AdminReports = () => {
                     <div className="relative group">
                         <Filter className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
                         <input 
-                            placeholder="District..."
+                            placeholder="District"
                             value={districtFilter === 'All' ? '' : districtFilter}
                             onChange={(e) => setDistrictFilter(e.target.value || 'All')}
-                            className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-700 outline-none"
+                            className="w-full rounded-lg border border-slate-200 bg-slate-50 py-3 pl-10 pr-4 text-sm font-medium text-slate-700 outline-none focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-200"
                         />
                     </div>
 
@@ -148,7 +148,7 @@ const AdminReports = () => {
                         <select 
                             value={statusFilter}
                             onChange={(e) => setStatusFilter(e.target.value)}
-                            className="w-full pl-11 pr-10 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-700 outline-none appearance-none cursor-pointer"
+                            className="w-full cursor-pointer appearance-none rounded-lg border border-slate-200 bg-slate-50 py-3 pl-10 pr-10 text-sm font-medium text-slate-700 outline-none focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-200"
                         >
                             <option value="All">All Statuses</option>
                             <option value="New">New</option>
@@ -164,29 +164,29 @@ const AdminReports = () => {
             </div>
 
             {/* Table Area */}
-            <div className="bg-white rounded-[2.5rem] border border-slate-50 shadow-sm overflow-hidden">
+            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
                 <div className="overflow-x-auto custom-scrollbar">
                     <table className="table-premium">
                         <thead>
                             <tr>
                                 <th className="cursor-pointer group">
                                     <div className="flex items-center gap-2">
-                                        Unit ID
+                                        Report ID
                                         <ArrowUpDown size={12} className="opacity-0 group-hover:opacity-100 transition-opacity" />
                                     </div>
                                 </th>
                                 <th>Jurisdiction</th>
                                 <th>District</th>
-                                <th>Location Telemetry</th>
+                                <th>Location</th>
                                 <th className="cursor-pointer group">
                                     <div className="flex items-center gap-2">
                                         Timestamp
                                         <ArrowUpDown size={12} className="opacity-0 group-hover:opacity-100 transition-opacity" />
                                     </div>
                                 </th>
-                                <th className="text-center">Lifecycle Status</th>
+                                <th className="text-center">Status</th>
                                 <th className="text-center">Priority</th>
-                                <th className="text-right px-8">Governance</th>
+                                <th className="px-8 text-right">Action</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-50">
@@ -195,31 +195,31 @@ const AdminReports = () => {
                                     <tr key={item.id} className="hover:bg-slate-50/50 transition-all duration-300 group">
                                         <td className="whitespace-nowrap">
                                             <div className="flex flex-col">
-                                                <span className="text-[11px] font-black text-slate-900 uppercase">
+                                                <span className="text-sm font-semibold text-slate-950">
                                                     #{item.id.split('-')[0]}
                                                 </span>
-                                                <span className="text-[9px] font-black text-blue-500 uppercase tracking-widest mt-0.5">REPORT</span>
+                                                <span className="mt-0.5 text-xs text-slate-500">Report</span>
                                             </div>
                                         </td>
                                         <td>
-                                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                                {item.provincialCouncil ? getProvinceShortName(item.provincialCouncil as any) : 'Unknown'}
+                                            <span className="text-sm font-medium text-slate-600">
+                                                {item.provincialCouncil ? getProvinceShortName(item.provincialCouncil) : 'Unknown'}
                                             </span>
                                         </td>
                                         <td>
-                                            <span className="text-[11px] font-bold text-slate-600 uppercase">{item.district}</span>
+                                            <span className="text-sm text-slate-700">{item.district}</span>
                                         </td>
                                         <td className="max-w-[220px]">
-                                            <p className="text-[11px] font-bold text-slate-900 truncate uppercase tracking-tight">
+                                            <p className="truncate text-sm font-medium text-slate-900">
                                                 {item.description || 'Coordinate Location'}
                                             </p>
                                         </td>
                                         <td className="whitespace-nowrap">
                                             <div className="flex flex-col">
-                                                <span className="text-[11px] font-black text-slate-900">
+                                                <span className="text-sm font-medium text-slate-900">
                                                     {item.createdAt ? format(new Date(item.createdAt), 'dd MMM yyyy') : 'N/A'}
                                                 </span>
-                                                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">
+                                                <span className="text-xs text-slate-500">
                                                     {item.createdAt ? format(new Date(item.createdAt), 'HH:mm:ss') : '--:--:--'}
                                                 </span>
                                             </div>
@@ -227,12 +227,12 @@ const AdminReports = () => {
                                         <td className="text-center">
                                             <div className="flex items-center justify-center gap-2">
                                                 {getStatusIcon(item.status)}
-                                                <StatusPill status={item.status as any} className="scale-90" />
+                                                <StatusPill status={item.status as StatusType} className="scale-90" />
                                             </div>
                                         </td>
                                         <td className="text-center">
                                             <span className={cn(
-                                                "px-2.5 py-1 rounded-xl text-[9px] font-black uppercase tracking-widest inline-block border",
+                                                "inline-block rounded-md border px-2.5 py-1 text-xs font-medium",
                                                 ['Urgent', 'High'].includes(item.priority || '') 
                                                     ? "bg-rose-50 text-rose-600 border-rose-100" 
                                                     : item.priority === 'Medium'
@@ -245,9 +245,9 @@ const AdminReports = () => {
                                         <td className="text-right px-8">
                                             <button 
                                                 onClick={() => navigate(`/admin/reports/${item.id}`)}
-                                                className="h-9 px-4 bg-white border border-slate-200 rounded-xl text-[9px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-900 hover:text-white hover:border-slate-900 transition-all flex items-center gap-2 shadow-sm ml-auto"
+                                                className="ml-auto flex h-9 items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-900 hover:text-white"
                                             >
-                                                <Eye size={12} /> Details
+                                                <Eye size={14} /> Details
                                             </button>
                                         </td>
                                     </tr>
@@ -264,11 +264,11 @@ const AdminReports = () => {
                                 <tr>
                                     <td colSpan={8} className="px-8 py-32 text-center">
                                         <div className="flex flex-col items-center">
-                                            <div className="w-20 h-20 bg-slate-50 rounded-[2rem] flex items-center justify-center mb-6">
-                                                <Search size={32} className="text-slate-200" />
+                                            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-slate-50">
+                                                <Search size={24} className="text-slate-300" />
                                             </div>
-                                            <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">Zero Telemetry Matches</h3>
-                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-2 max-w-xs mx-auto leading-relaxed">No system records match your current criteria.</p>
+                                            <h3 className="text-lg font-semibold text-slate-950">No reports found</h3>
+                                            <p className="mx-auto mt-2 max-w-xs text-sm leading-6 text-slate-500">No system records match your current criteria.</p>
                                         </div>
                                     </td>
                                 </tr>
@@ -277,7 +277,7 @@ const AdminReports = () => {
                     </table>
                 </div>
 
-                <div className="p-6 bg-slate-50/50 border-t border-slate-50">
+                <div className="border-t border-slate-200 bg-slate-50/50 p-5">
                     <Pagination 
                         currentPage={page}
                         totalPages={totalPages}

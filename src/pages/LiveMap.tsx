@@ -24,7 +24,7 @@ import {
 import { subDays, isAfter } from 'date-fns';
 import { reportsApi } from '../lib/api';
 import type { CitizenReport, RepairPriority } from '../types';
-import { StatusPill } from '../components/StatusPill';
+import { StatusPill, type StatusType } from '../components/StatusPill';
 import { cn } from '../lib/utils';
 import { useAuth } from '../context/AuthContext';
 import { getProvinceShortName, PROVINCE_DISTRICTS, normalizeProvince, normalizeDistrict, canonicalizeProvince, getProvinceCenter } from '../lib/provinceResolver';
@@ -248,10 +248,10 @@ const LiveMap = () => {
 
     if (loading) {
         return (
-            <div className="flex h-[calc(100vh-120px)] items-center justify-center rounded-2xl bg-white">
+            <div className="flex h-[calc(100vh-120px)] items-center justify-center rounded-xl border border-slate-200 bg-white">
                 <div className="text-center">
-                    <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-emerald-600" />
-                    <p className="text-xs font-black uppercase tracking-widest text-slate-400">Initializing mapping engine</p>
+                    <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-2 border-slate-200 border-t-slate-700" />
+                    <p className="text-sm font-medium text-slate-500">Loading live map</p>
                 </div>
             </div>
         );
@@ -259,7 +259,7 @@ const LiveMap = () => {
 
     if (error) {
         return (
-            <div className="flex h-[calc(100vh-120px)] items-center justify-center rounded-2xl bg-white">
+            <div className="flex h-[calc(100vh-120px)] items-center justify-center rounded-xl border border-slate-200 bg-white">
                 <div className="text-center">
                     <AlertCircle className="mx-auto mb-3 text-rose-500" size={32} />
                     <p className="text-sm font-bold text-slate-600">{error}</p>
@@ -269,8 +269,8 @@ const LiveMap = () => {
     }
 
     return (
-        <div className="relative -m-6 flex h-[calc(100vh-120px)] flex-col gap-6 overflow-hidden bg-slate-50 p-6 md:flex-row">
-            <aside className="hidden w-80 shrink-0 flex-col gap-5 overflow-y-auto pr-1 md:flex">
+        <div className="relative -m-4 flex h-[calc(100vh-96px)] flex-col gap-4 overflow-hidden bg-slate-50 p-4 sm:-m-6 sm:h-[calc(100vh-112px)] sm:p-6 md:flex-row">
+            <aside className="hidden w-80 shrink-0 flex-col gap-4 overflow-y-auto pr-1 md:flex">
                 <FilterPanel
                     searchTerm={searchTerm}
                     setSearchTerm={setSearchTerm}
@@ -290,44 +290,44 @@ const LiveMap = () => {
                 </div>
             </aside>
 
-            <main className="relative z-0 flex-1 overflow-hidden rounded-none bg-white shadow-2xl md:rounded-2xl border border-slate-100">
-                <div className="absolute left-4 top-4 z-[1000] max-w-[calc(100%-90px)] rounded-2xl bg-slate-900/90 px-4 py-3 text-white shadow-xl backdrop-blur">
-                    <div className="flex items-center gap-2 mb-1">
-                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Provincial Live Map</p>
+            <main className="relative z-0 flex-1 overflow-hidden rounded-none border border-slate-200 bg-white shadow-sm md:rounded-xl">
+                <div className="absolute left-4 top-4 z-[1000] max-w-[calc(100%-90px)] rounded-lg border border-slate-200 bg-white px-4 py-3 text-slate-950 shadow-sm">
+                    <div className="mb-1 flex items-center gap-2">
+                        <p className="text-xs font-medium text-slate-500">Provincial live map</p>
                         {province && province !== 'Unassigned' && (
-                            <span className="bg-emerald-500/20 text-emerald-400 text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded border border-emerald-500/30">
-                                {getProvinceShortName(province)} Sector
+                            <span className="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-xs font-medium text-slate-700">
+                                {getProvinceShortName(province)}
                             </span>
                         )}
                     </div>
-                    <p className="text-sm font-black">{filtered.length} visible points</p>
+                    <p className="text-sm font-semibold">{filtered.length} visible points</p>
                 </div>
 
-                <div className="absolute left-4 bottom-10 z-[1000] rounded-2xl bg-white/95 p-4 shadow-xl border border-slate-100 backdrop-blur min-w-[140px]">
-                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-3 border-b border-slate-50 pb-2">Map Legend</p>
+                <div className="absolute bottom-6 left-4 z-[1000] min-w-[140px] rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+                    <p className="mb-3 border-b border-slate-100 pb-2 text-xs font-medium text-slate-500">Map legend</p>
                     <div className="space-y-2.5">
                         <div className="flex items-center gap-2.5">
-                            <div className="w-3 h-3 rounded-full bg-[#10B981] ring-4 ring-emerald-500/10" />
-                            <span className="text-[10px] font-black text-slate-700 uppercase tracking-tight">Verified</span>
+                            <div className="h-3 w-3 rounded-full bg-[#10B981]" />
+                            <span className="text-xs font-medium text-slate-700">Verified</span>
                         </div>
                         <div className="flex items-center gap-2.5">
-                            <div className="w-3 h-3 rounded-full bg-[#F97316] ring-4 ring-orange-500/10" />
-                            <span className="text-[10px] font-black text-slate-700 uppercase tracking-tight">Scheduled</span>
+                            <div className="h-3 w-3 rounded-full bg-[#F97316]" />
+                            <span className="text-xs font-medium text-slate-700">Scheduled</span>
                         </div>
                         <div className="flex items-center gap-2.5">
-                            <div className="w-3 h-3 rounded-full bg-[#2563EB] ring-4 ring-blue-500/10" />
-                            <span className="text-[10px] font-black text-slate-700 uppercase tracking-tight">In Progress</span>
+                            <div className="h-3 w-3 rounded-full bg-[#2563EB]" />
+                            <span className="text-xs font-medium text-slate-700">In progress</span>
                         </div>
                     </div>
                 </div>
 
                 <div className="absolute right-4 top-4 z-[1000] flex flex-col gap-2">
-                    <button className="rounded-xl border border-slate-100 bg-white/90 p-3 text-slate-600 shadow-xl backdrop-blur">
+                    <button className="rounded-lg border border-slate-200 bg-white p-3 text-slate-600 shadow-sm">
                         <Layers size={18} />
                     </button>
                     <button
                         onClick={() => setIsFilterDrawerOpen(true)}
-                        className="rounded-xl bg-slate-900 p-3 text-white shadow-xl md:hidden"
+                        className="rounded-lg bg-slate-900 p-3 text-white shadow-sm md:hidden"
                     >
                         <Filter size={18} />
                     </button>
@@ -348,7 +348,7 @@ const LiveMap = () => {
                                     <div className="w-56 p-1">
                                         <div className="mb-2 flex items-center justify-between gap-2">
                                             <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">#{p.id.split('-')[0]}</p>
-                                            <StatusPill status={p.status as any} className="scale-75 origin-right" />
+                                            <StatusPill status={p.status as StatusType} className="scale-75 origin-right" />
                                         </div>
                                         <p className="text-sm font-black text-slate-900 leading-tight">{p.description?.replace(/^\[.*?\]\s*/, '') || 'Road Location'}</p>
                                         <p className="mt-1 text-[10px] font-black text-slate-400 uppercase tracking-widest">{p.district} District</p>
@@ -363,13 +363,13 @@ const LiveMap = () => {
                             </Marker>
                         )) : (
                             <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[1001]">
-                                <div className="bg-white/90 backdrop-blur p-8 rounded-[2rem] border border-slate-100 shadow-2xl text-center max-w-xs">
-                                    <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                                <div className="max-w-xs rounded-xl border border-slate-200 bg-white p-6 text-center shadow-sm">
+                                    <div className="mx-auto mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-slate-50">
                                         <MapPin size={20} className="text-slate-300" />
                                     </div>
-                                    <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight mb-1">No Live Reports</h3>
-                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-relaxed">
-                                        There are currently no active potholes or verified reports in this jurisdictional sector.
+                                    <h3 className="mb-1 text-sm font-semibold text-slate-950">No live reports</h3>
+                                    <p className="text-sm leading-6 text-slate-500">
+                                        There are currently no active potholes or verified reports in this area.
                                     </p>
                                 </div>
                             </div>
@@ -378,34 +378,34 @@ const LiveMap = () => {
                 </MapContainer>
 
                 {selected && (
-                    <section className="absolute bottom-0 right-0 z-[2000] flex max-h-full w-full flex-col bg-white/95 shadow-[-20px_0_50px_rgba(15,23,42,0.16)] backdrop-blur md:top-0 md:w-[380px] border-l border-slate-100 animate-fade-in-right">
-                        <div className="flex items-start justify-between gap-4 border-b border-slate-100 bg-slate-50/50 p-6">
+                    <section className="absolute bottom-0 right-0 z-[2000] flex max-h-full w-full flex-col border-l border-slate-200 bg-white shadow-md md:top-0 md:w-[380px]">
+                        <div className="flex items-start justify-between gap-4 border-b border-slate-200 bg-slate-50 p-5">
                             <div>
-                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Operational Record</p>
-                                <h2 className="text-base font-black text-slate-950 uppercase tracking-tight">#{selected.id.split('-')[0]}</h2>
+                                <p className="mb-1 text-xs font-medium text-slate-500">Operational record</p>
+                                <h2 className="text-base font-semibold text-slate-950">#{selected.id.split('-')[0]}</h2>
                             </div>
-                            <button onClick={() => setSelected(null)} className="rounded-full bg-white p-2 text-slate-400 shadow-sm hover:text-slate-900 transition-colors">
+                            <button onClick={() => setSelected(null)} className="rounded-lg border border-slate-200 bg-white p-2 text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-900">
                                 <X size={16} />
                             </button>
                         </div>
 
-                        <div className="flex-1 space-y-6 overflow-y-auto p-8 custom-scroll">
+                        <div className="custom-scroll flex-1 space-y-5 overflow-y-auto p-5">
                             {selected.imageUrl && (
-                                <img src={selected.imageUrl} alt="Road damage evidence" className="aspect-video w-full rounded-2xl object-cover shadow-lg" />
+                                <img src={selected.imageUrl} alt="Road damage evidence" className="aspect-video w-full rounded-lg border border-slate-200 object-cover" />
                             )}
                             
                             <div className="space-y-4">
                                 <div className="flex items-center justify-between gap-3">
-                                    <StatusPill status={selected.status as any} />
+                                    <StatusPill status={selected.status as StatusType} />
                                     <span className={cn(
-                                        'rounded-md px-2.5 py-1 text-[10px] font-black uppercase tracking-widest',
+                                        'rounded-md px-2.5 py-1 text-xs font-medium',
                                         ['High', 'Urgent'].includes(selected.priority || '') ? 'bg-rose-50 text-rose-700' : 'bg-slate-100 text-slate-600'
                                     )}>
                                         {selected.priority || 'Medium'} Priority
                                     </span>
                                 </div>
-                                <h3 className="text-xl font-black text-slate-950 leading-tight">{selected.description?.replace(/^\[.*?\]\s*/, '') || 'Provincial Road Point'}</h3>
-                                <p className="flex items-center gap-1.5 text-xs font-bold text-slate-500 uppercase tracking-widest">
+                                <h3 className="text-lg font-semibold leading-tight text-slate-950">{selected.description?.replace(/^\[.*?\]\s*/, '') || 'Provincial road point'}</h3>
+                                <p className="flex items-center gap-1.5 text-sm text-slate-500">
                                     <MapPin size={14} className="text-slate-400" /> {selected.district} District
                                 </p>
                             </div>
@@ -420,17 +420,17 @@ const LiveMap = () => {
                             </div>
 
                             {selected.maintenanceNotes && (
-                                <div className="rounded-2xl bg-slate-50 p-5 border border-slate-100/50">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Maintenance Observations</p>
-                                    <p className="text-xs font-bold leading-relaxed text-slate-600 italic">"{selected.maintenanceNotes}"</p>
+                                <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                                    <p className="mb-2 text-xs font-medium text-slate-500">Maintenance observations</p>
+                                    <p className="text-sm leading-relaxed text-slate-600">"{selected.maintenanceNotes}"</p>
                                 </div>
                             )}
 
-                            <div className="space-y-3 pt-4 border-t border-slate-50">
+                            <div className="space-y-3 border-t border-slate-200 pt-4">
                                 {canonicalizeStatus(selected.status) === 'Verified' && (
                                     <button 
                                         onClick={() => updateStatus('Scheduled')} 
-                                        className="flex w-full items-center justify-center gap-2 rounded-xl bg-orange-500 py-4 text-[10px] font-black uppercase tracking-widest text-white shadow-xl shadow-orange-500/20 hover:bg-orange-600 transition-all"
+                                        className="flex w-full items-center justify-center gap-2 rounded-lg bg-amber-600 py-3 text-sm font-medium text-white transition-colors hover:bg-amber-700"
                                     >
                                         <CalendarClock size={14} /> Mark Scheduled
                                     </button>
@@ -438,7 +438,7 @@ const LiveMap = () => {
                                 {canonicalizeStatus(selected.status) === 'Scheduled' && (
                                     <button 
                                         onClick={() => updateStatus('In Progress')} 
-                                        className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 py-4 text-[10px] font-black uppercase tracking-widest text-white shadow-xl shadow-blue-600/20 hover:bg-blue-700 transition-all"
+                                        className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-700 py-3 text-sm font-medium text-white transition-colors hover:bg-blue-800"
                                     >
                                         <Play size={14} /> Mark In Progress
                                     </button>
@@ -446,13 +446,13 @@ const LiveMap = () => {
                                 {canonicalizeStatus(selected.status) === 'In Progress' && (
                                     <button 
                                         onClick={() => updateStatus('Completed')} 
-                                        className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 py-4 text-[10px] font-black uppercase tracking-widest text-white shadow-xl shadow-emerald-600/20 hover:bg-emerald-700 transition-all"
+                                        className="flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-700 py-3 text-sm font-medium text-white transition-colors hover:bg-emerald-800"
                                     >
                                         <CheckCircle size={14} /> Finalize Maintenance
                                     </button>
                                 )}
-                                <Link to={`/staff/reports/${selected.id}`} className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 py-4 text-[10px] font-black uppercase tracking-widest text-white shadow-xl shadow-slate-900/20 hover:bg-black transition-all">
-                                    Open Record Details <ChevronRight size={14} />
+                                <Link to={`/staff/reports/${selected.id}`} className="flex w-full items-center justify-center gap-2 rounded-lg bg-slate-900 py-3 text-sm font-medium text-white transition-colors hover:bg-slate-800">
+                                    Open report details <ChevronRight size={14} />
                                 </Link>
                             </div>
                         </div>
@@ -461,11 +461,11 @@ const LiveMap = () => {
             </main>
 
             {isFilterDrawerOpen && (
-                <div className="fixed inset-0 z-[3000] bg-slate-950/50 backdrop-blur-sm md:hidden">
-                    <div className="absolute inset-y-0 right-0 w-[86%] max-w-sm overflow-y-auto bg-white p-6 shadow-2xl">
-                        <div className="mb-6 flex items-center justify-between border-b border-slate-100 pb-5">
-                            <h3 className="text-sm font-black text-slate-950 uppercase tracking-tight">Geospatial Overview</h3>
-                            <button onClick={() => setIsFilterDrawerOpen(false)} className="rounded-xl bg-slate-50 p-2 text-slate-500">
+                <div className="fixed inset-0 z-[3000] bg-slate-900/40 md:hidden">
+                    <div className="absolute inset-y-0 right-0 w-[86%] max-w-sm overflow-y-auto bg-white p-6 shadow-lg">
+                        <div className="mb-6 flex items-center justify-between border-b border-slate-200 pb-5">
+                            <h3 className="text-base font-semibold text-slate-950">Map filters</h3>
+                            <button onClick={() => setIsFilterDrawerOpen(false)} className="rounded-lg bg-slate-50 p-2 text-slate-500">
                                 <X size={18} />
                             </button>
                         </div>
@@ -482,8 +482,8 @@ const LiveMap = () => {
                             setDateFilter={setDateFilter}
                             districts={districts}
                         />
-                        <button onClick={() => setIsFilterDrawerOpen(false)} className="mt-6 w-full rounded-xl bg-slate-900 py-4 text-xs font-black uppercase tracking-widest text-white shadow-xl">
-                            Close & Sync
+                        <button onClick={() => setIsFilterDrawerOpen(false)} className="mt-6 w-full rounded-lg bg-slate-900 py-3 text-sm font-medium text-white">
+                            Apply filters
                         </button>
                     </div>
                 </div>
@@ -519,14 +519,14 @@ const FilterPanel = ({
     setDateFilter,
     districts,
 }: FilterPanelProps) => (
-    <div className="rounded-[2rem] border border-slate-100 bg-white p-6 shadow-sm">
-        <h2 className="mb-6 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
-            <Filter size={13} /> Map Configuration
+    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+        <h2 className="mb-5 flex items-center gap-2 text-sm font-semibold text-slate-950">
+            <Filter size={16} /> Map filters
         </h2>
-        <div className="space-y-6">
+        <div className="space-y-5">
             <div className="relative">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
-                <input value={searchTerm} onChange={event => setSearchTerm(event.target.value)} placeholder="Search road or ID..." className="w-full rounded-2xl bg-slate-50 py-3.5 pl-11 pr-4 text-xs font-bold text-slate-900 outline-none border border-transparent focus:border-slate-200 transition-all" />
+                <input value={searchTerm} onChange={event => setSearchTerm(event.target.value)} placeholder="Search road or ID..." className="w-full rounded-lg border border-slate-200 bg-slate-50 py-3 pl-10 pr-4 text-sm font-medium text-slate-900 outline-none transition-all focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-200" />
             </div>
             <Select label="District Sector" value={areaFilter} onChange={setAreaFilter} options={districts} />
             <Select label="Maintenance Status" value={statusFilter} onChange={value => setStatusFilter(value as LiveMapStatus)} options={STATUSES} />
@@ -538,24 +538,24 @@ const FilterPanel = ({
 
 const Select = ({ label, value, onChange, options }: { label: string; value: string; onChange: (value: string) => void; options: string[] }) => (
     <label className="block">
-        <span className="mb-2 block text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">{label}</span>
-        <select value={value} onChange={event => onChange(event.target.value)} className="w-full rounded-xl bg-slate-50 px-4 py-3 text-xs font-bold text-slate-700 outline-none border border-transparent focus:border-slate-200 cursor-pointer">
+        <span className="mb-2 ml-1 block text-sm font-medium text-slate-700">{label}</span>
+        <select value={value} onChange={event => onChange(event.target.value)} className="w-full cursor-pointer rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700 outline-none focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-200">
             {options.map(option => <option key={option} value={option}>{option}</option>)}
         </select>
     </label>
 );
 
 const Stat = ({ label, value }: { label: string; value: number }) => (
-    <div className="rounded-[1.5rem] bg-white p-6 shadow-sm border border-slate-50">
-        <p className="text-3xl font-black text-slate-950 tracking-tight">{value}</p>
-        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-1">{label}</p>
+    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <p className="text-2xl font-semibold tracking-tight text-slate-950">{value}</p>
+        <p className="mt-1 text-xs font-medium text-slate-500">{label}</p>
     </div>
 );
 
 const Detail = ({ label, value }: { label: string; value: string }) => (
-    <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-4">
-        <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{label}</p>
-        <p className="truncate text-[11px] font-black text-slate-700">{value}</p>
+    <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+        <p className="mb-1 text-xs font-medium text-slate-500">{label}</p>
+        <p className="truncate text-sm font-medium text-slate-800">{value}</p>
     </div>
 );
 

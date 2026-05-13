@@ -34,11 +34,11 @@ export const AuthInput = ({
     return (
         <div className="space-y-2 w-full">
             <div className="flex justify-between items-center">
-                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 lowercase first-letter:uppercase">
+                <label className="ml-1 block text-sm font-medium text-slate-700">
                     {label}
                 </label>
                 {type === 'password' && isCapsLockOn && (
-                    <span className="flex items-center gap-1 text-[9px] font-black text-rose-500 uppercase tracking-widest animate-pulse">
+                    <span className="flex items-center gap-1 text-xs font-medium text-rose-600">
                         <AlertCircle size={10} /> Caps Lock On
                     </span>
                 )}
@@ -50,7 +50,7 @@ export const AuthInput = ({
                         "absolute left-4 top-1/2 -translate-y-1/2 transition-colors duration-300",
                         error ? "text-rose-400" : "text-slate-300 group-focus-within:text-slate-900"
                     )}>
-                        {React.isValidElement(icon) ? React.cloneElement(icon as React.ReactElement<any>, { size: 18 }) : icon}
+                        {React.isValidElement<{ size?: number }>(icon) ? React.cloneElement(icon, { size: 18 }) : icon}
                     </div>
                 )}
 
@@ -59,13 +59,13 @@ export const AuthInput = ({
                     type={inputType}
                     onKeyUp={checkCapsLock}
                     className={cn(
-                        "w-full bg-slate-50/50 border rounded-2xl focus:outline-none focus:ring-4 transition-all text-sm font-bold placeholder:text-slate-300 placeholder:font-medium",
+                        "w-full rounded-lg border bg-white text-sm font-medium transition-all placeholder:text-slate-400 focus:outline-none focus:ring-2",
                         icon ? "pl-12" : "pl-5",
                         showPasswordToggle ? "pr-12" : "pr-5",
-                        "py-4",
+                        "py-3",
                         error
-                            ? "border-rose-200 focus:ring-rose-500/10 text-rose-900"
-                            : "border-slate-100 focus:ring-slate-900/5 text-slate-900",
+                            ? "border-rose-300 text-rose-900 focus:ring-rose-100"
+                            : "border-slate-300 text-slate-900 focus:border-slate-500 focus:ring-slate-200",
                         className
                     )}
                 />
@@ -83,7 +83,7 @@ export const AuthInput = ({
             </div>
 
             {error && (
-                <p className="text-[10px] text-rose-500 font-bold mt-1.5 ml-2 tracking-wide uppercase flex items-center gap-1.5 animate-fade-in">
+                <p className="ml-1.5 mt-1.5 flex items-center gap-1.5 text-xs font-medium text-rose-600">
                     <AlertCircle size={10} /> {error}
                 </p>
             )}

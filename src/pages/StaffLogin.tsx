@@ -78,27 +78,22 @@ const StaffLogin = () => {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-white px-4 py-8 relative overflow-hidden">
+        <div className="relative flex min-h-screen items-center justify-center bg-slate-50 px-4 py-8">
             {feedback && <Alert {...feedback} onClose={() => setFeedback(null)} />}
 
-            {/* Clean Grid Background */}
-            <div className="absolute inset-0 bg-[linear-gradient(to_right,#f1f5f9_1px,transparent_1px),linear-gradient(to_bottom,#f1f5f9_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] opacity-50" />
-
-            <div className="max-w-[420px] w-full relative z-10 flex flex-col gap-8">
+            <div className="relative z-10 flex w-full max-w-[420px] flex-col gap-7">
                 {/* Brand Header */}
                 <div className="flex flex-col items-center">
-                    <div className="w-16 h-16 bg-slate-900 rounded-2xl shadow-xl flex items-center justify-center mb-4 border border-white/10 group">
-                        <img src={logo} alt="RP" className="w-10 h-10 object-contain brightness-0 invert opacity-90 group-hover:scale-110 transition-transform duration-500" />
+                    <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-xl border border-slate-800 bg-slate-900 shadow-sm">
+                        <img src={logo} alt="RP" className="h-9 w-9 object-contain brightness-0 invert opacity-90" />
                     </div>
                     <div className="text-center">
-                        <h1 className="text-xl font-black text-slate-900 tracking-[0.15em] uppercase leading-none mb-2">Officer Sign In</h1>
-                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.4em] leading-none">Maintenance Portal</p>
+                        <h1 className="mb-1 text-2xl font-semibold leading-none tracking-tight text-slate-950">Officer Sign In</h1>
+                        <p className="text-sm text-slate-500">Maintenance portal</p>
                     </div>
                 </div>
 
-                <div className="bg-white p-8 sm:p-10 rounded-[2rem] border border-slate-100 shadow-2xl shadow-slate-950/5 relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-slate-50 rounded-bl-full translate-x-16 -translate-y-16" />
-
+                <div className="relative overflow-hidden rounded-xl border border-slate-200 bg-white p-7 shadow-sm sm:p-8">
                     <form onSubmit={handleSubmit} className="space-y-5 relative z-10">
                         <AuthInput
                             label="Staff Email"
@@ -116,7 +111,7 @@ const StaffLogin = () => {
 
                         {/* Provincial Council Selector */}
                         <div className="space-y-2">
-                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                            <label className="ml-1 block text-sm font-medium text-slate-700">
                                 Provincial Council
                             </label>
                             <div className="relative">
@@ -124,7 +119,7 @@ const StaffLogin = () => {
                                 <select
                                     value={selectedProvince}
                                     onChange={(e) => setSelectedProvince(e.target.value as ProvincialCouncil)}
-                                    className="w-full pl-11 pr-4 py-3.5 bg-slate-50/60 border border-slate-200 rounded-2xl text-sm font-bold text-slate-900 appearance-none focus:outline-none focus:ring-2 focus:ring-slate-300 focus:border-transparent transition-all cursor-pointer"
+                                    className="w-full cursor-pointer appearance-none rounded-lg border border-slate-300 bg-white py-3 pl-11 pr-4 text-sm font-medium text-slate-900 transition-all focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200"
                                 >
                                     <option value="" disabled>Select Province</option>
                                     {PROVINCIAL_COUNCILS.map(pc => (
@@ -158,7 +153,7 @@ const StaffLogin = () => {
                         <button
                             type="submit"
                             disabled={isLoading}
-                            className="w-full bg-slate-950 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-xl shadow-slate-950/20 hover:bg-slate-900 active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-50 mt-2"
+                            className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg bg-slate-900 py-3 text-sm font-medium text-white transition-colors hover:bg-slate-800 disabled:opacity-50"
                         >
                             {isLoading ? (
                                 <Loader2 size={16} className="animate-spin" />
@@ -174,7 +169,7 @@ const StaffLogin = () => {
                 <div className="flex flex-col items-center gap-4">
                     <div className="flex items-center gap-2">
                         <div className="w-1 h-1 bg-slate-200 rounded-full" />
-                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-none">RoadPulse Official Portal</span>
+                        <span className="text-xs font-medium leading-none text-slate-500">RoadPulse official portal</span>
                     </div>
                 </div>
             </div>

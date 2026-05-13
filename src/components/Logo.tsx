@@ -9,17 +9,17 @@ interface LogoProps {
 export const Logo = ({ className, iconOnly = false }: LogoProps) => {
     return (
         <div className={cn("flex items-center gap-2.5", className)}>
-            <div className="w-10 h-10 flex items-center justify-center group">
+            <div className="w-9 h-9 flex items-center justify-center">
                 <img
                     src={logo}
                     alt="RoadPulse"
-                    className="w-full h-full object-contain group-hover:scale-110 transition-all duration-500 drop-shadow-sm"
+                    className="h-full w-full object-contain"
                 />
             </div>
             {!iconOnly && (
                 <div className="flex flex-col">
-                    <span className="text-lg font-black text-slate-900 tracking-tighter leading-none uppercase">RoadPulse</span>
-                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em] leading-none mt-0.5">Tactical Intel</span>
+                    <span className="text-base font-semibold leading-none tracking-tight text-slate-950">RoadPulse</span>
+                    <span className="mt-0.5 text-[11px] font-medium leading-none text-slate-500">Operations platform</span>
                 </div>
             )}
         </div>

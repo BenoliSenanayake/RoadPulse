@@ -110,30 +110,22 @@ const Signup = () => {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4 py-8 relative overflow-hidden">
+        <div className="relative flex min-h-screen items-center justify-center bg-slate-50 px-4 py-8">
             {feedback && <Alert {...feedback} onClose={() => setFeedback(null)} />}
 
-            {/* Premium Background Elements */}
-            <div className="absolute inset-0 pointer-events-none overflow-hidden">
-                <div className="absolute top-0 right-0 w-full h-full bg-[radial-gradient(circle_at_50%_120%,#f1f5f9_0%,transparent_100%)]" />
-                <div className="absolute inset-0 opacity-[0.03] grayscale bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]" />
-                <div className="absolute -top-24 -left-24 w-96 h-96 bg-primary/5 rounded-full blur-3xl opacity-50" />
-                <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-accent/5 rounded-full blur-3xl opacity-50" />
-            </div>
-
-            <div className="max-w-[400px] w-full relative z-10 flex flex-col gap-8">
+            <div className="relative z-10 flex w-full max-w-[400px] flex-col gap-7">
                 {/* Brand Header */}
                 <div className="flex flex-col items-center">
-                    <Link to="/login" state={{ from: location.state?.from }} className="w-16 h-16 bg-white rounded-2xl shadow-premium border border-slate-100 flex items-center justify-center mb-4 group hover:scale-105 transition-all duration-500">
-                        <img src={logo} alt="RP" className="w-10 h-10 object-contain group-hover:-rotate-12 transition-transform duration-500" />
+                    <Link to="/login" state={{ from: location.state?.from }} className="mb-4 flex h-14 w-14 items-center justify-center rounded-xl border border-slate-200 bg-white shadow-sm">
+                        <img src={logo} alt="RP" className="h-9 w-9 object-contain" />
                     </Link>
                     <div className="text-center">
-                        <h1 className="text-2xl font-black text-slate-900 tracking-tighter uppercase leading-none mb-1">Join Network</h1>
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] leading-none">Citizen Onboarding</p>
+                        <h1 className="mb-1 text-2xl font-semibold leading-none tracking-tight text-slate-950">Create Account</h1>
+                        <p className="text-sm text-slate-500">Citizen registration</p>
                     </div>
                 </div>
 
-                <div className="card-premium p-8 sm:p-10 border-none shadow-2xl shadow-slate-900/10 relative overflow-hidden">
+                <div className="card-premium relative overflow-hidden p-7 sm:p-8">
                     {/* Stepper */}
                     <div className="flex gap-2 mb-8 px-1">
                         {[1, 2].map((s) => (
@@ -182,9 +174,9 @@ const Signup = () => {
                                     type="button"
                                     onClick={handleNext}
                                     disabled={!isStepValid}
-                                    className="w-full mt-2 py-4 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-slate-900/20 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:scale-100 transition-all flex items-center justify-center gap-2"
+                                    className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg bg-slate-900 py-3 text-sm font-medium text-white transition-colors hover:bg-slate-800 disabled:opacity-50"
                                 >
-                                    Next Phase <ArrowRight size={16} />
+                                    Continue <ArrowRight size={16} />
                                 </button>
                             </div>
                         )}
@@ -227,20 +219,20 @@ const Signup = () => {
                                         type="button"
                                         disabled={isLoading}
                                         onClick={handleBack}
-                                        className="flex-1 py-4 bg-white text-slate-500 border border-slate-100 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-50 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                                        className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white py-3 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-50"
                                     >
                                         <ChevronLeft size={16} /> Back
                                     </button>
                                     <button
                                         type="submit"
                                         disabled={isLoading || !isStepValid}
-                                        className="flex-[2] py-4 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-slate-900/20 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:scale-100 transition-all flex items-center justify-center gap-2"
+                                        className="flex flex-[2] items-center justify-center gap-2 rounded-lg bg-slate-900 py-3 text-sm font-medium text-white transition-colors hover:bg-slate-800 disabled:opacity-50"
                                     >
                                         {isLoading ? (
                                             <Loader2 size={16} className="animate-spin" />
                                         ) : (
                                             <>
-                                                Join Network <CheckCircle2 size={16} />
+                                                Create account <CheckCircle2 size={16} />
                                             </>
                                         )}
                                     </button>
@@ -250,8 +242,8 @@ const Signup = () => {
                     </form>
 
                     <div className="mt-8 pt-6 border-t border-slate-50 text-center">
-                        <p className="text-xs font-bold text-slate-400">
-                            Already registered? <Link to="/login" state={{ from: location.state?.from }} className="text-slate-900 font-black hover:underline underline-offset-4 uppercase tracking-widest ml-1">Sign In</Link>
+                        <p className="text-sm text-slate-500">
+                            Already registered? <Link to="/login" state={{ from: location.state?.from }} className="ml-1 font-medium text-slate-950 hover:underline underline-offset-4">Sign in</Link>
                         </p>
                     </div>
                 </div>
@@ -259,7 +251,7 @@ const Signup = () => {
                 <div className="flex items-center justify-center gap-6">
                     <button
                         onClick={() => setFeedback({ type: 'info', message: 'Recovery Protocol', description: 'Self-service recovery is coming soon. Contact support for key reset.' })}
-                        className="text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-slate-900 transition-colors"
+                        className="text-sm font-medium text-slate-500 transition-colors hover:text-slate-900"
                     >
                         Support
                     </button>

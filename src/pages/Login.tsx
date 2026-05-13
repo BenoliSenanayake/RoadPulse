@@ -121,40 +121,32 @@ const LoginPage = () => {
     const isFormValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && password.length > 0;
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4 py-8 relative overflow-hidden">
+        <div className="relative flex min-h-screen items-center justify-center bg-slate-50 px-4 py-8">
             {feedback && <Alert {...feedback} onClose={() => setFeedback(null)} />}
 
-            {/* Premium Background Elements */}
-            <div className="absolute inset-0 pointer-events-none overflow-hidden">
-                <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_50%_-20%,#f1f5f9_0%,transparent_100%)]" />
-                <div className="absolute inset-0 opacity-[0.03] grayscale bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]" />
-                <div className="absolute -top-24 -right-24 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
-                <div className="absolute -bottom-24 -left-24 w-96 h-96 bg-slate-900/[0.02] rounded-full blur-3xl" />
-            </div>
-
-            <div className="max-w-[400px] w-full relative z-10 flex flex-col gap-8">
+            <div className="relative z-10 flex w-full max-w-[400px] flex-col gap-7">
                 {/* Brand Header */}
                 <div className="flex flex-col items-center">
                     <div className={cn(
-                        "w-16 h-16 rounded-2xl shadow-premium border flex items-center justify-center mb-4 group hover:scale-105 transition-all duration-500",
-                        isAdmin ? "bg-slate-900 border-white/10" : "bg-white border-slate-100"
+                        "mb-4 flex h-14 w-14 items-center justify-center rounded-xl border shadow-sm",
+                        isAdmin ? "border-slate-800 bg-slate-900" : "border-slate-200 bg-white"
                     )}>
                         <img 
                             src={logo} 
                             alt="RP" 
                             className={cn(
-                                "w-10 h-10 object-contain group-hover:rotate-12 transition-transform duration-500",
+                                "h-9 w-9 object-contain",
                                 isAdmin && "brightness-0 invert opacity-90"
                             )} 
                         />
                     </div>
                     <div className="text-center">
-                        <h1 className="text-2xl font-black text-slate-900 tracking-tighter uppercase leading-none mb-1">RoadPulse</h1>
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] leading-none">{portalTitle}</p>
+                        <h1 className="mb-1 text-2xl font-semibold leading-none tracking-tight text-slate-950">RoadPulse</h1>
+                        <p className="text-sm text-slate-500">{portalTitle}</p>
                     </div>
                 </div>
 
-                <div className="card-premium p-8 sm:p-10 border-none shadow-2xl shadow-slate-900/10 relative overflow-hidden">
+                <div className="card-premium relative overflow-hidden p-7 sm:p-8">
                     <form onSubmit={handleSubmit} className="space-y-5 relative z-10">
                         <AuthInput
                             label="Email"
@@ -198,12 +190,12 @@ const LoginPage = () => {
                                         <div className="w-4 h-4 border-2 border-slate-200 rounded peer-checked:bg-slate-900 peer-checked:border-slate-900 transition-all" />
                                         <CheckIcon className="absolute w-3 h-3 text-white scale-0 peer-checked:scale-100 transition-transform left-0.5" />
                                     </div>
-                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest group-hover:text-slate-600 transition-colors">Remember Me</span>
+                                    <span className="text-sm font-medium text-slate-500 transition-colors group-hover:text-slate-700">Remember me</span>
                                 </label>
                                 <button
                                     type="button"
                                     onClick={handleForgot}
-                                    className="text-[10px] font-black text-slate-900 uppercase tracking-widest hover:underline decoration-slate-900/20"
+                                    className="text-sm font-medium text-slate-700 hover:text-slate-950"
                                 >
                                     Forgot?
                                 </button>
@@ -213,7 +205,7 @@ const LoginPage = () => {
                         <button
                             type="submit"
                             disabled={isLoading || !isFormValid}
-                            className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-xl shadow-slate-900/20 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:scale-100 transition-all flex items-center justify-center gap-3 mt-2"
+                            className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg bg-slate-900 py-3 text-sm font-medium text-white transition-colors hover:bg-slate-800 disabled:opacity-50"
                         >
                             {isLoading ? (
                                 <Loader2 size={16} className="animate-spin" />
@@ -227,8 +219,8 @@ const LoginPage = () => {
 
                     {isCitizen && (
                         <div className="mt-8 pt-6 border-t border-slate-50 text-center">
-                            <p className="text-[11px] font-bold text-slate-400">
-                                New Citizen? <Link to="/signup" state={{ from: location.state?.from }} className="text-slate-900 font-black hover:underline underline-offset-4 flex items-center justify-center gap-1.5 mt-1 text-xs uppercase tracking-widest">
+                            <p className="text-sm text-slate-500">
+                                New citizen? <Link to="/signup" state={{ from: location.state?.from }} className="mt-1 flex items-center justify-center gap-1.5 text-sm font-medium text-slate-950 hover:underline underline-offset-4">
                                     <UserPlus size={14} /> Create Account
                                 </Link>
                             </p>
@@ -237,7 +229,7 @@ const LoginPage = () => {
 
                     {isAdmin && (
                         <div className="mt-8 pt-6 border-t border-slate-50 text-center">
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-relaxed">
+                            <p className="text-sm font-medium text-slate-500">
                                 Restricted Access Area
                             </p>
                         </div>

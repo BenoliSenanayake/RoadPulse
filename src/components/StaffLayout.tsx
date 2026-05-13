@@ -32,16 +32,16 @@ const StaffSidebar = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => voi
                 <button
                     type="button"
                     aria-label="Close staff navigation"
-                    className="fixed inset-0 z-40 bg-slate-950/50 backdrop-blur-sm lg:hidden"
+                    className="fixed inset-0 z-40 bg-slate-900/30 lg:hidden"
                     onClick={onClose}
                 />
             )}
 
             <aside className={cn(
-                "fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-slate-200 bg-white shadow-2xl shadow-slate-900/10 transition-transform duration-300 lg:translate-x-0 lg:shadow-none",
+                "fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-slate-200 bg-white shadow-lg transition-transform duration-200 lg:translate-x-0 lg:shadow-none",
                 isOpen ? "translate-x-0" : "-translate-x-full"
             )}>
-                <div className="flex h-20 items-center justify-between border-b border-slate-100 px-6">
+                <div className="flex h-16 items-center justify-between border-b border-slate-200 px-5">
                     <Link to="/staff/overview" onClick={onClose} className="transition-opacity hover:opacity-80">
                         <Logo />
                     </Link>
@@ -55,13 +55,13 @@ const StaffSidebar = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => voi
                     </button>
                 </div>
 
-                <div className="px-5 pt-6">
-                    <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
-                        <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-600 text-white">
+                <div className="px-4 pt-5">
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                        <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-lg bg-white text-slate-700 ring-1 ring-slate-200">
                             <ShieldCheck size={20} />
                         </div>
-                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-700">Maintenance Officer</p>
-                        <p className="mt-1 text-sm font-bold leading-snug text-emerald-950">Field operations and repair triage workspace.</p>
+                        <p className="text-xs font-medium text-slate-500">Maintenance officer</p>
+                        <p className="mt-1 text-sm font-semibold leading-snug text-slate-900">Field operations and repair triage workspace.</p>
                     </div>
                 </div>
 
@@ -77,8 +77,8 @@ const StaffSidebar = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => voi
                                 className={cn(
                                     "flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-black transition-all",
                                     isActive
-                                        ? "bg-emerald-600 text-white shadow-xl shadow-emerald-600/25"
-                                        : "text-slate-500 hover:bg-emerald-50 hover:text-emerald-800"
+                                        ? "bg-slate-900 text-white"
+                                        : "text-slate-600 hover:bg-slate-100 hover:text-slate-950"
                                 )}
                             >
                                 <item.icon size={19} />
@@ -88,20 +88,20 @@ const StaffSidebar = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => voi
                     })}
                 </nav>
 
-                <div className="border-t border-slate-100 bg-slate-50 p-4">
-                    <div className="mb-3 flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-600 text-sm font-black uppercase text-white">
+                <div className="border-t border-slate-200 bg-slate-50 p-4">
+                    <div className="mb-3 flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-900 text-sm font-semibold text-white">
                             {user?.name?.charAt(0)}
                         </div>
                         <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm font-black text-slate-900">{user?.name}</p>
-                            <p className="text-[10px] font-black uppercase tracking-widest text-emerald-600">Field Staff</p>
+                            <p className="truncate text-sm font-semibold text-slate-900">{user?.name}</p>
+                            <p className="text-xs font-medium text-slate-500">Field staff</p>
                         </div>
                     </div>
                     <button
                         type="button"
                         onClick={logout}
-                        className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-black text-rose-600 transition-colors hover:bg-rose-50"
+                        className="flex w-full items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium text-slate-600 transition-colors hover:bg-white hover:text-rose-600"
                     >
                         <LogOut size={18} />
                         Sign Out
@@ -114,7 +114,7 @@ const StaffSidebar = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => voi
 
 const StaffHeader = ({ onMenuClick }: { onMenuClick: () => void }) => {
     return (
-        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-slate-200 bg-white/90 px-4 backdrop-blur-xl sm:h-20 sm:px-6">
+        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-slate-200 bg-white px-4 sm:px-6">
             <div className="flex items-center gap-3">
                 <button
                     type="button"
@@ -125,8 +125,8 @@ const StaffHeader = ({ onMenuClick }: { onMenuClick: () => void }) => {
                     <Menu size={20} />
                 </button>
                 <div>
-                    <p className="text-[10px] font-black uppercase tracking-[0.24em] text-emerald-600">RoadPulse Staff</p>
-                    <h1 className="text-base font-black tracking-tight text-slate-950 sm:text-lg">Maintenance Console</h1>
+                    <p className="text-xs font-medium text-slate-500">RoadPulse staff</p>
+                    <h1 className="text-base font-semibold tracking-tight text-slate-950 sm:text-lg">Maintenance console</h1>
                 </div>
             </div>
 
@@ -136,16 +136,16 @@ const StaffHeader = ({ onMenuClick }: { onMenuClick: () => void }) => {
                     <input
                         type="text"
                         placeholder="Search field records"
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-3 text-sm font-bold outline-none transition-all focus:border-emerald-400 focus:bg-white focus:ring-4 focus:ring-emerald-500/10"
+                        className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-3 text-sm font-medium outline-none transition-all focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-200"
                     />
                 </div>
                 <button
                     type="button"
                     aria-label="View maintenance alerts"
-                    className="relative rounded-xl p-2.5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900"
+                    className="relative rounded-lg p-2.5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900"
                 >
                     <Bell size={20} />
-                    <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-emerald-500 ring-2 ring-white" />
+                    <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-slate-900 ring-2 ring-white" />
                 </button>
             </div>
         </header>
@@ -156,7 +156,7 @@ export const StaffLayout = ({ children }: { children: ReactNode }) => {
     const [sidebarOpen, setSidebarOpen] = useState(false);
 
     return (
-        <div className="min-h-screen bg-slate-50 text-slate-900 selection:bg-emerald-600 selection:text-white">
+        <div className="min-h-screen bg-slate-50 text-slate-900">
             <BackendStatusBanner />
             <StaffSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
             <div className="flex min-h-screen flex-col lg:pl-72">

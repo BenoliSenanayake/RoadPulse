@@ -135,8 +135,9 @@ const ReportWizard = () => {
                 navigate(`/citizen/status/${report.id}`, { replace: true });
             }, 2000);
             setStep('SUCCESS');
-        } catch (err: any) {
-            setError(`Submission failed: ${err.message || 'Please check your connection and try again.'}`);
+        } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : 'Please check your connection and try again.';
+            setError(`Submission failed: ${message}`);
             setStep('REVIEW');
         }
     };
@@ -144,44 +145,41 @@ const ReportWizard = () => {
     const stepIndex = STEPS_INFO.findIndex(s => s.id === step);
 
     if (step === 'SUBMITTING') return (
-        <div className="min-h-[80vh] flex flex-col items-center justify-center text-center p-8 animate-fade-in-up">
-            <div className="relative mb-12">
-                <div className="w-32 h-32 border-[12px] border-slate-100 border-t-blue-600 rounded-full animate-spin" />
-                <div className="absolute inset-0 flex items-center justify-center">
-                    <ShieldCheck size={40} className="text-blue-500 animate-pulse" />
-                </div>
+        <div className="flex min-h-[70vh] flex-col items-center justify-center p-8 text-center">
+            <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-xl border border-slate-200 bg-white shadow-sm">
+                <Loader2 size={22} className="animate-spin text-slate-700" />
             </div>
-            <h2 className="text-3xl font-black text-slate-900 mb-3 uppercase tracking-tight">Verifying Report</h2>
-            <p className="text-sm text-slate-500 max-w-xs mx-auto font-bold leading-relaxed uppercase tracking-tight">
-                Our system is processing your submission and routing it to the provincial maintenance division.
+            <h2 className="mb-2 text-2xl font-semibold text-slate-950">Submitting report</h2>
+            <p className="mx-auto max-w-sm text-sm leading-6 text-slate-600">
+                RoadPulse is saving your report and routing it to the correct maintenance team.
             </p>
         </div>
     );
 
     if (step === 'SUCCESS') return (
-        <div className="min-h-[80vh] flex flex-col items-center justify-center text-center p-8 animate-fade-in-up">
-            <div className="w-28 h-28 bg-emerald-500 text-white rounded-[2.5rem] flex items-center justify-center mb-10 shadow-2xl shadow-emerald-500/30 animate-bounce-slow">
-                <CheckCircle2 size={56} />
+        <div className="flex min-h-[70vh] flex-col items-center justify-center p-8 text-center">
+            <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700">
+                <CheckCircle2 size={28} />
             </div>
-            <h2 className="text-4xl font-black text-slate-900 mb-4 uppercase tracking-tight">Report Logged</h2>
-            <p className="text-slate-500 mb-12 max-w-md font-bold leading-relaxed uppercase tracking-tight text-xs">
-                Your contribution has been successfully recorded in the RoadPulse database. Redirecting to your dashboard.
+            <h2 className="mb-3 text-2xl font-semibold text-slate-950">Report submitted</h2>
+            <p className="mb-8 max-w-md text-sm leading-6 text-slate-600">
+                Your report has been recorded. Redirecting you to the status page.
             </p>
-            <div className="flex items-center gap-3 px-6 py-3 bg-slate-50 rounded-2xl border border-slate-100">
-                <Loader2 size={14} className="animate-spin text-blue-600" />
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Syncing telemetry...</span>
+            <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-600">
+                <Loader2 size={14} className="animate-spin" />
+                Opening status page
             </div>
         </div>
     );
 
     if (step === 'AUTH') return (
-        <div className="max-w-md mx-auto px-6 py-20 text-center animate-fade-in-up">
-            <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-2xl shadow-slate-900/5 p-10 space-y-8">
-                <div className="w-20 h-20 bg-slate-50 rounded-3xl flex items-center justify-center mx-auto border border-slate-100 shadow-inner">
-                    <LogIn size={32} className="text-slate-400" />
+        <div className="mx-auto max-w-md px-6 py-16 text-center">
+            <div className="space-y-7 rounded-xl border border-slate-200 bg-white p-8 shadow-sm">
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-lg border border-slate-200 bg-slate-50">
+                    <LogIn size={22} className="text-slate-500" />
                 </div>
                 <div className="space-y-2">
-                    <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Identity Required</h2>
+                    <h2 className="text-xl font-semibold text-slate-950">Sign in required</h2>
                     <p className="text-sm text-slate-500 leading-relaxed font-medium">
                         To maintain report integrity and provide live updates, please sign in before submitting.
                     </p>
@@ -190,22 +188,22 @@ const ReportWizard = () => {
                     <Link
                         to="/login"
                         state={{ from: { pathname: '/citizen/report' } }}
-                        className="flex items-center justify-center gap-3 w-full py-4 bg-slate-900 text-white rounded-2xl font-black text-sm hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/10 active:scale-95"
+                        className="flex w-full items-center justify-center gap-2 rounded-lg bg-slate-900 py-3 text-sm font-medium text-white transition-colors hover:bg-slate-800"
                     >
                         <LogIn size={18} /> Sign In to Continue
                     </Link>
                     <Link
                         to="/signup"
                         state={{ from: { pathname: '/citizen/report' } }}
-                        className="flex items-center justify-center gap-3 w-full py-4 bg-white text-slate-700 border border-slate-200 rounded-2xl font-black text-sm hover:bg-slate-50 transition-all active:scale-95"
+                        className="flex w-full items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white py-3 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
                     >
                         Create Free Account
                     </Link>
                     <button
                         onClick={() => setStep('REVIEW')}
-                        className="text-xs font-bold text-slate-400 hover:text-slate-600 transition-colors uppercase tracking-widest pt-2"
+                        className="pt-2 text-sm font-medium text-slate-500 transition-colors hover:text-slate-900"
                     >
-                        ← Return to Review
+                        Return to review
                     </button>
                 </div>
             </div>
@@ -213,53 +211,53 @@ const ReportWizard = () => {
     );
 
     return (
-        <div className="max-w-xl mx-auto px-6 py-8 lg:py-12 pb-32 overflow-hidden">
+        <div className="mx-auto max-w-2xl px-4 py-8 pb-28 sm:px-6 lg:py-10">
             {/* Guidance Modal */}
             {showGuidance && step === 'PHOTO' && (
-                <div className="fixed inset-0 z-[200] bg-slate-950/90 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 animate-fade-in">
-                    <div className="bg-white rounded-[1.5rem] w-full max-w-2xl flex flex-col shadow-2xl relative animate-fade-in-up">
-                        <button onClick={() => setShowGuidance(false)} className="absolute top-3 right-3 p-1.5 text-slate-300 hover:text-slate-900 transition-colors z-10">
+                <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/40 p-3 sm:p-4">
+                    <div className="relative flex w-full max-w-2xl flex-col rounded-xl bg-white shadow-lg">
+                        <button onClick={() => setShowGuidance(false)} className="absolute right-3 top-3 z-10 rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-900">
                             <X size={18} />
                         </button>
-                        <div className="p-5 sm:p-6 space-y-4">
+                        <div className="space-y-4 p-5 sm:p-6">
                             <div className="space-y-1 text-center sm:text-left">
-                                <div className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-blue-50 rounded-full">
-                                    <Info size={10} className="text-blue-600" />
-                                    <span className="text-[8px] font-black uppercase tracking-widest text-blue-600">Reporting Tips</span>
+                                <div className="inline-flex items-center gap-1.5 rounded-md border border-blue-100 bg-blue-50 px-2.5 py-1">
+                                    <Info size={12} className="text-blue-700" />
+                                    <span className="text-xs font-medium text-blue-700">Reporting tips</span>
                                 </div>
-                                <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight leading-none">Road-Aligned Photos</h2>
-                                <p className="text-[10px] text-slate-500 font-bold leading-tight max-w-sm mx-auto sm:mx-0">
+                                <h2 className="text-xl font-semibold leading-tight text-slate-950">Take a clear road-aligned photo</h2>
+                                <p className="mx-auto max-w-sm text-sm leading-6 text-slate-600 sm:mx-0">
                                     Align between visible road edge markings to help our officers estimate pothole size accurately.
                                 </p>
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <div className="h-32 sm:h-36 rounded-lg overflow-hidden border-2 border-emerald-500 shadow-sm relative group">
+                                    <div className="relative h-32 overflow-hidden rounded-lg border border-emerald-200 shadow-sm sm:h-36">
                                         <img src={correctExample} alt="Correct" className="w-full h-full object-cover" />
-                                        <div className="absolute top-1.5 left-1.5 bg-emerald-500 text-white p-0.5 rounded shadow-lg">
+                                        <div className="absolute left-1.5 top-1.5 rounded bg-emerald-600 p-0.5 text-white">
                                             <CheckCircle size={12} />
                                         </div>
                                     </div>
-                                    <ul className="text-[9px] text-slate-600 space-y-1 font-bold">
+                                    <ul className="space-y-1 text-xs text-slate-600">
                                         <li className="flex items-center gap-1.5"><div className="w-1 h-1 rounded-full bg-emerald-500" />Centered within boundaries</li>
                                         <li className="flex items-center gap-1.5"><div className="w-1 h-1 rounded-full bg-emerald-500" />Edge markings visible</li>
                                     </ul>
                                 </div>
                                 <div className="space-y-2">
-                                    <div className="h-32 sm:h-36 rounded-lg overflow-hidden border-2 border-rose-500 shadow-sm relative group">
+                                    <div className="relative h-32 overflow-hidden rounded-lg border border-rose-200 shadow-sm sm:h-36">
                                         <img src={incorrectExample} alt="Incorrect" className="w-full h-full object-cover" />
-                                        <div className="absolute top-1.5 left-1.5 bg-rose-500 text-white p-0.5 rounded shadow-lg">
+                                        <div className="absolute left-1.5 top-1.5 rounded bg-rose-600 p-0.5 text-white">
                                             <X size={12} />
                                         </div>
                                     </div>
-                                    <ul className="text-[9px] text-slate-600 space-y-1 font-bold">
+                                    <ul className="space-y-1 text-xs text-slate-600">
                                         <li className="flex items-center gap-1.5"><div className="w-1 h-1 rounded-full bg-rose-500" />Missing road boundaries</li>
                                         <li className="flex items-center gap-1.5"><div className="w-1 h-1 rounded-full bg-rose-500" />Too close to pothole</li>
                                     </ul>
                                 </div>
                             </div>
-                            <button onClick={() => setShowGuidance(false)} className="w-full py-3 bg-slate-900 text-white rounded-xl font-black text-xs shadow-xl active:scale-[0.98] transition-all uppercase tracking-widest">
-                                Start Capturing
+                            <button onClick={() => setShowGuidance(false)} className="w-full rounded-lg bg-slate-900 py-3 text-sm font-medium text-white transition-colors hover:bg-slate-800">
+                                Start report
                             </button>
                         </div>
                     </div>
@@ -267,11 +265,11 @@ const ReportWizard = () => {
             )}
 
             {/* Header */}
-            <div className="text-center space-y-2 mb-10 animate-fade-in-up">
-                <h1 className="text-3xl font-black text-slate-900 uppercase tracking-tight">
+            <div className="mb-8 space-y-2 text-center">
+                <h1 className="text-2xl font-semibold tracking-tight text-slate-950 sm:text-3xl">
                     {step === 'PHOTO' ? 'Report Road Damage' : 'Report in Progress'}
                 </h1>
-                <p className="text-sm text-slate-500 font-bold max-w-xs mx-auto leading-relaxed">
+                <p className="mx-auto max-w-sm text-sm leading-6 text-slate-600">
                     {step === 'PHOTO' && 'Start by capturing a clear image of the issue.'}
                     {step === 'LOCATION' && 'Precisely pin the location on the map.'}
                     {step === 'DETAILS' && 'Provide context for our maintenance teams.'}
@@ -281,19 +279,19 @@ const ReportWizard = () => {
 
             {/* Progress Indicator */}
             {step !== 'PHOTO' && (
-                <div className="flex items-center justify-between mb-12 bg-white/60 backdrop-blur-md p-3 rounded-3xl border border-slate-100 shadow-sm animate-fade-in-up">
+                <div className="mb-8 flex items-center justify-between rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
                     {STEPS_INFO.map((s, i) => (
                         <div key={s.id} className="flex-1 flex flex-col items-center gap-2 relative">
                             <div className={cn(
-                                "w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500",
-                                step === s.id ? "bg-blue-600 text-white scale-110 shadow-xl shadow-blue-600/30" :
-                                    stepIndex > i ? "bg-emerald-500 text-white" : "bg-slate-50 text-slate-300"
+                                "flex h-10 w-10 items-center justify-center rounded-lg transition-colors",
+                                step === s.id ? "bg-slate-900 text-white" :
+                                    stepIndex > i ? "bg-emerald-600 text-white" : "bg-slate-50 text-slate-400 ring-1 ring-slate-200"
                             )}>
                                 {stepIndex > i ? <CheckCircle2 size={20} /> : <s.icon size={20} />}
                             </div>
                             <span className={cn(
-                                "text-[10px] font-black uppercase tracking-widest",
-                                step === s.id ? "text-blue-600" : "text-slate-400"
+                                "text-xs font-medium",
+                                step === s.id ? "text-slate-950" : "text-slate-500"
                             )}>
                                 {s.label}
                             </span>
@@ -305,39 +303,40 @@ const ReportWizard = () => {
             {/* Step Content */}
             <div className="animate-fade-in-up">
                 {step === 'PHOTO' && (
-                    <div className="space-y-6 animate-fade-in-up">
+                    <div className="space-y-6">
                         {!previewUrl ? (
-                            <div className="bg-white border-2 border-dashed border-slate-200 rounded-[2.5rem] p-10 sm:p-16 shadow-2xl shadow-slate-900/5 text-center space-y-8 group hover:border-blue-400 transition-all duration-500">
-                                <div className="w-24 h-24 bg-blue-50 rounded-[2.5rem] flex items-center justify-center mx-auto text-blue-600 border border-blue-100 shadow-inner group-hover:scale-110 group-hover:rotate-6 transition-all duration-500">
-                                    <Camera size={40} />
+                            <div className="space-y-6 rounded-xl border-2 border-dashed border-slate-300 bg-white p-8 text-center shadow-sm transition-colors hover:border-slate-400 sm:p-10">
+                                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-600">
+                                    <Camera size={22} />
                                 </div>
-                                <div className="space-y-3">
-                                    <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Capture Evidence</h3>
-                                    <p className="text-[11px] text-slate-500 font-bold leading-relaxed max-w-[200px] mx-auto uppercase tracking-widest">
-                                        Take a clear photo of the road damage to begin
+                                <div className="space-y-2">
+                                    <h3 className="text-lg font-semibold text-slate-950">Upload a road photo</h3>
+                                    <p className="mx-auto max-w-sm text-sm leading-6 text-slate-600">
+                                        Take or upload a clear photo of the pothole. JPG, PNG, or WEBP up to 10MB.
                                     </p>
                                 </div>
-                                <div className="pt-4">
+                                <div>
                                     <label className="cursor-pointer block">
-                                        <div className="w-full py-5 bg-slate-900 text-white rounded-2xl font-black text-xs shadow-2xl shadow-slate-900/20 hover:bg-black transition-all active:scale-[0.98] flex items-center justify-center gap-3 uppercase tracking-[0.2em]">
-                                            Open Camera
+                                        <div className="flex w-full items-center justify-center gap-2 rounded-lg bg-slate-900 py-3 text-sm font-medium text-white transition-colors hover:bg-slate-800">
+                                            <Camera size={17} />
+                                            Choose photo
                                         </div>
                                         <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handleImageChange} />
                                     </label>
-                                    <button onClick={() => setShowGuidance(true)} className="mt-6 text-[10px] font-black text-blue-600 hover:text-blue-700 uppercase tracking-widest flex items-center justify-center gap-2 mx-auto">
+                                    <button onClick={() => setShowGuidance(true)} className="mx-auto mt-4 flex items-center justify-center gap-2 text-sm font-medium text-blue-700 transition-colors hover:text-blue-800">
                                         <Info size={14} /> View photo guidelines
                                     </button>
                                 </div>
                             </div>
                         ) : (
-                            <div className="bg-white border border-slate-100 rounded-[2.5rem] p-6 shadow-2xl shadow-slate-900/5 space-y-6 animate-in fade-in zoom-in-95 duration-500">
-                                <div className="relative aspect-[4/3] rounded-[2rem] overflow-hidden border border-slate-200 shadow-inner bg-slate-50 group">
-                                    <img src={previewUrl} alt="Preview" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                            <div className="space-y-5 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                                <div className="relative aspect-[4/3] overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
+                                    <img src={previewUrl} alt="Preview" className="h-full w-full object-cover" />
                                     {qualityHints.length > 0 && (
-                                        <div className="absolute top-4 left-4 right-4 bg-white/90 backdrop-blur-md border border-amber-200 p-4 rounded-2xl flex items-start gap-3 shadow-xl">
+                                        <div className="absolute left-4 right-4 top-4 flex items-start gap-3 rounded-lg border border-amber-200 bg-white p-4 shadow-sm">
                                             <AlertTriangle size={18} className="text-amber-500 shrink-0 mt-0.5" />
                                             <div className="space-y-0.5">
-                                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Photo Guidance</p>
+                                                <p className="text-xs font-medium text-slate-500">Photo guidance</p>
                                                 {qualityHints.map((hint, i) => (
                                                     <p key={i} className="text-[11px] text-amber-700 font-bold leading-tight">{hint}</p>
                                                 ))}
@@ -346,29 +345,29 @@ const ReportWizard = () => {
                                     )}
                                 </div>
                                 <div className="flex items-center justify-between px-2">
-                                    <div className="flex items-center gap-3 min-w-0">
-                                        <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 border border-blue-100 shrink-0 shadow-sm">
-                                            <ImageIcon size={22} />
+                                    <div className="flex min-w-0 items-center gap-3">
+                                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-600">
+                                            <ImageIcon size={19} />
                                         </div>
                                         <div className="min-w-0">
-                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Evidence Captured</p>
-                                            <p className="text-sm font-black text-slate-900 truncate max-w-[140px]">
+                                            <p className="mb-1 text-xs font-medium leading-none text-slate-500">Photo selected</p>
+                                            <p className="max-w-[180px] truncate text-sm font-semibold text-slate-950">
                                                 {imageFile?.name || 'pothole-unit-01.jpg'}
                                             </p>
                                         </div>
                                     </div>
-                                    <button onClick={() => { setImageFile(null); setPreviewUrl(''); setQualityHints([]); }} className="p-3 bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white rounded-xl transition-all shadow-sm">
+                                    <button onClick={() => { setImageFile(null); setPreviewUrl(''); setQualityHints([]); }} className="rounded-lg border border-rose-100 bg-rose-50 p-2.5 text-rose-600 transition-colors hover:bg-rose-100">
                                         <Trash2 size={18} />
                                     </button>
                                 </div>
                                 <div className="grid grid-cols-2 gap-4 pt-2">
                                     <label className="cursor-pointer block">
-                                        <div className="w-full py-4 bg-white border border-slate-200 text-slate-600 rounded-2xl font-black text-[11px] hover:bg-slate-50 transition-all active:scale-[0.98] flex items-center justify-center gap-2 uppercase tracking-widest">
+                                        <div className="flex w-full items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white py-3 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50">
                                             <RefreshCw size={14} /> Retake
                                         </div>
                                         <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handleImageChange} />
                                     </label>
-                                    <button onClick={() => setStep('LOCATION')} className="w-full py-4 bg-blue-600 text-white rounded-2xl font-black text-[11px] shadow-xl shadow-blue-600/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2 group uppercase tracking-widest">
+                                    <button onClick={() => setStep('LOCATION')} className="flex w-full items-center justify-center gap-2 rounded-lg bg-slate-900 py-3 text-sm font-medium text-white transition-colors hover:bg-slate-800">
                                         Confirm <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
                                     </button>
                                 </div>
@@ -379,26 +378,26 @@ const ReportWizard = () => {
 
                 {step === 'LOCATION' && (
                     <div className="space-y-6">
-                        <div className="bg-white border border-slate-100 rounded-[2.5rem] p-8 shadow-2xl shadow-slate-900/5 space-y-6">
-                            <button onClick={handleGetLocation} className="group w-full py-5 bg-blue-600 text-white rounded-2xl font-black text-sm shadow-xl shadow-blue-600/20 active:scale-[0.98] transition-all flex items-center justify-center gap-3">
-                                <Locate size={20} className="group-hover:rotate-90 transition-transform duration-700" /> 
-                                Detect My Current GPS
+                        <div className="space-y-5 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+                            <button onClick={handleGetLocation} className="flex w-full items-center justify-center gap-2 rounded-lg bg-slate-900 py-3 text-sm font-medium text-white transition-colors hover:bg-slate-800">
+                                <Locate size={18} /> 
+                                Use current GPS location
                             </button>
-                            <div className="flex items-center gap-4 text-slate-200 text-[10px] font-black uppercase tracking-[0.2em]">
-                                <div className="flex-1 h-px bg-slate-100" /> OR <div className="flex-1 h-px bg-slate-100" />
+                            <div className="flex items-center gap-4 text-xs font-medium text-slate-400">
+                                <div className="h-px flex-1 bg-slate-200" /> or <div className="h-px flex-1 bg-slate-200" />
                             </div>
-                            <button onClick={() => setIsMapModalOpen(true)} className="w-full py-4 border border-slate-200 bg-slate-50 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-2xl font-black text-sm transition-all flex items-center justify-center gap-2 active:scale-[0.98]">
-                                <MapPin size={16} /> Manual Pin Selection
+                            <button onClick={() => setIsMapModalOpen(true)} className="flex w-full items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white py-3 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50">
+                                <MapPin size={16} /> Select on map
                             </button>
                             {lat !== 6.9271 && (
-                                <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-100 flex items-center justify-between animate-fade-in-up">
+                                <div className="flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50 p-4">
                                     <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center text-emerald-600">
+                                        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white text-emerald-700 ring-1 ring-emerald-200">
                                             <Navigation size={18} />
                                         </div>
                                         <div>
-                                            <p className="text-[10px] font-black text-emerald-600 uppercase tracking-wider">Coordinates Locked</p>
-                                            <p className="text-xs font-bold text-emerald-800">{lat.toFixed(5)}, {lon.toFixed(5)}</p>
+                                            <p className="text-xs font-medium text-emerald-700">Coordinates selected</p>
+                                            <p className="text-sm font-semibold text-emerald-900">{lat.toFixed(5)}, {lon.toFixed(5)}</p>
                                         </div>
                                     </div>
                                     <CheckCircle2 size={20} className="text-emerald-500" />
@@ -407,17 +406,17 @@ const ReportWizard = () => {
                         </div>
                         {isMapModalOpen && (
                             <div className="fixed inset-0 z-[100] bg-white flex flex-col animate-fade-in-up">
-                                <div className="p-5 flex items-center justify-between border-b border-slate-100 bg-white/90 backdrop-blur-md sticky top-0 z-10">
+                                <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white p-4">
                                     <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600">
+                                        <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-700">
                                             <MapPin size={20} />
                                         </div>
                                         <div>
-                                            <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight">Pin Precise Location</h3>
-                                            <p className="text-xs text-slate-400 font-bold uppercase tracking-tighter">Tap map to confirm pothole spot</p>
+                                            <h3 className="text-sm font-semibold text-slate-950">Pin precise location</h3>
+                                            <p className="text-xs text-slate-500">Tap the map to confirm the pothole spot</p>
                                         </div>
                                     </div>
-                                    <button onClick={() => setIsMapModalOpen(false)} className="w-10 h-10 flex items-center justify-center bg-slate-50 rounded-full text-slate-600 border border-slate-100 hover:bg-slate-100 transition-colors">
+                                    <button onClick={() => setIsMapModalOpen(false)} className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-600 transition-colors hover:bg-slate-100">
                                         <X size={20} />
                                     </button>
                                 </div>
@@ -428,23 +427,23 @@ const ReportWizard = () => {
                                         <MapEvents onLocationSelect={(la, lo) => { setLat(la); setLon(lo); }} />
                                         <Marker position={[lat, lon]} icon={L.icon({ iconUrl: icon, shadowUrl: iconShadow, iconSize: [38, 60], iconAnchor: [19, 60] })} />
                                     </MapContainer>
-                                    <div className="absolute bottom-0 left-0 right-0 z-[1000] p-8 bg-gradient-to-t from-white via-white/90 to-transparent">
-                                        <button onClick={() => setIsMapModalOpen(false)} className="w-full py-5 bg-slate-900 text-white rounded-2xl font-black text-sm shadow-2xl active:scale-[0.98] transition-all">
-                                            Confirm Pinned Location
+                                    <div className="absolute bottom-0 left-0 right-0 z-[1000] border-t border-slate-200 bg-white p-4">
+                                        <button onClick={() => setIsMapModalOpen(false)} className="w-full rounded-lg bg-slate-900 py-3 text-sm font-medium text-white transition-colors hover:bg-slate-800">
+                                            Confirm location
                                         </button>
                                     </div>
                                 </div>
                             </div>
                         )}
                         <div className="flex gap-4">
-                            <button onClick={() => setStep('PHOTO')} className="p-5 bg-white border border-slate-200 text-slate-400 rounded-2xl hover:bg-slate-50 transition-all hover:text-slate-900">
+                            <button onClick={() => setStep('PHOTO')} className="rounded-lg border border-slate-300 bg-white p-3 text-slate-600 transition-colors hover:bg-slate-50">
                                 <ArrowLeft size={24} />
                             </button>
                             <button
                                 onClick={() => { if (lat === 6.9271) { setError('Please specify location.'); return; } setError(''); setStep('DETAILS'); }}
-                                className="flex-1 bg-slate-900 text-white rounded-2xl font-black text-sm shadow-xl active:scale-[0.98] transition-all flex items-center justify-center gap-3 group uppercase tracking-widest"
+                                className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-slate-900 text-sm font-medium text-white transition-colors hover:bg-slate-800"
                             >
-                                Continue Details <ArrowRight size={20} className="group-hover:translate-x-2 transition-transform" />
+                                Continue <ArrowRight size={18} />
                             </button>
                         </div>
                     </div>
@@ -452,36 +451,36 @@ const ReportWizard = () => {
 
                 {step === 'DETAILS' && (
                     <div className="space-y-6">
-                        <div className="bg-white border border-slate-100 rounded-[2.5rem] p-8 shadow-2xl shadow-slate-900/5 space-y-8">
-                            <div className="flex gap-5 items-center pb-8 border-b border-slate-50">
+                        <div className="space-y-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+                            <div className="flex items-center gap-4 border-b border-slate-100 pb-5">
                                 <div className="w-24 h-24 rounded-2xl overflow-hidden border border-slate-100 shadow-inner shrink-0 relative group">
                                     <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />
                                 </div>
                                 <div>
-                                    <div className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-emerald-50 rounded-lg border border-emerald-100 mb-2">
+                                    <div className="mb-2 inline-flex items-center gap-1.5 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1">
                                         <CheckCircle2 size={12} className="text-emerald-500" />
-                                        <span className="text-[9px] font-black text-emerald-600 uppercase tracking-widest">Image Ready</span>
+                                        <span className="text-xs font-medium text-emerald-700">Photo ready</span>
                                     </div>
-                                    <p className="text-xs font-black text-slate-900 mb-0.5 uppercase tracking-tight">Location Confirmed</p>
-                                    <p className="text-[10px] font-mono font-bold text-slate-400">{lat.toFixed(5)}, {lon.toFixed(5)}</p>
+                                    <p className="mb-0.5 text-sm font-semibold text-slate-950">Location confirmed</p>
+                                    <p className="text-xs font-mono text-slate-500">{lat.toFixed(5)}, {lon.toFixed(5)}</p>
                                 </div>
                             </div>
                             <div className="space-y-6">
                                 <div>
-                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3 ml-1">Street / Landmark Name</label>
+                                    <label className="mb-2 ml-1 block text-sm font-medium text-slate-700">Street or landmark name</label>
                                     <input
                                         type="text"
                                         placeholder="e.g. Near Colombo 7 junction..."
-                                        className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500/50 focus:bg-white transition-all text-sm font-bold text-slate-900 placeholder:text-slate-300 shadow-inner"
+                                        className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm font-medium text-slate-950 outline-none transition-all placeholder:text-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
                                         value={roadName}
                                         onChange={e => setRoadName(e.target.value)}
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3 ml-1">Contextual Description</label>
+                                    <label className="mb-2 ml-1 block text-sm font-medium text-slate-700">Description</label>
                                     <textarea
                                         placeholder="Help teams understand the urgency — depth, traffic impact, etc."
-                                        className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500/50 focus:bg-white transition-all text-sm font-bold text-slate-900 h-32 resize-none leading-relaxed placeholder:text-slate-300 shadow-inner no-scrollbar"
+                                        className="h-32 w-full resize-none rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm font-medium leading-relaxed text-slate-950 outline-none transition-all placeholder:text-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
                                         value={description}
                                         onChange={e => setDescription(e.target.value)}
                                     />
@@ -489,14 +488,14 @@ const ReportWizard = () => {
                             </div>
                         </div>
                         <div className="flex gap-4">
-                            <button onClick={() => setStep('LOCATION')} className="p-5 bg-white border border-slate-200 text-slate-400 rounded-2xl hover:bg-slate-50 transition-all hover:text-slate-900">
+                            <button onClick={() => setStep('LOCATION')} className="rounded-lg border border-slate-300 bg-white p-3 text-slate-600 transition-colors hover:bg-slate-50">
                                 <ArrowLeft size={24} />
                             </button>
                             <button
                                 onClick={() => { if (!description.trim() && !roadName.trim()) { setError('Please provide a landmark or description.'); return; } setError(''); setStep('REVIEW'); }}
-                                className="flex-1 bg-slate-900 text-white rounded-2xl font-black text-sm shadow-xl active:scale-[0.98] transition-all flex items-center justify-center gap-3 group uppercase tracking-widest"
+                                className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-slate-900 text-sm font-medium text-white transition-colors hover:bg-slate-800"
                             >
-                                Final Review <ArrowRight size={20} className="group-hover:translate-x-2 transition-transform" />
+                                Review report <ArrowRight size={18} />
                             </button>
                         </div>
                     </div>
@@ -504,48 +503,47 @@ const ReportWizard = () => {
 
                 {step === 'REVIEW' && (
                     <div className="space-y-6">
-                        <div className="bg-white border border-slate-100 rounded-[2.5rem] shadow-2xl shadow-slate-900/5 overflow-hidden">
+                        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
                             <div className="h-56 relative group">
                                 <img src={previewUrl} alt="Pothole preview" className="w-full h-full object-cover" />
-                                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent" />
-                                <div className="absolute bottom-6 left-6 flex items-center gap-3">
-                                    <div className="w-12 h-12 bg-white/20 backdrop-blur-xl rounded-2xl flex items-center justify-center text-white border border-white/20">
+                                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/55 via-transparent to-transparent" />
+                                <div className="absolute bottom-5 left-5 flex items-center gap-3">
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-white/30 bg-white/20 text-white">
                                         <Camera size={20} />
                                     </div>
                                     <div>
-                                        <p className="text-[10px] font-black uppercase tracking-widest text-white/70">Verified Photo</p>
-                                        <p className="text-sm font-black text-white uppercase tracking-tight">Public Report Artifact</p>
+                                        <p className="text-xs font-medium text-white/80">Selected photo</p>
+                                        <p className="text-sm font-semibold text-white">Citizen report evidence</p>
                                     </div>
                                 </div>
                             </div>
-                            <div className="p-8 space-y-8">
+                            <div className="space-y-6 p-6">
                                 <div className="grid grid-cols-2 gap-8">
                                     <div className="space-y-1">
-                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Global GPS</p>
-                                        <p className="text-sm font-bold text-slate-700 font-mono tracking-tight">{lat.toFixed(5)}, {lon.toFixed(5)}</p>
+                                        <p className="text-xs font-medium text-slate-500">GPS coordinates</p>
+                                        <p className="font-mono text-sm font-medium text-slate-800">{lat.toFixed(5)}, {lon.toFixed(5)}</p>
                                     </div>
                                     {roadName && (
                                         <div className="space-y-1">
-                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Identified Landmark</p>
-                                            <p className="text-sm font-bold text-slate-700 truncate">{roadName}</p>
+                                            <p className="text-xs font-medium text-slate-500">Landmark</p>
+                                            <p className="truncate text-sm font-medium text-slate-800">{roadName}</p>
                                         </div>
                                     )}
                                 </div>
                                 {description && (
                                     <div className="space-y-1">
-                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Citizen Report Summary</p>
-                                        <p className="text-sm text-slate-600 leading-relaxed font-bold italic">"{description}"</p>
+                                        <p className="text-xs font-medium text-slate-500">Description</p>
+                                        <p className="text-sm leading-relaxed text-slate-700">"{description}"</p>
                                     </div>
                                 )}
-                                <div className="bg-blue-600 rounded-[2rem] p-6 text-white shadow-xl shadow-blue-600/20 relative overflow-hidden group">
-                                    <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-2xl" />
-                                    <div className="flex items-start gap-4 relative z-10">
-                                        <div className="w-12 h-12 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center shrink-0">
-                                            <ShieldCheck size={24} className="text-white" />
+                                <div className="rounded-lg border border-blue-100 bg-blue-50 p-5 text-blue-950">
+                                    <div className="flex items-start gap-3">
+                                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white text-blue-700 ring-1 ring-blue-100">
+                                            <ShieldCheck size={20} />
                                         </div>
                                         <div className="space-y-1">
-                                            <h4 className="text-sm font-black uppercase tracking-tight leading-none">Trust & Verification</h4>
-                                            <p className="text-[10px] text-white/80 leading-relaxed font-bold uppercase tracking-tight">
+                                            <h4 className="text-sm font-semibold">Review and verification</h4>
+                                            <p className="text-sm leading-6 text-blue-900/75">
                                                 Your report will be reviewed by official provincial maintenance teams for rapid action. 
                                             </p>
                                         </div>
@@ -554,12 +552,12 @@ const ReportWizard = () => {
                             </div>
                         </div>
                         <div className="flex gap-4">
-                            <button onClick={() => setStep('DETAILS')} className="p-5 bg-white border border-slate-200 text-slate-400 rounded-2xl hover:bg-slate-50 transition-all hover:text-slate-900">
+                            <button onClick={() => setStep('DETAILS')} className="rounded-lg border border-slate-300 bg-white p-3 text-slate-600 transition-colors hover:bg-slate-50">
                                 <ArrowLeft size={24} />
                             </button>
-                            <button onClick={handleSubmit} className="flex-1 bg-blue-600 text-white rounded-[2rem] font-black text-base shadow-2xl shadow-blue-600/30 active:scale-[0.98] transition-all flex items-center justify-center gap-3 group uppercase tracking-widest">
-                                <Navigation size={22} className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" /> 
-                                Confirm & Submit
+                            <button onClick={handleSubmit} className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-slate-900 py-3 text-sm font-medium text-white transition-colors hover:bg-slate-800">
+                                <Navigation size={18} /> 
+                                Submit report
                             </button>
                         </div>
                     </div>
@@ -567,7 +565,7 @@ const ReportWizard = () => {
             </div>
 
             {error && (
-                <div className="mt-8 flex items-center gap-3 text-rose-600 text-xs font-black uppercase tracking-widest bg-rose-50 border border-rose-100 rounded-2xl p-5 animate-fade-in-up">
+                <div className="mt-6 flex items-center gap-3 rounded-lg border border-rose-200 bg-rose-50 p-4 text-sm font-medium text-rose-700">
                     <AlertCircle size={18} /> {error}
                 </div>
             )}
