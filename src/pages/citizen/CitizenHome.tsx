@@ -14,78 +14,75 @@ import {
 } from 'lucide-react';
 
 const FeatureCard = ({ icon: Icon, title, desc }: { icon: React.ElementType; title: string; desc: string }) => (
-    <div className="card-premium p-6">
-        <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--accent-bg)] text-[var(--accent-text)] border border-[var(--accent-border)]">
-            <Icon size={18} />
+    <div className="card-premium p-8 flex flex-col items-start text-left">
+        <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-xl bg-[#EAF2FF] text-[#4F6FAF] border border-[#DCE3EE]">
+            <Icon size={22} />
         </div>
-        <h3 className="mb-2 text-sm font-semibold text-slate-900">{title}</h3>
-        <p className="text-sm leading-relaxed text-slate-500">{desc}</p>
+        <h3 className="mb-3 text-base font-bold text-[#0F172A]">{title}</h3>
+        <p className="text-sm leading-relaxed text-[#64748B]">{desc}</p>
     </div>
 );
 
 const CitizenHome = () => {
     return (
-        <div className="bg-white pb-16 theme-citizen">
-            <section className="border-b border-slate-100 bg-[#f9fafb]">
-                <div className="mx-auto grid max-w-6xl gap-12 px-4 py-16 sm:px-6 lg:grid-cols-[1fr_400px] lg:items-center">
-                    <div className="space-y-8">
-                        <div>
-                            <span className="mb-4 inline-flex items-center gap-2 rounded-full border border-[var(--accent-border)] bg-white px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-[var(--accent-text)]">
-                                <ShieldCheck size={12} />
-                                Official Road Maintenance Portal
+        <div className="bg-[#F7F9FC] pb-24 theme-citizen">
+            <section className="bg-white border-b border-[#DCE3EE]">
+                <div className="mx-auto grid max-w-7xl gap-16 px-6 py-32 lg:grid-cols-[1fr_420px] lg:items-center">
+                    <div className="space-y-12">
+                        <div className="space-y-8">
+                            <span className="inline-flex items-center gap-2.5 rounded-full border border-[#DCE3EE] bg-[#F7F9FC] px-5 py-2 text-[11px] font-bold uppercase tracking-[0.1em] text-[#64748B]">
+                                <ShieldCheck size={14} className="text-[#4F6FAF]" />
+                                OFFICIAL ROAD MAINTENANCE PORTAL
                             </span>
-                            <h1 className="max-w-xl text-4xl font-semibold tracking-tight text-slate-900 sm:text-5xl lg:leading-[1.1]">
+                            <h1 className="max-w-2xl text-[48px] font-bold tracking-[-0.01em] text-[#0F172A] leading-[1.2]">
                                 Report road damage and track repair progress.
                             </h1>
-                            <p className="mt-6 max-w-lg text-lg leading-relaxed text-slate-500">
+                            <p className="max-w-xl text-xl leading-[1.6] text-[#64748B] font-medium">
                                 RoadPulse connects citizens directly with maintenance divisions. Submit clear reports with photos and location data to help keep our roads safe.
                             </p>
                         </div>
 
-                        <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                        <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
                             <Link
                                 to="/citizen/report"
-                                className="btn-premium btn-primary px-8 py-3.5 shadow-sm"
+                                className="btn-premium bg-[#4F6FAF] hover:bg-[#3E5C96] text-white px-10 py-5 rounded-xl shadow-lg transition-all flex items-center justify-center gap-3 font-bold uppercase tracking-wider text-sm"
                             >
-                                <PlusCircle size={18} />
-                                Report a pothole
+                                <PlusCircle size={20} />
+                                REPORT A POTHOLE
                             </Link>
                             <Link
                                 to="/citizen/my-reports"
-                                className="btn-premium btn-secondary px-8 py-3.5"
+                                className="btn-premium bg-white border border-[#DCE3EE] hover:bg-[#F7F9FC] text-[#0F172A] px-10 py-5 rounded-xl shadow-sm transition-all flex items-center justify-center gap-3 font-bold uppercase tracking-wider text-sm"
                             >
-                                <FileText size={18} />
-                                View my reports
+                                <FileText size={20} className="text-[#64748B]" />
+                                VIEW MY REPORTS
                             </Link>
                         </div>
                     </div>
 
                     <div className="relative">
-                        <div className="absolute -inset-4 bg-slate-200/20 blur-2xl rounded-[2rem]" />
-                        <div className="relative card-premium p-6 shadow-md border-slate-200/60 bg-white">
-                            <div className="mb-6 flex items-center justify-between border-b border-slate-50 pb-4">
-                                <div>
-                                    <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Process</p>
-                                    <h3 className="text-sm font-semibold text-slate-900">Submission Workflow</h3>
-                                </div>
-                                <div className="h-8 w-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-400">
-                                    <ShieldCheck size={18} />
-                                </div>
+                        <div className="relative card-premium p-10 shadow-xl border-[#DCE3EE] bg-white overflow-hidden rounded-[24px]">
+                            <div className="absolute top-8 right-8 text-[#EAF2FF]">
+                                <ShieldCheck size={28} />
                             </div>
-                            <div className="space-y-4">
+                            <div className="mb-10">
+                                <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#4F6FAF] mb-1">PROCESS</p>
+                                <h3 className="text-xl font-bold text-[#0F172A]">Submission Workflow</h3>
+                            </div>
+                            <div className="space-y-8">
                                 {[
                                     { icon: Camera, title: 'Capture Photo', desc: 'Secure evidence of road damage.' },
                                     { icon: MapPin, title: 'Pin Location', desc: 'Auto-detect or manual placement.' },
                                     { icon: Navigation, title: 'Add Details', desc: 'Landmarks or specific notes.' },
                                     { icon: CheckCircle, title: 'Live Tracking', desc: 'Real-time status updates.' },
                                 ].map((item) => (
-                                    <div key={item.title} className="flex gap-4 group">
-                                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-50 text-slate-400 group-hover:bg-[var(--accent-bg)] group-hover:text-[var(--accent-text)] transition-colors border border-slate-100">
-                                            <item.icon size={16} />
+                                    <div key={item.title} className="flex gap-6 group">
+                                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#EAF2FF] text-[#4F6FAF] border border-[#DCE3EE] transition-all">
+                                            <item.icon size={20} />
                                         </div>
-                                        <div>
-                                            <p className="text-sm font-semibold text-slate-900">{item.title}</p>
-                                            <p className="text-[11px] leading-relaxed text-slate-500">{item.desc}</p>
+                                        <div className="space-y-1">
+                                            <p className="text-base font-bold text-[#0F172A]">{item.title}</p>
+                                            <p className="text-sm leading-relaxed text-[#64748B]">{item.desc}</p>
                                         </div>
                                     </div>
                                 ))}
@@ -95,77 +92,34 @@ const CitizenHome = () => {
                 </div>
             </section>
 
-            <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
-                <section aria-label="Why Use RoadPulse">
-                    <div className="mb-10 text-center lg:text-left">
-                        <h2 className="text-2xl font-semibold tracking-tight text-slate-900">Designed for public service</h2>
-                        <p className="mt-2 text-slate-500">A clean, transparent system for reporting and tracking road maintenance.</p>
+            <div className="mx-auto max-w-7xl px-6 py-24">
+                <section aria-label="Designed for public service">
+                    <div className="mb-16">
+                        <h2 className="text-4xl font-bold tracking-tight text-[#0F172A]">Designed for public service</h2>
+                        <p className="mt-4 text-xl text-[#64748B] max-w-2xl">A clean, transparent system for reporting and tracking road maintenance.</p>
                     </div>
-                    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+                    {/* Feature Cards below... */}
+                    <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
                         <FeatureCard
                             icon={Clock}
-                            title="Live Updates"
-                            desc="Real-time status tracking from submission to repair completion."
+                            title="Live Lifecycle"
+                            desc="Monitor the official state of your reports from triage to final repair completion."
                         />
                         <FeatureCard
                             icon={MapPin}
-                            title="Geo-Routing"
-                            desc="Automatic association with local provincial council divisions."
+                            title="Provincial Routing"
+                            desc="Automatic association with the relevant jurisdictional maintenance council."
                         />
                         <FeatureCard
                             icon={ShieldCheck}
-                            title="Verified Data"
-                            desc="Human-in-the-loop review ensures actionable maintenance data."
+                            title="Government Grade"
+                            desc="Official system used by municipal divisions for scheduled road maintenance."
                         />
                         <FeatureCard
                             icon={CheckCircle}
-                            title="Clear Lifecycle"
-                            desc="Simplified 5-step status system for better public transparency."
+                            title="Infrastructure First"
+                            desc="Prioritizing public safety through data-driven road damage evaluation."
                         />
-                    </div>
-                </section>
-
-                <section className="mt-24 grid gap-8 lg:grid-cols-[1fr_350px]">
-                    <div className="card-premium p-8">
-                        <h2 className="text-xl font-semibold tracking-tight text-slate-900 mb-8">How it works</h2>
-                        <div className="grid gap-6 sm:grid-cols-3">
-                            {[
-                                { step: '01', icon: Camera, title: 'Take Photo', desc: 'Secure a clear image of the damage.' },
-                                { step: '02', icon: MapPin, title: 'Location', desc: 'Confirm the precise GPS coordinates.' },
-                                { step: '03', icon: FileText, title: 'Submit', desc: 'Send your report for official review.' },
-                            ].map(item => (
-                                <div key={item.step} className="space-y-4">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--accent-bg)] text-[var(--accent-text)]">
-                                            <item.icon size={18} />
-                                        </div>
-                                        <span className="text-[10px] font-bold text-slate-300 tracking-widest">{item.step}</span>
-                                    </div>
-                                    <div>
-                                        <h3 className="text-sm font-semibold text-slate-900">{item.title}</h3>
-                                        <p className="mt-2 text-xs leading-relaxed text-slate-500">{item.desc}</p>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    <div className="rounded-xl border border-amber-100 bg-amber-50/50 p-8">
-                        <div className="flex flex-col gap-4">
-                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-700">
-                                <AlertTriangle size={20} />
-                            </div>
-                            <div>
-                                <h3 className="text-base font-semibold text-slate-900">Safety Notice</h3>
-                                <p className="mt-3 text-sm leading-relaxed text-slate-600">
-                                    Only capture reports from a safe position. Pull over safely if you are driving. Your safety is more important than the report.
-                                </p>
-                                <Link to="/citizen/report" className="mt-6 inline-flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-slate-900 hover:text-[var(--accent-text)] transition-colors">
-                                    Start Reporting
-                                    <ArrowRight size={16} />
-                                </Link>
-                            </div>
-                        </div>
                     </div>
                 </section>
             </div>

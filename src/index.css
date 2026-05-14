@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -38,59 +40,63 @@
   --status-negative-border: #fee2e2;
 
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.06);
+  --shadow-lg: 0 10px 25px -5px rgba(0, 0, 0, 0.04), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.03);
 }
 
 .theme-citizen {
   --bg: #ffffff;
-  --bg-soft: #f8fafc;
-  --text: #1e293b;
-  --muted: #64748b;
-  --border: #e2e8f0;
+  --bg-soft: #F7F9FC;
+  --card: #ffffff;
+  --text: #0F172A;
+  --muted: #64748B;
+  --border: #DCE3EE;
   --border-strong: #cbd5e1;
 
-  /* Premium Accent: Muted Slate Blue */
-  --accent-solid: #475569;
-  --accent-bg: #f1f5f9;
-  --accent-border: #e2e8f0;
-  --accent-text: #334155;
+  /* Professional Civic Blue System */
+  --accent-solid: #4F6FAF;
+  --accent-hover: #3E5C96;
+  --accent-bg: #EAF2FF;
+  --accent-border: #DCE3EE;
+  --accent-text: #4F6FAF;
 
-  /* Subtly color-coded Status (Citizen) */
-  --status-positive-bg: #f1f5f9;
-  --status-positive-text: #475569;
-  --status-positive-border: #e2e8f0;
+  /* Government Status Colors (Citizen) */
+  --status-positive-bg: #f0fdf4;
+  --status-positive-text: #166534;
+  --status-positive-border: #dcfce7;
 
-  /* Submitted -> soft gray */
-  --status-submitted-bg: #f8fafc;
-  --status-submitted-text: #64748b;
-  --status-submitted-border: #e2e8f0;
+  /* Submitted -> Soft Gray */
+  --status-submitted-bg: #F1F5F9;
+  --status-submitted-text: #64748B;
+  --status-submitted-border: #DCE3EE;
 
-  /* Under Review -> muted slate */
-  --status-review-bg: #f1f5f9;
-  --status-review-text: #475569;
-  --status-review-border: #e2e8f0;
+  /* Under Review -> Soft Light Blue */
+  --status-review-bg: #EAF2FF;
+  --status-review-text: #4F6FAF;
+  --status-review-border: #DCE3EE;
 
-  /* Verified -> muted navy */
-  --status-verified-bg: #eff6ff;
-  --status-verified-text: #1e40af;
-  --status-verified-border: #dbeafe;
+  /* Verified -> Primary Blue */
+  --status-verified-bg: #4F6FAF;
+  --status-verified-text: #ffffff;
+  --status-verified-border: #4F6FAF;
 
-  /* Scheduled -> muted amber */
+  /* Scheduled -> Muted Amber */
   --status-scheduled-bg: #fffbeb;
   --status-scheduled-text: #92400e;
   --status-scheduled-border: #fef3c7;
 
-  /* In Progress -> muted blue-gray */
+  /* In Progress -> Dusty Blue-Gray */
   --status-progress-bg: #f0f9ff;
   --status-progress-text: #075985;
   --status-progress-border: #e0f2fe;
 
-  /* Fixed -> muted green-gray */
+  /* Fixed -> Muted Green-Gray */
   --status-fixed-bg: #f0fdf4;
   --status-fixed-text: #166534;
   --status-fixed-border: #dcfce7;
 
-  /* Rejected -> muted red-gray */
+  /* Rejected -> Muted Red-Gray */
   --status-rejected-bg: #fef2f2;
   --status-rejected-text: #991b1b;
   --status-rejected-border: #fee2e2;
@@ -114,33 +120,35 @@ body {
 
 @layer components {
   .card-premium {
-    @apply rounded-xl border bg-white shadow-sm transition-all duration-200;
+    @apply rounded-[20px] border bg-white shadow-sm transition-all duration-300;
     border-color: var(--border);
   }
 
   .card-premium:hover {
-    @apply shadow-md;
-    border-color: var(--border-strong);
+    @apply shadow-lg;
+    border-color: var(--accent-border);
   }
 
   .section-heading {
-    @apply text-2xl font-semibold tracking-tight text-slate-900;
+    @apply text-4xl font-extrabold tracking-tight text-[#0F172A];
   }
 
   .btn-premium {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-xs font-semibold uppercase tracking-wider transition-all active:scale-[0.98] disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-6 py-3 text-sm font-bold transition-all active:scale-[0.98] disabled:opacity-50;
   }
 
   .btn-primary {
     background-color: var(--accent-solid);
     color: #ffffff;
+    @apply shadow-md;
   }
-  .btn-primary:hover {
-    filter: brightness(0.9);
+  .theme-citizen .btn-primary:hover {
+    background-color: var(--accent-hover);
+    @apply shadow-lg -translate-y-0.5;
   }
 
   .btn-secondary {
-    @apply border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900;
+    @apply border border-[#DCE3EE] bg-white text-[#64748B] hover:bg-[#F7F9FC] hover:text-[#0F172A] shadow-sm hover:shadow-md;
   }
 
   .btn-accent {
@@ -150,7 +158,7 @@ body {
   }
 
   .status-pill {
-    @apply inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider;
+    @apply inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-widest;
   }
 
   /* Status Colors - Dynamic based on theme */
@@ -173,11 +181,6 @@ body {
     background-color: var(--status-negative-bg);
     color: var(--status-negative-text);
     border-color: var(--status-negative-border);
-  }
-  .status-verified-alt {
-    background-color: var(--status-verified-bg);
-    color: var(--status-verified-text);
-    border-color: var(--status-verified-border);
   }
 
   /* Citizen Specific Status Overrides */
@@ -239,17 +242,4 @@ body {
 }
 .custom-scroll::-webkit-scrollbar-thumb {
   @apply rounded-full bg-slate-200 hover:bg-slate-300;
-}
-
-/* Global Polish */
-.rounded-\[1\.5rem\], .rounded-\[2rem\], .rounded-\[2\.5rem\], .rounded-3xl {
-  border-radius: 0.75rem !important;
-}
-
-.shadow-2xl, .shadow-xl, .shadow-lg, .shadow-premium {
-  box-shadow: var(--shadow-sm) !important;
-}
-
-.font-black {
-  font-weight: 600 !important;
 }

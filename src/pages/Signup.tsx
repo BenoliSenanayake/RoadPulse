@@ -110,30 +110,32 @@ const Signup = () => {
     };
 
     return (
-        <div className="relative flex min-h-screen items-center justify-center bg-slate-50 px-4 py-8">
+        <div className="relative flex min-h-screen items-center justify-center bg-[#F7F9FC] px-4 py-8 theme-citizen">
             {feedback && <Alert {...feedback} onClose={() => setFeedback(null)} />}
 
-            <div className="relative z-10 flex w-full max-w-[400px] flex-col gap-7">
+            <div className="relative z-10 flex w-full max-w-[400px] flex-col gap-10">
                 {/* Brand Header */}
                 <div className="flex flex-col items-center">
-                    <Link to="/login" state={{ from: location.state?.from }} className="mb-4 flex h-14 w-14 items-center justify-center rounded-xl border border-slate-200 bg-white shadow-sm">
-                        <img src={logo} alt="RP" className="h-9 w-9 object-contain" />
+                    <Link to="/login" state={{ from: location.state?.from }} className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl border border-[#DCE3EE] bg-white shadow-md transition-all hover:border-[#4F6FAF] hover:shadow-lg">
+                        <img src={logo} alt="RP" className="h-10 w-10 object-contain" />
                     </Link>
-                    <div className="text-center">
-                        <h1 className="mb-1 text-2xl font-semibold leading-none tracking-tight text-slate-950">Create Account</h1>
-                        <p className="text-sm text-slate-500">Citizen registration</p>
+                    <div className="text-center space-y-1">
+                        <h1 className="text-3xl font-extrabold tracking-tight text-[#0F172A]">Join RoadPulse</h1>
+                        <p className="text-sm font-bold uppercase tracking-[0.2em] text-[#4F6FAF]">Citizen Registration</p>
                     </div>
                 </div>
 
-                <div className="card-premium relative overflow-hidden p-7 sm:p-8">
+                <div className="card-premium relative overflow-hidden p-8 sm:p-10 bg-white border-[#DCE3EE] shadow-2xl">
+                    <div className="absolute top-0 left-0 w-full h-1.5 bg-[#4F6FAF]" />
+                    
                     {/* Stepper */}
-                    <div className="flex gap-2 mb-8 px-1">
+                    <div className="flex gap-3 mb-10 px-1">
                         {[1, 2].map((s) => (
                             <div
                                 key={s}
                                 className={cn(
-                                    "h-1.5 flex-1 rounded-full transition-all duration-500",
-                                    step >= s ? "bg-slate-900" : "bg-slate-100"
+                                    "h-2 flex-1 rounded-full transition-all duration-700",
+                                    step >= s ? "bg-[#4F6FAF]" : "bg-[#F1F5F9]"
                                 )}
                             />
                         ))}
@@ -141,12 +143,12 @@ const Signup = () => {
 
                     <form onSubmit={handleSubmit} className="space-y-6">
                         {step === 1 && (
-                            <div className="space-y-5 animate-fade-in-up">
+                            <div className="space-y-6 animate-fade-in-up">
                                 <AuthInput
-                                    label="Full Name"
+                                    label="Full Legal Name"
                                     type="text"
-                                    placeholder="e.g. John Perera"
-                                    icon={<User />}
+                                    placeholder="e.g. Chaminda Perera"
+                                    icon={<User className="text-[#94A3B8]" />}
                                     value={formData.name}
                                     onChange={e => {
                                         setFormData({ ...formData, name: e.target.value });
@@ -157,10 +159,10 @@ const Signup = () => {
                                 />
 
                                 <AuthInput
-                                    label="Email Identity"
+                                    label="Email Address"
                                     type="email"
-                                    placeholder="john@example.com"
-                                    icon={<Mail />}
+                                    placeholder="e.g. name@provider.com"
+                                    icon={<Mail className="text-[#94A3B8]" />}
                                     value={formData.email}
                                     onChange={e => {
                                         setFormData({ ...formData, email: e.target.value });
@@ -174,22 +176,20 @@ const Signup = () => {
                                     type="button"
                                     onClick={handleNext}
                                     disabled={!isStepValid}
-                                    className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg bg-slate-900 py-3 text-sm font-medium text-white transition-colors hover:bg-slate-800 disabled:opacity-50"
+                                    className="mt-4 flex w-full items-center justify-center gap-3 bg-[#4F6FAF] py-4 rounded-xl text-base font-bold text-white transition-all shadow-lg hover:bg-[#3E5C96] hover:shadow-xl active:scale-[0.98] disabled:opacity-50"
                                 >
-                                    Continue <ArrowRight size={16} />
+                                    Proceed <ArrowRight size={20} />
                                 </button>
                             </div>
                         )}
 
-
-
                         {step === 2 && (
-                            <div className="space-y-5 animate-fade-in-up">
+                            <div className="space-y-6 animate-fade-in-up">
                                 <AuthInput
                                     label="Security Key"
                                     type="password"
-                                    placeholder="8+ chars, letters, numbers, symbols"
-                                    icon={<Lock />}
+                                    placeholder="Min 8 chars, incl. symbols"
+                                    icon={<Lock className="text-[#94A3B8]" />}
                                     showPasswordToggle
                                     value={formData.password}
                                     onChange={e => {
@@ -201,10 +201,10 @@ const Signup = () => {
                                 />
 
                                 <AuthInput
-                                    label="Confirm Key"
+                                    label="Confirm Security Key"
                                     type="password"
-                                    placeholder="Re-enter security key"
-                                    icon={<Lock />}
+                                    placeholder="Re-enter for verification"
+                                    icon={<Lock className="text-[#94A3B8]" />}
                                     value={formData.confirmPassword}
                                     onChange={e => {
                                         setFormData({ ...formData, confirmPassword: e.target.value });
@@ -214,25 +214,25 @@ const Signup = () => {
                                     required
                                 />
 
-                                <div className="flex gap-4 mt-2">
+                                <div className="flex gap-4 mt-4">
                                     <button
                                         type="button"
                                         disabled={isLoading}
                                         onClick={handleBack}
-                                        className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white py-3 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-50"
+                                        className="flex flex-1 items-center justify-center gap-2 rounded-xl border-2 border-[#F1F5F9] bg-white py-4 text-sm font-bold text-[#64748B] transition-all hover:bg-[#F7F9FC] active:scale-[0.98] disabled:opacity-50"
                                     >
-                                        <ChevronLeft size={16} /> Back
+                                        <ChevronLeft size={18} />
                                     </button>
                                     <button
                                         type="submit"
                                         disabled={isLoading || !isStepValid}
-                                        className="flex flex-[2] items-center justify-center gap-2 rounded-lg bg-slate-900 py-3 text-sm font-medium text-white transition-colors hover:bg-slate-800 disabled:opacity-50"
+                                        className="flex flex-[3] items-center justify-center gap-3 bg-[#0F172A] py-4 rounded-xl text-base font-bold text-white transition-all shadow-lg hover:bg-black hover:shadow-xl active:scale-[0.98] disabled:opacity-50"
                                     >
                                         {isLoading ? (
-                                            <Loader2 size={16} className="animate-spin" />
+                                            <Loader2 size={20} className="animate-spin" />
                                         ) : (
                                             <>
-                                                Create account <CheckCircle2 size={16} />
+                                                Finalize Account <CheckCircle2 size={20} />
                                             </>
                                         )}
                                     </button>
@@ -241,19 +241,19 @@ const Signup = () => {
                         )}
                     </form>
 
-                    <div className="mt-8 pt-6 border-t border-slate-50 text-center">
-                        <p className="text-sm text-slate-500">
-                            Already registered? <Link to="/login" state={{ from: location.state?.from }} className="ml-1 font-medium text-slate-950 hover:underline underline-offset-4">Sign in</Link>
+                    <div className="mt-10 pt-8 border-t border-[#F1F5F9] text-center">
+                        <p className="text-sm font-bold text-[#64748B]">
+                            Already registered? <Link to="/login" state={{ from: location.state?.from }} className="ml-2 font-extrabold text-[#0F172A] hover:text-[#4F6FAF] transition-colors underline-offset-4 hover:underline">Sign In</Link>
                         </p>
                     </div>
                 </div>
 
-                <div className="flex items-center justify-center gap-6">
+                <div className="flex items-center justify-center gap-8">
                     <button
-                        onClick={() => setFeedback({ type: 'info', message: 'Recovery Protocol', description: 'Self-service recovery is coming soon. Contact support for key reset.' })}
-                        className="text-sm font-medium text-slate-500 transition-colors hover:text-slate-900"
+                        onClick={() => setFeedback({ type: 'info', message: 'Regional Support', description: 'Technical assistance is available 24/7 for citizen accounts.' })}
+                        className="text-xs font-bold uppercase tracking-[0.2em] text-[#94A3B8] transition-colors hover:text-[#4F6FAF]"
                     >
-                        Support
+                        Support Center
                     </button>
                 </div>
             </div>

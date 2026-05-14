@@ -21,9 +21,9 @@ export const CitizenLayout = ({ children, hideFooter = false }: { children: Reac
     const navigate = useNavigate();
 
     const navItems = [
-        { name: 'Home', path: '/citizen', icon: Home },
-        { name: 'Report a Pothole', path: '/citizen/report', icon: PlusCircle },
-        { name: 'My Reports', path: '/citizen/my-reports', icon: Clock },
+        { name: 'HOME', path: '/citizen', icon: Home },
+        { name: 'REPORT A POTHOLE', path: '/citizen/report', icon: PlusCircle },
+        { name: 'MY REPORTS', path: '/citizen/my-reports', icon: Clock },
     ];
 
     const handleSignOut = () => {
@@ -33,61 +33,65 @@ export const CitizenLayout = ({ children, hideFooter = false }: { children: Reac
     };
 
     return (
-        <div className="min-h-screen bg-white font-sans text-slate-900 theme-citizen">
-            <header className="sticky top-0 z-50 border-b border-slate-50 bg-white">
-                <div className="max-w-5xl mx-auto px-4 h-14 sm:h-16 flex items-center justify-between gap-4">
+        <div className="min-h-screen bg-[#F7F9FC] font-sans text-[#0F172A] theme-citizen">
+            <header className="sticky top-0 z-50 border-b border-[#DCE3EE] bg-white/90 backdrop-blur-md">
+                <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between gap-8">
                     {/* Logo */}
-                    <Link to="/citizen" aria-label="RoadPulse Home" className="flex items-center gap-2 shrink-0">
-                        <img src={logo} alt="RoadPulse Logo" className="h-6 w-6 object-contain sm:h-7 sm:w-7" />
-                        <span className="text-sm font-semibold tracking-tight text-slate-900 sm:text-base">RoadPulse</span>
+                    <Link to="/citizen" aria-label="RoadPulse Home" className="flex items-center gap-3 shrink-0 group">
+                        <div className="w-10 h-10 rounded-xl bg-white border border-[#DCE3EE] flex items-center justify-center shadow-sm group-hover:border-[#4F6FAF] transition-all">
+                            <img src={logo} alt="" className="h-6 w-6 object-contain" />
+                        </div>
+                        <span className="text-xl font-bold tracking-tight text-[#0F172A]">RoadPulse</span>
                     </Link>
 
                     {/* Desktop Nav */}
-                    <nav className="hidden md:flex items-center gap-1 flex-1 justify-center">
-                        {navItems.map(item => (
-                            <Link
-                                key={item.path}
-                                to={item.path}
-                                className={cn(
-                                    "px-4 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all",
-                                    location.pathname === item.path
-                                        ? "text-slate-950 bg-slate-50 border border-slate-100"
-                                        : "text-slate-500 hover:text-slate-950 hover:bg-slate-50"
-                                )}
-                            >
-                                {item.name}
-                            </Link>
-                        ))}
+                    <nav className="hidden lg:flex items-center gap-2">
+                        {navItems.map(item => {
+                            const isActive = location.pathname === item.path;
+                            return (
+                                <Link
+                                    key={item.path}
+                                    to={item.path}
+                                    className={cn(
+                                        "px-5 py-2.5 rounded-full text-[11px] font-bold tracking-widest transition-all",
+                                        isActive
+                                            ? "text-[#4F6FAF] bg-[#F7F9FC] border border-[#DCE3EE]"
+                                            : "text-[#64748B] hover:text-[#0F172A] hover:bg-[#F7F9FC]"
+                                    )}
+                                >
+                                    {item.name}
+                                </Link>
+                            );
+                        })}
                     </nav>
 
                     {/* Desktop Auth */}
-                    <div className="hidden md:flex items-center gap-2 shrink-0">
+                    <div className="hidden md:flex items-center gap-6 shrink-0">
                         {isAuthenticated && user ? (
-                            <>
-                                <div className="flex items-center gap-2 rounded-lg border border-slate-100 bg-slate-50/50 px-3 py-1.5">
-                                    <div className="w-6 h-6 rounded-md bg-slate-900 flex items-center justify-center text-white">
-                                        <User size={12} />
+                            <div className="flex items-center gap-4">
+                                <div className="flex items-center gap-3 rounded-xl bg-[#0F172A] px-5 py-2.5 shadow-md">
+                                    <div className="w-6 h-6 rounded-lg bg-[#1E293B] flex items-center justify-center text-white">
+                                        <User size={14} />
                                     </div>
-                                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-600">
-                                        {user.name?.split(' ')[0] || 'Me'}
+                                    <span className="text-[11px] font-bold text-white tracking-widest uppercase">
+                                        {user.name?.split(' ')[0] || 'TEST'}
                                     </span>
                                 </div>
                                 <button
                                     onClick={handleSignOut}
-                                    aria-label="Sign out"
+                                    className="p-2 text-[#64748B] hover:text-[#0F172A] transition-colors"
                                     title="Sign out"
-                                    className="p-2 text-slate-400 hover:text-rose-600 transition-colors"
                                 >
-                                    <LogOut size={16} />
+                                    <LogOut size={20} />
                                 </button>
-                            </>
+                            </div>
                         ) : (
                             <Link
                                 to="/login"
                                 state={{ from: location }}
-                                    className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-white transition-all hover:bg-slate-800 active:scale-[0.98]"
+                                className="inline-flex items-center gap-2 rounded-xl bg-[#4F6FAF] px-8 py-3 text-sm font-bold text-white transition-all hover:bg-[#3E5C96] shadow-sm hover:shadow-md"
                             >
-                                Sign In
+                                <LogIn size={18} /> Sign In
                             </Link>
                         )}
                     </div>
@@ -95,53 +99,52 @@ export const CitizenLayout = ({ children, hideFooter = false }: { children: Reac
                     {/* Mobile menu button */}
                     <button
                         onClick={() => setIsMenuOpen(!isMenuOpen)}
-                        aria-label={isMenuOpen ? "Close menu" : "Open menu"}
-                        className="p-2 text-slate-400 md:hidden hover:text-slate-900"
+                        className="p-2 text-[#64748B] lg:hidden hover:text-[#0F172A]"
                     >
-                        {isMenuOpen ? <X size={22} /> : <Menu size={22} />}
+                        {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
                     </button>
                 </div>
             </header>
 
             {/* Mobile Menu */}
             {isMenuOpen && (
-                <div className="fixed inset-0 z-40 bg-white pt-16 px-4 md:hidden flex flex-col">
-                    <nav className="flex flex-col gap-1 mt-8">
+                <div className="fixed inset-0 z-40 bg-[#F7F9FC] pt-20 px-6 md:hidden flex flex-col">
+                    <nav className="flex flex-col gap-2">
                         {navItems.map(item => (
                             <Link
                                 key={item.path}
                                 to={item.path}
                                 onClick={() => setIsMenuOpen(false)}
                                 className={cn(
-                                    "flex items-center gap-4 px-5 py-4 rounded-xl text-sm font-bold uppercase tracking-widest transition-colors",
+                                    "flex items-center gap-4 px-6 py-4 rounded-xl text-base font-bold transition-all",
                                     location.pathname === item.path
-                                        ? "bg-slate-50 text-slate-900 border border-slate-100"
-                                        : "text-slate-500 hover:bg-slate-50"
+                                        ? "bg-white text-[#4F6FAF] border border-[#DCE3EE] shadow-sm"
+                                        : "text-[#64748B] hover:bg-white hover:text-[#0F172A]"
                                 )}
                             >
-                                <item.icon size={18} className={location.pathname === item.path ? "text-slate-900" : "text-slate-400"} />
+                                <item.icon size={20} className={location.pathname === item.path ? "text-[#4F6FAF]" : "text-[#94A3B8]"} />
                                 {item.name}
                             </Link>
                         ))}
                     </nav>
 
-                    <div className="mt-auto mb-8 pt-6 border-t border-slate-50">
+                    <div className="mt-auto mb-10 pt-8 border-t border-[#DCE3EE]">
                         {isAuthenticated && user ? (
-                            <div className="space-y-2">
-                                <div className="flex items-center gap-3 px-5 py-4 bg-slate-50 rounded-xl border border-slate-100">
-                                    <div className="w-10 h-10 rounded-lg bg-slate-900 flex items-center justify-center text-white">
-                                        <User size={20} />
+                            <div className="space-y-3">
+                                <div className="flex items-center gap-4 px-6 py-4 bg-white rounded-xl border border-[#DCE3EE] shadow-sm">
+                                    <div className="w-12 h-12 rounded-xl bg-[#EAF2FF] flex items-center justify-center text-[#4F6FAF]">
+                                        <User size={24} />
                                     </div>
                                     <div>
-                                        <p className="text-sm font-bold text-slate-900">{user.name}</p>
-                                        <p className="text-[10px] uppercase tracking-wider text-slate-400">{user.email}</p>
+                                        <p className="text-base font-bold text-[#0F172A]">{user.name}</p>
+                                        <p className="text-xs text-[#64748B]">{user.email}</p>
                                     </div>
                                 </div>
                                 <button
                                     onClick={handleSignOut}
-                                    className="w-full flex items-center gap-3 px-5 py-4 rounded-xl text-sm font-bold uppercase tracking-widest text-rose-600 transition-colors"
+                                    className="w-full flex items-center gap-4 px-6 py-4 rounded-xl text-base font-bold text-rose-600 transition-colors hover:bg-rose-50"
                                 >
-                                    <LogOut size={20} />
+                                    <LogOut size={22} />
                                     Sign Out
                                 </button>
                             </div>
@@ -150,9 +153,9 @@ export const CitizenLayout = ({ children, hideFooter = false }: { children: Reac
                                 to="/login"
                                 state={{ from: location }}
                                 onClick={() => setIsMenuOpen(false)}
-                                className="flex items-center justify-center gap-2 w-full py-4 bg-slate-900 text-white rounded-xl text-xs font-bold uppercase tracking-widest"
+                                className="flex items-center justify-center gap-2 w-full py-4 bg-[#4F6FAF] text-white rounded-xl text-base font-bold shadow-sm"
                             >
-                                <LogIn size={16} />
+                                <LogIn size={20} />
                                 Sign In
                             </Link>
                         )}
@@ -165,27 +168,30 @@ export const CitizenLayout = ({ children, hideFooter = false }: { children: Reac
 
                 {/* Footer */}
                 {!hideFooter && (
-                    <div className="bg-white border-t border-slate-50 py-20 px-4">
-                        <div className="max-w-4xl mx-auto space-y-20">
+                    <div className="bg-white border-t border-[#DCE3EE] py-24 px-6">
+                        <div className="max-w-5xl mx-auto space-y-24">
                             {/* Steps */}
                             <section>
-                                <h2 className="mb-12 text-center text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">Reporting Process</h2>
+                                <div className="text-center mb-16">
+                                    <h2 className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#4F6FAF] mb-3">Service Workflow</h2>
+                                    <h3 className="text-3xl font-bold text-[#0F172A]">How we process your reports</h3>
+                                </div>
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
                                     {[
-                                        { step: "01", title: "Document", desc: "Capture clear imagery of the hazard from a safe distance.", icon: PlusCircle },
+                                        { step: "01", title: "Document", desc: "Capture clear imagery of the road hazard from a safe distance.", icon: PlusCircle },
                                         { step: "02", title: "Locate", desc: "Pinpoint the precise coordinates to assist maintenance crews.", icon: Home },
                                         { step: "03", title: "Resolve", desc: "Our teams prioritize and schedule repairs based on severity.", icon: CheckCircle },
                                     ].map((s, i) => (
-                                        <div key={i} className="text-center space-y-5">
-                                            <div className="w-14 h-14 bg-[var(--accent-bg)] rounded-2xl flex items-center justify-center mx-auto text-[var(--accent-text)] relative">
-                                                <s.icon size={22} />
-                                                <span className="absolute -top-2 -right-2 bg-white text-slate-900 text-[9px] font-bold w-6 h-6 rounded-lg flex items-center justify-center border border-slate-100 shadow-sm">
+                                        <div key={i} className="text-center group">
+                                            <div className="w-16 h-16 bg-[#EAF2FF] rounded-2xl flex items-center justify-center mx-auto text-[#4F6FAF] relative mb-6 transition-transform group-hover:scale-105">
+                                                <s.icon size={28} />
+                                                <span className="absolute -top-2 -right-2 bg-[#4F6FAF] text-white text-[10px] font-bold w-7 h-7 rounded-lg flex items-center justify-center shadow-md">
                                                     {s.step}
                                                 </span>
                                             </div>
                                             <div>
-                                                <h3 className="text-xs font-bold text-slate-900 uppercase tracking-widest">{s.title}</h3>
-                                                <p className="mt-2 text-[11px] text-slate-500 leading-relaxed px-4">{s.desc}</p>
+                                                <h4 className="text-base font-bold text-[#0F172A] mb-3">{s.title}</h4>
+                                                <p className="text-sm text-[#64748B] leading-relaxed">{s.desc}</p>
                                             </div>
                                         </div>
                                     ))}
@@ -194,20 +200,31 @@ export const CitizenLayout = ({ children, hideFooter = false }: { children: Reac
 
                             {/* FAQ */}
                             <section>
-                                <h2 className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 mb-8 flex items-center justify-center gap-2">
-                                    Frequently asked questions
-                                </h2>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="text-center mb-12">
+                                    <h2 className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#4F6FAF] mb-3">Support</h2>
+                                    <h3 className="text-3xl font-bold text-[#0F172A]">Common Questions</h3>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     {FAQ_ITEMS.map((item, i) => (
-                                        <div key={i} className="bg-slate-50/50 p-6 rounded-xl border border-slate-100 transition-colors hover:border-[var(--accent-border)] hover:bg-white">
-                                            <h4 className="text-xs font-bold text-slate-900 mb-2 uppercase tracking-wider">
+                                        <div key={i} className="bg-[#F7F9FC] p-8 rounded-2xl border border-[#DCE3EE] transition-all hover:bg-white hover:shadow-md hover:border-[#4F6FAF]">
+                                            <h4 className="text-base font-bold text-[#0F172A] mb-3">
                                                 {item.q}
                                             </h4>
-                                            <p className="text-[11px] text-slate-500 leading-relaxed">{item.a}</p>
+                                            <p className="text-sm text-[#64748B] leading-relaxed">{item.a}</p>
                                         </div>
                                     ))}
                                 </div>
                             </section>
+
+                            {/* Minimal Bottom Footer */}
+                            <div className="pt-12 border-t border-[#DCE3EE] flex flex-col md:flex-row items-center justify-between gap-6 text-xs font-semibold text-[#64748B] uppercase tracking-widest">
+                                <p>© 2024 RoadPulse Infrastructure Sri Lanka</p>
+                                <div className="flex items-center gap-8">
+                                    <Link to="#" className="hover:text-[#4F6FAF]">Privacy Policy</Link>
+                                    <Link to="#" className="hover:text-[#4F6FAF]">Terms of Service</Link>
+                                    <Link to="#" className="hover:text-[#4F6FAF]">Help Center</Link>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 )}
