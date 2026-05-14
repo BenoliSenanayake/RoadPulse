@@ -45,31 +45,31 @@ const AdminSidebar = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => voi
 
             {/* Sidebar */}
             <aside className={cn(
-                "fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-slate-200 bg-white text-slate-900 shadow-lg transition-transform duration-200 lg:translate-x-0 lg:shadow-none",
+                "fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-slate-100 bg-white text-slate-900 transition-transform duration-200 lg:translate-x-0",
                 isOpen ? "translate-x-0" : "-translate-x-full"
             )}>
                 {/* Brand Logo */}
-                <div className="flex h-16 items-center justify-between border-b border-slate-200 px-5">
+                <div className="flex h-16 items-center justify-between border-b border-slate-50 px-5">
                     <Link to="/admin/overview" onClick={onClose} className="flex items-center gap-3">
-                        <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-700">
-                            <Shield size={19} />
+                        <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--accent-border)] bg-[var(--accent-bg)] text-[var(--accent-text)]">
+                            <Shield size={18} />
                         </div>
                         <div className="flex flex-col">
-                            <span className="text-base font-semibold leading-none tracking-tight text-slate-950">RoadPulse</span>
-                            <span className="mt-0.5 text-[11px] font-medium leading-none text-slate-500">Admin console</span>
+                            <span className="text-sm font-semibold leading-none tracking-tight text-slate-900">RoadPulse</span>
+                            <span className="mt-1 text-[10px] font-medium leading-none text-slate-400 uppercase tracking-wider">Admin Console</span>
                         </div>
                     </Link>
                     <button 
                         onClick={onClose}
-                        className="rounded-lg p-2 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 lg:hidden"
+                        className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-900 lg:hidden"
                     >
                         <X size={20} />
                     </button>
                 </div>
 
                 {/* Navigation */}
-                <div className="flex-1 space-y-1 overflow-y-auto px-4 py-5 custom-scrollbar">
-                    <p className="px-3 pb-2 text-xs font-medium text-slate-500">Navigation</p>
+                <div className="flex-1 space-y-1 overflow-y-auto px-4 py-6 custom-scrollbar">
+                    <p className="px-3 pb-3 text-[10px] font-semibold uppercase tracking-wider text-slate-400">Navigation</p>
                     {adminNavItems.map((item) => {
                         const isActive = location.pathname === item.path || location.pathname.startsWith(`${item.path}/`);
                         return (
@@ -78,40 +78,39 @@ const AdminSidebar = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => voi
                                 to={item.path}
                                 onClick={onClose}
                                 className={cn(
-                                    "group flex items-center justify-between rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                                    "group flex items-center justify-between rounded-lg px-3 py-2 text-sm font-medium transition-all",
                                     isActive
-                                        ? "bg-slate-900 text-white"
-                                        : "text-slate-600 hover:bg-slate-100 hover:text-slate-950"
+                                        ? "bg-[var(--accent-bg)] text-[var(--accent-text)] border border-[var(--accent-border)]"
+                                        : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
                                 )}
                             >
                                 <div className="flex items-center gap-3">
-                                    <item.icon size={18} className={cn(isActive ? "text-white" : "text-slate-500 transition-colors")} />
+                                    <item.icon size={18} className={cn(isActive ? "text-[var(--accent-text)]" : "text-slate-400 transition-colors group-hover:text-slate-600")} />
                                     {item.name}
                                 </div>
-                                {isActive && <ChevronRight size={14} className="opacity-70" />}
+                                {isActive && <ChevronRight size={14} className="opacity-40" />}
                             </Link>
                         );
                     })}
                 </div>
 
-                {/* User Profile & Logout */}
-                <div className="mt-auto border-t border-slate-200 bg-slate-50 p-4">
-                    <div className="mb-3 flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3">
+                <div className="mt-auto border-t border-slate-50 p-4">
+                    <div className="mb-3 flex items-center gap-3 rounded-lg border border-slate-100 bg-slate-50/30 p-2.5">
                         <div className="relative">
-                            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-900 text-sm font-semibold text-white">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-900 text-xs font-semibold text-white">
                                 {user?.name?.charAt(0)}
                             </div>
                         </div>
                         <div className="flex-1 min-w-0">
-                            <p className="truncate text-sm font-semibold text-slate-900">{user?.name}</p>
-                            <p className="text-xs font-medium text-slate-500">Administrator</p>
+                            <p className="truncate text-xs font-semibold text-slate-900">{user?.name}</p>
+                            <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">System Administrator</p>
                         </div>
                     </div>
                     <button
                         onClick={logout}
-                        className="flex w-full items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium text-slate-600 transition-colors hover:bg-white hover:text-rose-600"
+                        className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-xs font-medium text-slate-500 transition-colors hover:bg-rose-50 hover:text-rose-600"
                     >
-                        <LogOut size={16} />
+                        <LogOut size={14} />
                         Sign out
                     </button>
                 </div>
@@ -125,46 +124,46 @@ const AdminHeader = ({ onMenuClick }: { onMenuClick: () => void }) => {
     const currentItem = adminNavItems.find(item => location.pathname.startsWith(item.path)) || adminNavItems[0];
 
     return (
-        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-slate-200 bg-white px-4 md:px-6">
+        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-slate-100 bg-white px-4 md:px-6">
             <div className="flex items-center gap-4">
                 <button
                     onClick={onMenuClick}
-                    className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 text-slate-600 transition-colors hover:bg-slate-100 lg:hidden"
+                    className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-100 text-slate-400 transition-colors hover:bg-slate-50 lg:hidden"
                     aria-label="Open Menu"
                 >
-                    <Menu size={20} />
+                    <Menu size={18} />
                 </button>
                 <div className="hidden lg:block">
-                    <h2 className="text-lg font-semibold leading-none tracking-tight text-slate-950">{currentItem.name}</h2>
-                    <p className="mt-1 text-xs font-medium leading-none text-slate-500">Governance and oversight</p>
+                    <h2 className="text-sm font-semibold leading-none tracking-tight text-slate-900">{currentItem.name}</h2>
+                    <p className="mt-1 text-[10px] font-medium leading-none text-slate-400 uppercase tracking-wider">Governance Panel</p>
                 </div>
             </div>
 
             <div className="flex items-center gap-3">
                 {/* Search Bar - Desktop Only */}
                 <div className="relative hidden xl:flex items-center group">
-                    <Search className="absolute left-4 text-slate-400 group-focus-within:text-blue-500 transition-colors" size={14} />
+                    <Search className="absolute left-3 text-slate-400 group-focus-within:text-[var(--accent-solid)] transition-colors" size={13} />
                     <input 
                         type="text" 
                         placeholder="Search system records..." 
-                        className="w-72 rounded-lg border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-3 text-sm font-medium text-slate-900 outline-none transition-all focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-200"
+                        className="w-64 rounded-lg border border-slate-100 bg-slate-50/50 py-2 pl-9 pr-3 text-xs font-medium text-slate-700 outline-none transition-all focus:border-[var(--accent-border)] focus:bg-white focus:ring-4 focus:ring-[var(--accent-bg)]"
                     />
                 </div>
 
-                <div className="flex h-10 items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3">
-                    <div className={cn("h-2 w-2 rounded-full", isBackendDown ? "bg-rose-500" : "bg-emerald-600")} />
-                    <span className="text-xs font-medium text-slate-700">
-                        {isBackendDown ? 'System issue' : 'System online'}
+                <div className="flex h-9 items-center gap-2 rounded-lg border border-slate-100 bg-slate-50 px-3">
+                    <div className={cn("h-1.5 w-1.5 rounded-full", isBackendDown ? "bg-rose-500" : "bg-[var(--accent-solid)]")} />
+                    <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
+                        {isBackendDown ? 'System Issue' : 'System Online'}
                     </span>
                 </div>
 
-                <button className="relative flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition-colors hover:bg-slate-50">
-                    <Bell size={19} />
-                    <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-slate-900 ring-2 ring-white" />
+                <button className="relative flex h-9 w-9 items-center justify-center rounded-lg border border-slate-100 bg-white text-slate-400 transition-colors hover:bg-slate-50">
+                    <Bell size={17} />
+                    <span className="absolute right-2.5 top-2.5 h-1.5 w-1.5 rounded-full bg-slate-900 ring-2 ring-white" />
                 </button>
 
-                <button className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition-colors hover:bg-slate-50">
-                    <Settings size={19} />
+                <button className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-100 bg-white text-slate-400 transition-colors hover:bg-slate-50">
+                    <Settings size={17} />
                 </button>
             </div>
         </header>
@@ -175,7 +174,7 @@ export const AdminLayout = ({ children }: { children: ReactNode }) => {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
     return (
-        <div className="flex min-h-screen flex-col bg-slate-50">
+        <div className="flex min-h-screen flex-col bg-slate-50/30 theme-admin">
             <BackendStatusBanner />
             <div className="flex flex-1">
                 <AdminSidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />

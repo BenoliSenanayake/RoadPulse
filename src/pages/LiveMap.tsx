@@ -46,20 +46,19 @@ const MapController = ({ center, zoom }: { center: [number, number] | null; zoom
 };
 
 const getMarkerIcon = (pothole: CitizenReport) => {
-    // Verified = Green, Scheduled = Orange, In Progress = Blue
     const status = canonicalizeStatus(pothole.status);
-    const statusColor = status === 'Verified' ? '#10B981' 
-        : status === 'Scheduled' ? '#F97316'
-        : status === 'In Progress' ? '#2563EB'
-        : '#64748B';
+    const statusColor = status === 'Verified' ? '#4a6b4a' // Sage Green (Verified)
+        : status === 'Scheduled' ? '#927c54' // Muted Gold (Scheduled)
+        : status === 'In Progress' ? '#5a7a92' // Muted Blue (In Progress)
+        : '#64748b'; // Slate (Others)
 
     const html = `
         <div style="
             background-color: ${statusColor};
-            width: 24px;
-            height: 24px;
+            width: 18px;
+            height: 18px;
             border-radius: 999px;
-            border: 3px solid white;
+            border: 2px solid white;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         "></div>
     `;
@@ -67,8 +66,8 @@ const getMarkerIcon = (pothole: CitizenReport) => {
     return L.divIcon({
         html,
         className: 'roadpulse-marker',
-        iconSize: [24, 24],
-        iconAnchor: [12, 12],
+        iconSize: [18, 18],
+        iconAnchor: [9, 9],
         popupAnchor: [0, -10],
     });
 };
@@ -285,38 +284,44 @@ const LiveMap = () => {
                     districts={districts}
                 />
                 <div className="grid grid-cols-2 gap-3">
-                    <Stat label="Total Locations" value={filtered.length} />
-                    <Stat label="Active Repairs" value={filtered.filter(p => ['Scheduled', 'In Progress'].includes(canonicalizeStatus(p.status))).length} />
+                    <div className="card-premium p-4">
+                        <p className="text-2xl font-semibold tracking-tight text-slate-900">{filtered.length}</p>
+                        <p className="mt-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Units</p>
+                    </div>
+                    <div className="card-premium p-4">
+                        <p className="text-2xl font-semibold tracking-tight text-slate-900">{filtered.filter(p => ['Scheduled', 'In Progress'].includes(canonicalizeStatus(p.status))).length}</p>
+                        <p className="mt-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Active Ops</p>
+                    </div>
                 </div>
             </aside>
 
             <main className="relative z-0 flex-1 overflow-hidden rounded-none border border-slate-200 bg-white shadow-sm md:rounded-xl">
-                <div className="absolute left-4 top-4 z-[1000] max-w-[calc(100%-90px)] rounded-lg border border-slate-200 bg-white px-4 py-3 text-slate-950 shadow-sm">
-                    <div className="mb-1 flex items-center gap-2">
-                        <p className="text-xs font-medium text-slate-500">Provincial live map</p>
+                <div className="absolute left-6 top-6 z-[1000] max-w-[calc(100%-120px)] rounded-xl border border-slate-100 bg-white/95 px-5 py-4 shadow-xl backdrop-blur-md">
+                    <div className="mb-2 flex items-center gap-2">
+                        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">Regional Intelligence</p>
                         {province && province !== 'Unassigned' && (
-                            <span className="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-xs font-medium text-slate-700">
+                            <span className="rounded bg-[var(--accent-bg)] px-2 py-0.5 text-[9px] font-bold text-[var(--accent-text)] border border-[var(--accent-border)] uppercase tracking-[0.1em]">
                                 {getProvinceShortName(province)}
                             </span>
                         )}
                     </div>
-                    <p className="text-sm font-semibold">{filtered.length} visible points</p>
+                    <h2 className="text-xl font-semibold tracking-tight text-slate-900">{filtered.length} Points of Interest</h2>
                 </div>
 
-                <div className="absolute bottom-6 left-4 z-[1000] min-w-[140px] rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-                    <p className="mb-3 border-b border-slate-100 pb-2 text-xs font-medium text-slate-500">Map legend</p>
-                    <div className="space-y-2.5">
-                        <div className="flex items-center gap-2.5">
-                            <div className="h-3 w-3 rounded-full bg-[#10B981]" />
-                            <span className="text-xs font-medium text-slate-700">Verified</span>
+                <div className="absolute bottom-8 left-6 z-[1000] min-w-[160px] rounded-xl border border-slate-100 bg-white/95 p-5 shadow-xl backdrop-blur-md">
+                    <p className="mb-4 border-b border-slate-50 pb-2 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">Deployment Legend</p>
+                    <div className="space-y-4">
+                        <div className="flex items-center gap-3">
+                            <div className="h-3 w-3 rounded-full bg-[#4a6b4a] shadow-sm ring-2 ring-white" />
+                            <span className="text-[11px] font-semibold text-slate-600">Verified Units</span>
                         </div>
-                        <div className="flex items-center gap-2.5">
-                            <div className="h-3 w-3 rounded-full bg-[#F97316]" />
-                            <span className="text-xs font-medium text-slate-700">Scheduled</span>
+                        <div className="flex items-center gap-3">
+                            <div className="h-3 w-3 rounded-full bg-[#927c54] shadow-sm ring-2 ring-white" />
+                            <span className="text-[11px] font-semibold text-slate-600">Scheduled Ops</span>
                         </div>
-                        <div className="flex items-center gap-2.5">
-                            <div className="h-3 w-3 rounded-full bg-[#2563EB]" />
-                            <span className="text-xs font-medium text-slate-700">In progress</span>
+                        <div className="flex items-center gap-3">
+                            <div className="h-3 w-3 rounded-full bg-[#5a7a92] shadow-sm ring-2 ring-white" />
+                            <span className="text-[11px] font-semibold text-slate-600">In Progress</span>
                         </div>
                     </div>
                 </div>
@@ -345,18 +350,18 @@ const LiveMap = () => {
                                 eventHandlers={{ click: () => selectPothole(p) }}
                             >
                                 <Popup>
-                                    <div className="w-56 p-1">
-                                        <div className="mb-2 flex items-center justify-between gap-2">
-                                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">#{p.id.split('-')[0]}</p>
+                                    <div className="w-56 p-2">
+                                        <div className="mb-2.5 flex items-center justify-between gap-2">
+                                            <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">ID: {p.id.slice(0, 8)}</p>
                                             <StatusPill status={p.status as StatusType} className="scale-75 origin-right" />
                                         </div>
-                                        <p className="text-sm font-black text-slate-900 leading-tight">{p.description?.replace(/^\[.*?\]\s*/, '') || 'Road Location'}</p>
-                                        <p className="mt-1 text-[10px] font-black text-slate-400 uppercase tracking-widest">{p.district} District</p>
+                                        <p className="text-xs font-semibold text-slate-900 leading-relaxed mb-1">{p.description?.replace(/^\[.*?\]\s*/, '') || 'Road Infrastructure'}</p>
+                                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">{p.district} District</p>
                                         <button
                                             onClick={() => selectPothole(p)}
-                                            className="mt-3 w-full rounded-lg bg-slate-900 py-2 text-[10px] font-black uppercase tracking-widest text-white shadow-lg shadow-slate-900/20"
+                                            className="mt-3.5 w-full rounded-md bg-slate-950 py-2 text-[10px] font-bold uppercase tracking-wider text-white shadow-sm hover:bg-slate-800 transition-colors"
                                         >
-                                            Inspect Operations
+                                            Inspect Record
                                         </button>
                                     </div>
                                 </Popup>
@@ -378,81 +383,82 @@ const LiveMap = () => {
                 </MapContainer>
 
                 {selected && (
-                    <section className="absolute bottom-0 right-0 z-[2000] flex max-h-full w-full flex-col border-l border-slate-200 bg-white shadow-md md:top-0 md:w-[380px]">
-                        <div className="flex items-start justify-between gap-4 border-b border-slate-200 bg-slate-50 p-5">
+                    <section className="absolute bottom-0 right-0 z-[2000] flex max-h-full w-full flex-col border-l border-slate-100 bg-white shadow-2xl md:top-0 md:w-[380px] animate-in slide-in-from-right duration-300">
+                        <div className="flex items-start justify-between gap-4 border-b border-slate-50 bg-slate-50/30 p-6">
                             <div>
-                                <p className="mb-1 text-xs font-medium text-slate-500">Operational record</p>
-                                <h2 className="text-base font-semibold text-slate-950">#{selected.id.split('-')[0]}</h2>
+                                <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">Operational Record</p>
+                                <h2 className="text-base font-semibold text-slate-900 tracking-tight">ID: {selected.id.slice(0, 12)}</h2>
                             </div>
-                            <button onClick={() => setSelected(null)} className="rounded-lg border border-slate-200 bg-white p-2 text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-900">
-                                <X size={16} />
+                            <button onClick={() => setSelected(null)} className="rounded-xl border border-slate-100 bg-white p-2.5 text-slate-400 transition-all hover:bg-slate-50 hover:text-slate-900 shadow-sm">
+                                <X size={18} />
                             </button>
                         </div>
 
-                        <div className="custom-scroll flex-1 space-y-5 overflow-y-auto p-5">
+                        <div className="custom-scroll flex-1 space-y-6 overflow-y-auto p-6">
                             {selected.imageUrl && (
-                                <img src={selected.imageUrl} alt="Road damage evidence" className="aspect-video w-full rounded-lg border border-slate-200 object-cover" />
+                                <div className="relative aspect-video w-full overflow-hidden rounded-xl border border-slate-100 shadow-sm">
+                                    <img src={selected.imageUrl} alt="Damage evidence" className="h-full w-full object-cover" />
+                                </div>
                             )}
                             
                             <div className="space-y-4">
                                 <div className="flex items-center justify-between gap-3">
                                     <StatusPill status={selected.status as StatusType} />
                                     <span className={cn(
-                                        'rounded-md px-2.5 py-1 text-xs font-medium',
-                                        ['High', 'Urgent'].includes(selected.priority || '') ? 'bg-rose-50 text-rose-700' : 'bg-slate-100 text-slate-600'
+                                        'rounded-md px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider',
+                                        ['High', 'Urgent'].includes(selected.priority || '') ? 'bg-rose-50 text-rose-600 border border-rose-100' : 'bg-slate-50 text-slate-500 border border-slate-100'
                                     )}>
                                         {selected.priority || 'Medium'} Priority
                                     </span>
                                 </div>
-                                <h3 className="text-lg font-semibold leading-tight text-slate-950">{selected.description?.replace(/^\[.*?\]\s*/, '') || 'Provincial road point'}</h3>
-                                <p className="flex items-center gap-1.5 text-sm text-slate-500">
-                                    <MapPin size={14} className="text-slate-400" /> {selected.district} District
+                                <h3 className="text-xl font-semibold leading-tight text-slate-900 tracking-tight">{selected.description?.replace(/^\[.*?\]\s*/, '') || 'Infrastructure Node'}</h3>
+                                <p className="flex items-center gap-1.5 text-sm font-medium text-slate-500">
+                                    <MapPin size={14} className="text-slate-400" /> {selected.district} District, {selected.provincialCouncil}
                                 </p>
                             </div>
 
                             <div className="grid grid-cols-2 gap-3">
-                                <Detail label="Report ID" value={`#${selected.id.split('-')[0]}`} />
-                                <Detail label="District" value={selected.district || 'Unknown'} />
-                                <Detail label="Province" value={selected.provincialCouncil || 'Unassigned'} />
-                                <Detail label="Status" value={selected.status} />
-                                <Detail label="Priority" value={selected.priority || 'Medium'} />
-                                <Detail label="Submitted Date" value={new Date(selected.createdAt).toLocaleDateString()} />
+                                <Detail label="Primary Node ID" value={`#${selected.id.split('-')[0]}`} />
+                                <Detail label="Jurisdiction" value={selected.district || 'Unknown'} />
+                                <Detail label="Operational Status" value={selected.status} />
+                                <Detail label="Assigned Priority" value={selected.priority || 'Medium'} />
+                                <Detail label="Submission Date" value={new Date(selected.createdAt).toLocaleDateString()} />
                             </div>
 
                             {selected.maintenanceNotes && (
-                                <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-                                    <p className="mb-2 text-xs font-medium text-slate-500">Maintenance observations</p>
+                                <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-4">
+                                    <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">Maintenance Observations</p>
                                     <p className="text-sm leading-relaxed text-slate-600">"{selected.maintenanceNotes}"</p>
                                 </div>
                             )}
 
-                            <div className="space-y-3 border-t border-slate-200 pt-4">
+                            <div className="space-y-3 border-t border-slate-50 pt-6">
                                 {canonicalizeStatus(selected.status) === 'Verified' && (
                                     <button 
                                         onClick={() => updateStatus('Scheduled')} 
-                                        className="flex w-full items-center justify-center gap-2 rounded-lg bg-amber-600 py-3 text-sm font-medium text-white transition-colors hover:bg-amber-700"
+                                        className="flex w-full items-center justify-center gap-2 rounded-xl bg-white border border-slate-200 py-3.5 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-600 transition-all hover:bg-slate-50 hover:text-slate-900 shadow-sm"
                                     >
-                                        <CalendarClock size={14} /> Mark Scheduled
+                                        <CalendarClock size={14} /> Schedule Deployment
                                     </button>
                                 )}
                                 {canonicalizeStatus(selected.status) === 'Scheduled' && (
                                     <button 
                                         onClick={() => updateStatus('In Progress')} 
-                                        className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-700 py-3 text-sm font-medium text-white transition-colors hover:bg-blue-800"
+                                        className="flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--accent-bg)] border border-[var(--accent-border)] py-3.5 text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--accent-text)] transition-all hover:opacity-90 shadow-sm"
                                     >
-                                        <Play size={14} /> Mark In Progress
+                                        <Play size={14} /> Initiate Operations
                                     </button>
                                 )}
                                 {canonicalizeStatus(selected.status) === 'In Progress' && (
                                     <button 
                                         onClick={() => updateStatus('Completed')} 
-                                        className="flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-700 py-3 text-sm font-medium text-white transition-colors hover:bg-emerald-800"
+                                        className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 border border-slate-800 py-3.5 text-[10px] font-bold uppercase tracking-[0.2em] text-white transition-all hover:bg-black shadow-lg"
                                     >
-                                        <CheckCircle size={14} /> Finalize Maintenance
+                                        <CheckCircle size={14} /> Finalize Ops
                                     </button>
                                 )}
-                                <Link to={`/staff/reports/${selected.id}`} className="flex w-full items-center justify-center gap-2 rounded-lg bg-slate-900 py-3 text-sm font-medium text-white transition-colors hover:bg-slate-800">
-                                    Open report details <ChevronRight size={14} />
+                                <Link to={`/staff/reports/${selected.id}`} className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-100 py-3.5 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-600 transition-all hover:bg-slate-200">
+                                    Full Investigation <ChevronRight size={14} />
                                 </Link>
                             </div>
                         </div>
@@ -519,17 +525,17 @@ const FilterPanel = ({
     setDateFilter,
     districts,
 }: FilterPanelProps) => (
-    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h2 className="mb-5 flex items-center gap-2 text-sm font-semibold text-slate-950">
-            <Filter size={16} /> Map filters
+    <div className="rounded-xl border border-slate-100 bg-white p-6 shadow-sm">
+        <h2 className="mb-6 flex items-center gap-3 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
+            <Filter size={14} /> Map Intelligence
         </h2>
-        <div className="space-y-5">
+        <div className="space-y-6">
             <div className="relative">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
-                <input value={searchTerm} onChange={event => setSearchTerm(event.target.value)} placeholder="Search road or ID..." className="w-full rounded-lg border border-slate-200 bg-slate-50 py-3 pl-10 pr-4 text-sm font-medium text-slate-900 outline-none transition-all focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-200" />
+                <input value={searchTerm} onChange={event => setSearchTerm(event.target.value)} placeholder="Search sector or node ID..." className="w-full rounded-xl border border-slate-100 bg-slate-50/50 py-3 pl-11 pr-4 text-[11px] font-semibold text-slate-900 outline-none transition-all focus:border-[var(--accent-border)] focus:bg-white focus:ring-4 focus:ring-[var(--accent-bg)]" />
             </div>
             <Select label="District Sector" value={areaFilter} onChange={setAreaFilter} options={districts} />
-            <Select label="Maintenance Status" value={statusFilter} onChange={value => setStatusFilter(value as LiveMapStatus)} options={STATUSES} />
+            <Select label="Maintenance Node" value={statusFilter} onChange={value => setStatusFilter(value as LiveMapStatus)} options={STATUSES} />
             <Select label="Operational Priority" value={priorityFilter} onChange={value => setPriorityFilter(value as RepairPriority | 'All')} options={['All', ...PRIORITIES]} />
             <Select label="Discovery Timeline" value={dateFilter} onChange={setDateFilter} options={['All', 'Last 24h', 'Last 7 Days', 'Last 30 Days']} />
         </div>
@@ -538,8 +544,8 @@ const FilterPanel = ({
 
 const Select = ({ label, value, onChange, options }: { label: string; value: string; onChange: (value: string) => void; options: string[] }) => (
     <label className="block">
-        <span className="mb-2 ml-1 block text-sm font-medium text-slate-700">{label}</span>
-        <select value={value} onChange={event => onChange(event.target.value)} className="w-full cursor-pointer rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700 outline-none focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-200">
+        <span className="mb-1.5 ml-1 block text-[10px] font-bold uppercase tracking-wider text-slate-400">{label}</span>
+        <select value={value} onChange={event => onChange(event.target.value)} className="w-full cursor-pointer rounded-lg border border-slate-100 bg-slate-50/50 px-4 py-2.5 text-xs font-semibold text-slate-700 outline-none transition-all focus:border-[var(--accent-border)] focus:bg-white focus:ring-4 focus:ring-[var(--accent-bg)]">
             {options.map(option => <option key={option} value={option}>{option}</option>)}
         </select>
     </label>

@@ -76,10 +76,10 @@ const AdminReports = () => {
 
     const getStatusIcon = (status: string) => {
         switch (status) {
-            case 'Verified': return <CheckCircle2 className="text-emerald-500" size={14} />;
-            case 'New': return <Clock className="text-amber-500" size={14} />;
-            case 'In Progress': return <Wrench className="text-blue-500" size={14} />;
-            case 'Rejected': return <XCircle className="text-rose-500" size={14} />;
+            case 'Verified': return <CheckCircle2 className="text-[var(--success-text)]" size={14} />;
+            case 'New': return <Clock className="text-[var(--info-text)]" size={14} />;
+            case 'In Progress': return <Wrench className="text-[var(--warning-text)]" size={14} />;
+            case 'Rejected': return <XCircle className="text-[var(--danger-text)]" size={14} />;
             default: return <AlertCircle className="text-slate-400" size={14} />;
         }
     };
@@ -87,43 +87,43 @@ const AdminReports = () => {
     return (
         <div className="space-y-8">
             {/* Header Area */}
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-4">
                 <div>
-                    <h1 className="section-heading">Report Management</h1>
-                    <p className="mt-2 text-sm text-slate-600">Centralized governance for citizen reports and infrastructure events.</p>
+                    <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Report Management</h1>
+                    <p className="mt-1 text-sm text-slate-500">Centralized governance for citizen reports and infrastructure events oversight.</p>
                 </div>
                 <div className="flex items-center gap-3">
-                    <button className="btn-premium border border-slate-300 bg-white text-slate-700 hover:bg-slate-50">
+                    <button className="btn-premium border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900 shadow-sm">
                         <Download size={14} className="text-slate-400" />
-                        Export
+                        Export Data
                     </button>
-                    <button onClick={loadData} className="btn-premium bg-slate-900 text-white hover:bg-slate-800">
+                    <button onClick={loadData} className="btn-premium bg-slate-900 text-white hover:bg-slate-800 shadow-sm">
                         <RefreshCw size={14} className={cn(loading && "animate-spin")} />
-                        Refresh
+                        Refresh Records
                     </button>
                 </div>
             </div>
 
             {/* Filter Bar */}
-            <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="rounded-xl border border-slate-100 bg-white p-6 shadow-sm">
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-                    <div className="relative xl:col-span-2 group">
+                    <div className="relative xl:col-span-2">
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
                         <input 
                             type="text" 
-                            placeholder="Search report ID or district..." 
+                            placeholder="Search report ID or sector..." 
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full rounded-lg border border-slate-200 bg-slate-50 py-3 pl-10 pr-4 text-sm font-medium text-slate-900 outline-none transition-all focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-200"
+                            className="w-full rounded-xl border border-slate-100 bg-slate-50/50 py-3 pl-10 pr-4 text-[11px] font-semibold text-slate-900 outline-none transition-all focus:border-[var(--accent-border)] focus:bg-white focus:ring-4 focus:ring-[var(--accent-bg)]"
                         />
                     </div>
 
-                    <div className="relative group">
+                    <div className="relative">
                         <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
                         <select 
                             value={provinceFilter}
                             onChange={(e) => setProvinceFilter(e.target.value)}
-                            className="w-full cursor-pointer appearance-none rounded-lg border border-slate-200 bg-slate-50 py-3 pl-10 pr-10 text-sm font-medium text-slate-700 outline-none focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-200"
+                            className="w-full cursor-pointer appearance-none rounded-xl border border-slate-100 bg-slate-50/50 py-3 pl-10 pr-10 text-[11px] font-semibold text-slate-700 outline-none transition-all focus:border-[var(--accent-border)] focus:bg-white focus:ring-4 focus:ring-[var(--accent-bg)]"
                         >
                             <option value="All">All Provinces</option>
                             {PROVINCIAL_COUNCILS.map(pc => (
@@ -133,22 +133,22 @@ const AdminReports = () => {
                         <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none" size={14} />
                     </div>
 
-                    <div className="relative group">
+                    <div className="relative">
                         <Filter className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
                         <input 
                             placeholder="District"
                             value={districtFilter === 'All' ? '' : districtFilter}
                             onChange={(e) => setDistrictFilter(e.target.value || 'All')}
-                            className="w-full rounded-lg border border-slate-200 bg-slate-50 py-3 pl-10 pr-4 text-sm font-medium text-slate-700 outline-none focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-200"
+                            className="w-full rounded-xl border border-slate-100 bg-slate-50/50 py-3 pl-10 pr-4 text-[11px] font-semibold text-slate-700 outline-none transition-all focus:border-[var(--accent-border)] focus:bg-white focus:ring-4 focus:ring-[var(--accent-bg)]"
                         />
                     </div>
 
-                    <div className="relative group">
+                    <div className="relative">
                         <Clock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
                         <select 
                             value={statusFilter}
                             onChange={(e) => setStatusFilter(e.target.value)}
-                            className="w-full cursor-pointer appearance-none rounded-lg border border-slate-200 bg-slate-50 py-3 pl-10 pr-10 text-sm font-medium text-slate-700 outline-none focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-200"
+                            className="w-full cursor-pointer appearance-none rounded-xl border border-slate-100 bg-slate-50/50 py-3 pl-10 pr-10 text-[11px] font-semibold text-slate-700 outline-none transition-all focus:border-[var(--accent-border)] focus:bg-white focus:ring-4 focus:ring-[var(--accent-bg)]"
                         >
                             <option value="All">All Statuses</option>
                             <option value="New">New</option>
@@ -164,7 +164,7 @@ const AdminReports = () => {
             </div>
 
             {/* Table Area */}
-            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+            <div className="overflow-hidden rounded-xl border border-slate-100 bg-white shadow-sm">
                 <div className="overflow-x-auto custom-scrollbar">
                     <table className="table-premium">
                         <thead>
@@ -176,8 +176,8 @@ const AdminReports = () => {
                                     </div>
                                 </th>
                                 <th>Jurisdiction</th>
-                                <th>District</th>
-                                <th>Location</th>
+                                <th>Operational Area</th>
+                                <th>Description</th>
                                 <th className="cursor-pointer group">
                                     <div className="flex items-center gap-2">
                                         Timestamp
@@ -192,52 +192,47 @@ const AdminReports = () => {
                         <tbody className="divide-y divide-slate-50">
                             {!loading && reports.length > 0 ? (
                                 reports.map((item) => (
-                                    <tr key={item.id} className="hover:bg-slate-50/50 transition-all duration-300 group">
+                                    <tr key={item.id}>
                                         <td className="whitespace-nowrap">
                                             <div className="flex flex-col">
-                                                <span className="text-sm font-semibold text-slate-950">
-                                                    #{item.id.split('-')[0]}
+                                                <span className="text-[11px] font-bold text-slate-900">
+                                                    #{item.id.slice(0, 8)}
                                                 </span>
-                                                <span className="mt-0.5 text-xs text-slate-500">Report</span>
+                                                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Citizen Entry</span>
                                             </div>
                                         </td>
                                         <td>
-                                            <span className="text-sm font-medium text-slate-600">
-                                                {item.provincialCouncil ? getProvinceShortName(item.provincialCouncil) : 'Unknown'}
+                                            <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">
+                                                {item.provincialCouncil ? getProvinceShortName(item.provincialCouncil) : 'Global'}
                                             </span>
                                         </td>
                                         <td>
-                                            <span className="text-sm text-slate-700">{item.district}</span>
+                                            <span className="text-xs font-semibold text-slate-700">{item.district}</span>
                                         </td>
-                                        <td className="max-w-[220px]">
-                                            <p className="truncate text-sm font-medium text-slate-900">
+                                        <td className="max-w-[200px]">
+                                            <p className="truncate text-xs font-medium text-slate-500">
                                                 {item.description || 'Coordinate Location'}
                                             </p>
                                         </td>
                                         <td className="whitespace-nowrap">
                                             <div className="flex flex-col">
-                                                <span className="text-sm font-medium text-slate-900">
+                                                <span className="text-[11px] font-semibold text-slate-900">
                                                     {item.createdAt ? format(new Date(item.createdAt), 'dd MMM yyyy') : 'N/A'}
                                                 </span>
-                                                <span className="text-xs text-slate-500">
+                                                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">
                                                     {item.createdAt ? format(new Date(item.createdAt), 'HH:mm:ss') : '--:--:--'}
                                                 </span>
                                             </div>
                                         </td>
                                         <td className="text-center">
-                                            <div className="flex items-center justify-center gap-2">
-                                                {getStatusIcon(item.status)}
-                                                <StatusPill status={item.status as StatusType} className="scale-90" />
-                                            </div>
+                                            <StatusPill status={item.status as StatusType} />
                                         </td>
                                         <td className="text-center">
                                             <span className={cn(
-                                                "inline-block rounded-md border px-2.5 py-1 text-xs font-medium",
+                                                "px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border",
                                                 ['Urgent', 'High'].includes(item.priority || '') 
                                                     ? "bg-rose-50 text-rose-600 border-rose-100" 
-                                                    : item.priority === 'Medium'
-                                                    ? "bg-blue-50 text-blue-600 border-blue-100"
-                                                    : "bg-slate-50 text-slate-400 border-slate-100"
+                                                    : "bg-slate-50 text-slate-500 border-slate-100"
                                             )}>
                                                 {item.priority || 'Medium'}
                                             </span>
@@ -245,9 +240,9 @@ const AdminReports = () => {
                                         <td className="text-right px-8">
                                             <button 
                                                 onClick={() => navigate(`/admin/reports/${item.id}`)}
-                                                className="ml-auto flex h-9 items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-900 hover:text-white"
+                                                className="p-2 text-slate-400 hover:text-slate-900 hover:bg-slate-50 border border-slate-100 rounded-lg transition-all"
                                             >
-                                                <Eye size={14} /> Details
+                                                <Eye size={14} />
                                             </button>
                                         </td>
                                     </tr>

@@ -3,249 +3,253 @@
 @tailwind utilities;
 
 :root {
-  --bg: #f7f7f8;
+  /* Default / Base Variables (Staff/Admin default) */
+  --bg: #ffffff;
+  --bg-soft: #fafbfc;
   --card: #ffffff;
-  --border: #e5e7eb;
+  --border: #f1f5f9;
+  --border-strong: #e2e8f0;
   --text: #111827;
   --muted: #6b7280;
 
   --primary: #111827;
-  --primary-light: #1f2937;
-  --accent: #2563eb;
+  
+  /* Soft Professional Green System (Sage/Muted Emerald) */
+  --accent-solid: #4a7c59;
+  --accent-bg: #f2f8f5;
+  --accent-border: #e1ece6;
+  --accent-text: #3d5a3d;
 
-  --success: #059669;
-  --warning: #d97706;
-  --danger: #dc2626;
+  /* Status Colors (Staff/Admin) */
+  --status-positive-bg: #f2f8f5;
+  --status-positive-text: #3d5a3d;
+  --status-positive-border: #e1ece6;
 
-  --shadow-xs: 0 1px 2px rgb(15 23 42 / 0.04);
-  --shadow-sm: 0 1px 3px rgb(15 23 42 / 0.08);
-  --shadow-md: 0 8px 24px rgb(15 23 42 / 0.08);
+  --status-pending-bg: #fffcf0;
+  --status-pending-text: #8a6a2a;
+  --status-pending-border: #f9f1d0;
+
+  --status-progress-bg: #f0f7ff;
+  --status-progress-text: #2d5a8e;
+  --status-progress-border: #e0effe;
+
+  --status-negative-bg: #fff5f5;
+  --status-negative-text: #991b1b;
+  --status-negative-border: #fee2e2;
+
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
 }
 
-html {
-  background: var(--bg);
+.theme-citizen {
+  --bg: #ffffff;
+  --bg-soft: #f8fafc;
+  --text: #1e293b;
+  --muted: #64748b;
+  --border: #e2e8f0;
+  --border-strong: #cbd5e1;
+
+  /* Premium Accent: Muted Slate Blue */
+  --accent-solid: #475569;
+  --accent-bg: #f1f5f9;
+  --accent-border: #e2e8f0;
+  --accent-text: #334155;
+
+  /* Subtly color-coded Status (Citizen) */
+  --status-positive-bg: #f1f5f9;
+  --status-positive-text: #475569;
+  --status-positive-border: #e2e8f0;
+
+  /* Submitted -> soft gray */
+  --status-submitted-bg: #f8fafc;
+  --status-submitted-text: #64748b;
+  --status-submitted-border: #e2e8f0;
+
+  /* Under Review -> muted slate */
+  --status-review-bg: #f1f5f9;
+  --status-review-text: #475569;
+  --status-review-border: #e2e8f0;
+
+  /* Verified -> muted navy */
+  --status-verified-bg: #eff6ff;
+  --status-verified-text: #1e40af;
+  --status-verified-border: #dbeafe;
+
+  /* Scheduled -> muted amber */
+  --status-scheduled-bg: #fffbeb;
+  --status-scheduled-text: #92400e;
+  --status-scheduled-border: #fef3c7;
+
+  /* In Progress -> muted blue-gray */
+  --status-progress-bg: #f0f9ff;
+  --status-progress-text: #075985;
+  --status-progress-border: #e0f2fe;
+
+  /* Fixed -> muted green-gray */
+  --status-fixed-bg: #f0fdf4;
+  --status-fixed-text: #166534;
+  --status-fixed-border: #dcfce7;
+
+  /* Rejected -> muted red-gray */
+  --status-rejected-bg: #fef2f2;
+  --status-rejected-text: #991b1b;
+  --status-rejected-border: #fee2e2;
+}
+
+.theme-admin {
+  /* Admin can be slightly more "executive" with darker slate/sage */
+  --bg-soft: #f8fafc;
+  --accent-bg: #ecf3ef;
+  --border: #f1f5f9;
 }
 
 body {
   margin: 0;
   background-color: var(--bg);
   color: var(--text);
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  text-rendering: optimizeLegibility;
-}
-
-#root {
-  min-height: 100vh;
-}
-
-* {
-  box-sizing: border-box;
-}
-
-*:focus-visible {
-  @apply outline-none ring-2 ring-blue-600/25 ring-offset-2 ring-offset-white;
-}
-
-::selection {
-  background: #dbeafe;
-  color: #111827;
 }
 
 @layer components {
   .card-premium {
-    @apply rounded-xl border border-slate-200 bg-white shadow-sm transition-colors duration-200;
+    @apply rounded-xl border bg-white shadow-sm transition-all duration-200;
+    border-color: var(--border);
   }
 
-  .glass-effect {
-    @apply rounded-xl border border-slate-200 bg-white shadow-sm;
-    backdrop-filter: none !important;
+  .card-premium:hover {
+    @apply shadow-md;
+    border-color: var(--border-strong);
   }
 
   .section-heading {
-    @apply text-2xl font-semibold tracking-tight text-slate-950 sm:text-3xl;
-    text-transform: none;
+    @apply text-2xl font-semibold tracking-tight text-slate-900;
   }
 
   .btn-premium {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60;
-    letter-spacing: 0;
-    text-transform: none;
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-xs font-semibold uppercase tracking-wider transition-all active:scale-[0.98] disabled:opacity-50;
   }
 
-  .badge-premium,
+  .btn-primary {
+    background-color: var(--accent-solid);
+    color: #ffffff;
+  }
+  .btn-primary:hover {
+    filter: brightness(0.9);
+  }
+
+  .btn-secondary {
+    @apply border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900;
+  }
+
+  .btn-accent {
+    background-color: var(--accent-bg);
+    color: var(--accent-text);
+    border: 1px solid var(--accent-border);
+  }
+
   .status-pill {
-    @apply inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium;
-    letter-spacing: 0;
-    text-transform: none;
+    @apply inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider;
   }
 
-  .hover-lift {
-    @apply transition-colors duration-200;
+  /* Status Colors - Dynamic based on theme */
+  .status-positive {
+    background-color: var(--status-positive-bg);
+    color: var(--status-positive-text);
+    border-color: var(--status-positive-border);
+  }
+  .status-pending {
+    background-color: var(--status-pending-bg);
+    color: var(--status-pending-text);
+    border-color: var(--status-pending-border);
+  }
+  .status-progress {
+    background-color: var(--status-progress-bg);
+    color: var(--status-progress-text);
+    border-color: var(--status-progress-border);
+  }
+  .status-negative {
+    background-color: var(--status-negative-bg);
+    color: var(--status-negative-text);
+    border-color: var(--status-negative-border);
+  }
+  .status-verified-alt {
+    background-color: var(--status-verified-bg);
+    color: var(--status-verified-text);
+    border-color: var(--status-verified-border);
   }
 
-  .status-new { @apply border-blue-200 bg-blue-50 text-blue-700; }
-  .status-verified,
-  .status-confirmed { @apply border-emerald-200 bg-emerald-50 text-emerald-700; }
-  .status-in-progress { @apply border-blue-200 bg-blue-50 text-blue-700; }
-  .status-scheduled { @apply border-amber-200 bg-amber-50 text-amber-700; }
-  .status-completed,
-  .status-fixed { @apply border-emerald-200 bg-emerald-50 text-emerald-700; }
-  .status-rejected,
-  .status-overdue { @apply border-rose-200 bg-rose-50 text-rose-700; }
-  .status-manual-review { @apply border-amber-200 bg-amber-50 text-amber-700; }
-
-  .skeleton-premium {
-    @apply animate-pulse rounded-lg bg-slate-100;
+  /* Citizen Specific Status Overrides */
+  .citizen-submitted {
+    background-color: var(--status-submitted-bg);
+    color: var(--status-submitted-text);
+    border-color: var(--status-submitted-border);
   }
-}
-
-.text-balance {
-  text-wrap: balance;
-}
-
-@keyframes fade-in-up {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
+  .citizen-review {
+    background-color: var(--status-review-bg);
+    color: var(--status-review-text);
+    border-color: var(--status-review-border);
   }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+  .citizen-verified {
+    background-color: var(--status-verified-bg);
+    color: var(--status-verified-text);
+    border-color: var(--status-verified-border);
   }
-}
-
-@keyframes fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-.animate-fade-in-up,
-.animate-in {
-  animation: fade-in-up 220ms ease-out both;
-}
-
-.animate-fade-in {
-  animation: fade-in 180ms ease-out both;
-}
-
-.custom-scrollbar::-webkit-scrollbar,
-.custom-scroll::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-track,
-.custom-scroll::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb,
-.custom-scroll::-webkit-scrollbar-thumb {
-  background: #d1d5db;
-  border-radius: 999px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb:hover,
-.custom-scroll::-webkit-scrollbar-thumb:hover {
-  background: #9ca3af;
+  .citizen-scheduled {
+    background-color: var(--status-scheduled-bg);
+    color: var(--status-scheduled-text);
+    border-color: var(--status-scheduled-border);
+  }
+  .citizen-progress {
+    background-color: var(--status-progress-bg);
+    color: var(--status-progress-text);
+    border-color: var(--status-progress-border);
+  }
+  .citizen-fixed {
+    background-color: var(--status-fixed-bg);
+    color: var(--status-fixed-text);
+    border-color: var(--status-fixed-border);
+  }
+  .citizen-rejected {
+    background-color: var(--status-rejected-bg);
+    color: var(--status-rejected-text);
+    border-color: var(--status-rejected-border);
+  }
 }
 
 .table-premium {
-  width: 100%;
-  border-collapse: collapse;
+  @apply w-full border-collapse text-left;
 }
 
 .table-premium th {
-  @apply border-b border-slate-200 px-5 py-3 text-left text-xs font-medium text-slate-500;
-  letter-spacing: 0;
-  text-transform: none;
+  @apply border-b border-slate-100 bg-slate-50/50 px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-slate-500;
 }
 
 .table-premium td {
-  @apply border-b border-slate-100 px-5 py-3 text-sm text-slate-700;
+  @apply border-b border-slate-50 px-4 py-4 text-sm text-slate-600 transition-colors;
 }
 
-.table-premium tr:last-child td {
-  border-bottom: 0;
+.table-premium tr:hover td {
+  background-color: var(--bg-soft);
 }
 
-.dashed-line {
-  background-image: linear-gradient(to right, #d1d5db 50%, transparent 50%);
-  background-size: 14px 100%;
+.custom-scroll::-webkit-scrollbar {
+  @apply w-1.5;
+}
+.custom-scroll::-webkit-scrollbar-thumb {
+  @apply rounded-full bg-slate-200 hover:bg-slate-300;
 }
 
-/* Global visual quieting for legacy Tailwind-heavy screens. */
-.font-black {
-  font-weight: 600 !important;
-}
-
-.tracking-widest,
-.tracking-\[0\.15em\],
-.tracking-\[0\.2em\],
-.tracking-\[0\.24em\],
-.tracking-\[0\.3em\],
-.tracking-\[0\.4em\] {
-  letter-spacing: 0.01em !important;
-}
-
-.uppercase {
-  text-transform: none !important;
-}
-
-.rounded-\[1\.5rem\],
-.rounded-\[2rem\],
-.rounded-\[2\.5rem\],
-.rounded-\[3rem\],
-.rounded-3xl {
-  border-radius: 0.875rem !important;
-}
-
-.rounded-2xl {
+/* Global Polish */
+.rounded-\[1\.5rem\], .rounded-\[2rem\], .rounded-\[2\.5rem\], .rounded-3xl {
   border-radius: 0.75rem !important;
 }
 
-.rounded-xl {
-  border-radius: 0.625rem !important;
-}
-
-.shadow-2xl,
-.shadow-xl,
-.shadow-lg,
-.shadow-premium,
-[class*="shadow-blue"],
-[class*="shadow-emerald"],
-[class*="shadow-amber"],
-[class*="shadow-orange"],
-[class*="shadow-rose"],
-[class*="shadow-slate"] {
+.shadow-2xl, .shadow-xl, .shadow-lg, .shadow-premium {
   box-shadow: var(--shadow-sm) !important;
 }
 
-.drop-shadow-sm {
-  filter: none !important;
-}
-
-.backdrop-blur,
-.backdrop-blur-sm,
-.backdrop-blur-md,
-.backdrop-blur-xl {
-  backdrop-filter: none !important;
-}
-
-.blur-2xl,
-.blur-3xl {
-  display: none !important;
-}
-
-.hover\:-translate-y-1:hover,
-.hover\:-translate-y-1\.5:hover,
-.hover\:scale-\[1\.02\]:hover,
-.group:hover .group-hover\:scale-110,
-.group:hover .group-hover\:rotate-6,
-.group:hover .group-hover\:rotate-3,
-.group:hover .group-hover\:rotate-12,
-.group:hover .group-hover\:-rotate-12 {
-  transform: none !important;
+.font-black {
+  font-weight: 600 !important;
 }

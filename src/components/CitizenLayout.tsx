@@ -33,13 +33,13 @@ export const CitizenLayout = ({ children, hideFooter = false }: { children: Reac
     };
 
     return (
-        <div className="min-h-screen bg-white font-sans text-slate-900">
-            <header className="sticky top-0 z-50 border-b border-slate-200 bg-white">
+        <div className="min-h-screen bg-white font-sans text-slate-900 theme-citizen">
+            <header className="sticky top-0 z-50 border-b border-slate-50 bg-white">
                 <div className="max-w-5xl mx-auto px-4 h-14 sm:h-16 flex items-center justify-between gap-4">
                     {/* Logo */}
-                    <Link to="/citizen" aria-label="RoadPulse Home" className="flex items-center gap-2 shrink-0 group">
-                        <img src={logo} alt="RoadPulse Logo" className="h-7 w-7 object-contain sm:h-8 sm:w-8" />
-                        <span className="text-base font-semibold tracking-tight text-slate-950 sm:text-lg">RoadPulse</span>
+                    <Link to="/citizen" aria-label="RoadPulse Home" className="flex items-center gap-2 shrink-0">
+                        <img src={logo} alt="RoadPulse Logo" className="h-6 w-6 object-contain sm:h-7 sm:w-7" />
+                        <span className="text-sm font-semibold tracking-tight text-slate-900 sm:text-base">RoadPulse</span>
                     </Link>
 
                     {/* Desktop Nav */}
@@ -49,10 +49,10 @@ export const CitizenLayout = ({ children, hideFooter = false }: { children: Reac
                                 key={item.path}
                                 to={item.path}
                                 className={cn(
-                                    "px-3.5 py-2 rounded-lg text-sm font-medium transition-colors",
+                                    "px-4 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all",
                                     location.pathname === item.path
-                                        ? "text-slate-900 bg-slate-100"
-                                        : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
+                                        ? "text-slate-950 bg-slate-50 border border-slate-100"
+                                        : "text-slate-500 hover:text-slate-950 hover:bg-slate-50"
                                 )}
                             >
                                 {item.name}
@@ -64,11 +64,11 @@ export const CitizenLayout = ({ children, hideFooter = false }: { children: Reac
                     <div className="hidden md:flex items-center gap-2 shrink-0">
                         {isAuthenticated && user ? (
                             <>
-                                <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5">
-                                    <div className="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center text-slate-600">
-                                        <User size={13} />
+                                <div className="flex items-center gap-2 rounded-lg border border-slate-100 bg-slate-50/50 px-3 py-1.5">
+                                    <div className="w-6 h-6 rounded-md bg-slate-900 flex items-center justify-center text-white">
+                                        <User size={12} />
                                     </div>
-                                    <span className="text-sm font-semibold text-slate-700">
+                                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-600">
                                         {user.name?.split(' ')[0] || 'Me'}
                                     </span>
                                 </div>
@@ -76,18 +76,17 @@ export const CitizenLayout = ({ children, hideFooter = false }: { children: Reac
                                     onClick={handleSignOut}
                                     aria-label="Sign out"
                                     title="Sign out"
-                                    className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                                    className="p-2 text-slate-400 hover:text-rose-600 transition-colors"
                                 >
-                                    <LogOut size={17} />
+                                    <LogOut size={16} />
                                 </button>
                             </>
                         ) : (
                             <Link
                                 to="/login"
                                 state={{ from: location }}
-                                    className="inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-800"
+                                    className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-white transition-all hover:bg-slate-800 active:scale-[0.98]"
                             >
-                                <LogIn size={15} />
                                 Sign In
                             </Link>
                         )}
@@ -97,9 +96,9 @@ export const CitizenLayout = ({ children, hideFooter = false }: { children: Reac
                     <button
                         onClick={() => setIsMenuOpen(!isMenuOpen)}
                         aria-label={isMenuOpen ? "Close menu" : "Open menu"}
-                        className="p-2 text-slate-900 md:hidden bg-slate-50 rounded-lg border border-slate-100"
+                        className="p-2 text-slate-400 md:hidden hover:text-slate-900"
                     >
-                        {isMenuOpen ? <X size={20} /> : <Menu size={20} />}
+                        {isMenuOpen ? <X size={22} /> : <Menu size={22} />}
                     </button>
                 </div>
             </header>
@@ -107,40 +106,40 @@ export const CitizenLayout = ({ children, hideFooter = false }: { children: Reac
             {/* Mobile Menu */}
             {isMenuOpen && (
                 <div className="fixed inset-0 z-40 bg-white pt-16 px-4 md:hidden flex flex-col">
-                    <nav className="flex flex-col gap-1 mt-4">
+                    <nav className="flex flex-col gap-1 mt-8">
                         {navItems.map(item => (
                             <Link
                                 key={item.path}
                                 to={item.path}
                                 onClick={() => setIsMenuOpen(false)}
                                 className={cn(
-                                    "flex items-center gap-3 px-4 py-3.5 rounded-xl text-base font-semibold transition-colors",
+                                    "flex items-center gap-4 px-5 py-4 rounded-xl text-sm font-bold uppercase tracking-widest transition-colors",
                                     location.pathname === item.path
-                                        ? "bg-slate-900 text-white"
-                                        : "text-slate-700 hover:bg-slate-50"
+                                        ? "bg-slate-50 text-slate-900 border border-slate-100"
+                                        : "text-slate-500 hover:bg-slate-50"
                                 )}
                             >
-                                <item.icon size={20} className={location.pathname === item.path ? "text-white" : "text-slate-400"} />
+                                <item.icon size={18} className={location.pathname === item.path ? "text-slate-900" : "text-slate-400"} />
                                 {item.name}
                             </Link>
                         ))}
                     </nav>
 
-                    <div className="mt-auto mb-8 pt-6 border-t border-slate-100">
+                    <div className="mt-auto mb-8 pt-6 border-t border-slate-50">
                         {isAuthenticated && user ? (
                             <div className="space-y-2">
-                                <div className="flex items-center gap-3 px-4 py-3 bg-slate-50 rounded-xl">
-                                    <div className="w-9 h-9 rounded-full bg-slate-200 flex items-center justify-center text-slate-600">
-                                        <User size={18} />
+                                <div className="flex items-center gap-3 px-5 py-4 bg-slate-50 rounded-xl border border-slate-100">
+                                    <div className="w-10 h-10 rounded-lg bg-slate-900 flex items-center justify-center text-white">
+                                        <User size={20} />
                                     </div>
                                     <div>
-                                        <p className="text-sm font-semibold text-slate-900">{user.name}</p>
-                                        <p className="text-xs text-slate-400">{user.email}</p>
+                                        <p className="text-sm font-bold text-slate-900">{user.name}</p>
+                                        <p className="text-[10px] uppercase tracking-wider text-slate-400">{user.email}</p>
                                     </div>
                                 </div>
                                 <button
                                     onClick={handleSignOut}
-                                    className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-base font-semibold text-rose-600 hover:bg-rose-50 transition-colors"
+                                    className="w-full flex items-center gap-3 px-5 py-4 rounded-xl text-sm font-bold uppercase tracking-widest text-rose-600 transition-colors"
                                 >
                                     <LogOut size={20} />
                                     Sign Out
@@ -151,9 +150,9 @@ export const CitizenLayout = ({ children, hideFooter = false }: { children: Reac
                                 to="/login"
                                 state={{ from: location }}
                                 onClick={() => setIsMenuOpen(false)}
-                                className="flex items-center justify-center gap-2 w-full py-3.5 bg-slate-900 text-white rounded-xl text-base font-semibold"
+                                className="flex items-center justify-center gap-2 w-full py-4 bg-slate-900 text-white rounded-xl text-xs font-bold uppercase tracking-widest"
                             >
-                                <LogIn size={18} />
+                                <LogIn size={16} />
                                 Sign In
                             </Link>
                         )}
@@ -166,26 +165,28 @@ export const CitizenLayout = ({ children, hideFooter = false }: { children: Reac
 
                 {/* Footer */}
                 {!hideFooter && (
-                    <div className="bg-slate-50 border-t border-slate-100 py-16 px-4">
-                        <div className="max-w-4xl mx-auto space-y-16">
+                    <div className="bg-white border-t border-slate-50 py-20 px-4">
+                        <div className="max-w-4xl mx-auto space-y-20">
                             {/* Steps */}
                             <section>
-                                <h2 className="mb-10 text-center text-sm font-semibold text-slate-700">How it works</h2>
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                                <h2 className="mb-12 text-center text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">Reporting Process</h2>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
                                     {[
-                                        { step: "1", title: "Take a Photo", desc: "Snap a clear photo of the road damage from a safe location.", icon: PlusCircle },
-                                        { step: "2", title: "Pin the Location", desc: "Use your GPS or tap the map to confirm exactly where the pothole is.", icon: Home },
-                                        { step: "3", title: "We Handle the Rest", desc: "Our team reviews your report and dispatches a maintenance crew.", icon: CheckCircle },
+                                        { step: "01", title: "Document", desc: "Capture clear imagery of the hazard from a safe distance.", icon: PlusCircle },
+                                        { step: "02", title: "Locate", desc: "Pinpoint the precise coordinates to assist maintenance crews.", icon: Home },
+                                        { step: "03", title: "Resolve", desc: "Our teams prioritize and schedule repairs based on severity.", icon: CheckCircle },
                                     ].map((s, i) => (
-                                        <div key={i} className="text-center space-y-3">
-                                            <div className="w-14 h-14 bg-white rounded-2xl shadow-sm border border-slate-100 flex items-center justify-center mx-auto text-slate-900 relative">
+                                        <div key={i} className="text-center space-y-5">
+                                            <div className="w-14 h-14 bg-[var(--accent-bg)] rounded-2xl flex items-center justify-center mx-auto text-[var(--accent-text)] relative">
                                                 <s.icon size={22} />
-                                                <span className="absolute -top-2 -right-2 bg-slate-900 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center border-2 border-white">
+                                                <span className="absolute -top-2 -right-2 bg-white text-slate-900 text-[9px] font-bold w-6 h-6 rounded-lg flex items-center justify-center border border-slate-100 shadow-sm">
                                                     {s.step}
                                                 </span>
                                             </div>
-                                            <h3 className="text-sm font-bold text-slate-900">{s.title}</h3>
-                                            <p className="text-xs text-slate-500 leading-relaxed">{s.desc}</p>
+                                            <div>
+                                                <h3 className="text-xs font-bold text-slate-900 uppercase tracking-widest">{s.title}</h3>
+                                                <p className="mt-2 text-[11px] text-slate-500 leading-relaxed px-4">{s.desc}</p>
+                                            </div>
                                         </div>
                                     ))}
                                 </div>
@@ -193,17 +194,16 @@ export const CitizenLayout = ({ children, hideFooter = false }: { children: Reac
 
                             {/* FAQ */}
                             <section>
-                                <h2 className="text-xs font-semibold uppercase tracking-widest text-slate-400 mb-6 flex items-center gap-2">
-                                    <HelpCircle size={13} /> Frequently asked questions
+                                <h2 className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 mb-8 flex items-center justify-center gap-2">
+                                    Frequently asked questions
                                 </h2>
-                                <div className="space-y-3">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     {FAQ_ITEMS.map((item, i) => (
-                                        <div key={i} className="bg-white p-5 rounded-xl border border-slate-100 shadow-sm">
-                                            <h4 className="text-sm font-semibold text-slate-900 mb-1.5 flex items-center justify-between gap-4">
+                                        <div key={i} className="bg-slate-50/50 p-6 rounded-xl border border-slate-100 transition-colors hover:border-[var(--accent-border)] hover:bg-white">
+                                            <h4 className="text-xs font-bold text-slate-900 mb-2 uppercase tracking-wider">
                                                 {item.q}
-                                                <ArrowRight size={13} className="text-slate-300 shrink-0" />
                                             </h4>
-                                            <p className="text-xs text-slate-500 leading-relaxed">{item.a}</p>
+                                            <p className="text-[11px] text-slate-500 leading-relaxed">{item.a}</p>
                                         </div>
                                     ))}
                                 </div>

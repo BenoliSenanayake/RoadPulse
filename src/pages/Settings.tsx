@@ -57,16 +57,16 @@ const Settings = () => {
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                 <div>
                     <h1 className="section-heading">System Parameters</h1>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mt-2">Core platform configuration & jurisdictional protocols</p>
+                    <p className="mt-2 text-sm text-slate-600">Core platform configuration and jurisdictional protocols.</p>
                 </div>
                 <div className="flex items-center gap-3">
-                    <button className="btn-premium bg-white text-slate-600 border border-slate-100 shadow-sm hover:bg-slate-50">
+                    <button className="btn-premium bg-white text-slate-700 border border-slate-200 shadow-sm hover:bg-slate-50">
                         <Terminal size={14} className="text-slate-400" />
                         Console View
                     </button>
-                    <button onClick={() => window.location.reload()} className="btn-premium bg-slate-900 text-white shadow-xl shadow-slate-900/10 hover:bg-slate-800">
-                        <RefreshCw size={14} className="text-blue-400" />
-                        Reboot Session
+                    <button onClick={() => window.location.reload()} className="btn-premium bg-slate-900 text-white shadow-md hover:bg-slate-800">
+                        <RefreshCw size={14} className="text-[var(--accent-solid)]" />
+                        Refresh Session
                     </button>
                 </div>
             </div>
@@ -75,51 +75,51 @@ const Settings = () => {
                 {/* Left Column: System Info & Notes */}
                 <div className="space-y-8">
                     {/* System Information */}
-                    <div className="bg-white p-8 rounded-[2.5rem] border border-slate-50 shadow-sm">
+                    <div className="card-premium p-6">
                         <div className="flex items-center gap-4 mb-8">
-                            <div className="p-3 bg-slate-950 text-blue-400 rounded-2xl shadow-xl">
-                                <Server size={22} />
+                            <div className="p-2.5 bg-slate-900 text-white rounded-xl shadow-md">
+                                <Server size={20} />
                             </div>
                             <div>
-                                <h2 className="text-xs font-black text-slate-900 uppercase tracking-widest leading-none mb-1">Infrastructure Metadata</h2>
-                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Environment & API status monitor</p>
+                                <h2 className="text-[10px] font-bold text-slate-500 uppercase tracking-wider leading-none mb-1">Infrastructure Metadata</h2>
+                                <p className="text-[10px] font-medium text-slate-400">Environment & API status monitor</p>
                             </div>
                         </div>
 
-                        <div className="space-y-3">
-                            <div className="flex items-center justify-between p-5 bg-slate-50/50 rounded-3xl border border-slate-50">
+                        <div className="space-y-2">
+                            <div className="flex items-center justify-between p-4 bg-slate-50/50 rounded-xl border border-slate-100">
                                 <div className="flex items-center gap-3">
                                     <Globe size={14} className="text-slate-400" />
-                                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Application Name</span>
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Application</span>
                                 </div>
-                                <span className="text-sm font-black text-slate-900 tracking-tight">RoadPulse CommandCenter</span>
+                                <span className="text-sm font-semibold text-slate-900">RoadPulse CommandCenter</span>
                             </div>
-                            <div className="flex items-center justify-between p-5 bg-slate-50/50 rounded-3xl border border-slate-50">
+                            <div className="flex items-center justify-between p-4 bg-slate-50/50 rounded-xl border border-slate-100">
                                 <div className="flex items-center gap-3">
                                     <Cpu size={14} className="text-slate-400" />
-                                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Environment</span>
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Environment</span>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    <span className="px-2 py-0.5 bg-blue-50 text-blue-600 rounded text-[9px] font-black uppercase tracking-widest">Production Staging</span>
+                                    <span className="px-2 py-0.5 bg-[var(--accent-bg)] text-[var(--accent-text)] rounded text-[9px] font-bold uppercase tracking-wider">Production</span>
                                 </div>
                             </div>
-                            <div className="flex items-center justify-between p-5 bg-slate-50/50 rounded-3xl border border-slate-50">
+                            <div className="flex items-center justify-between p-4 bg-slate-50/50 rounded-xl border border-slate-100">
                                 <div className="flex items-center gap-3">
                                     <Activity size={14} className="text-slate-400" />
-                                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">API Diagnostics</span>
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">API Status</span>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     {isApiOnline === null ? (
                                         <div className="w-2 h-2 rounded-full bg-slate-300 animate-pulse" />
                                     ) : isApiOnline ? (
                                         <div className="flex items-center gap-1.5">
-                                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-                                            <span className="text-[10px] font-black text-emerald-600 uppercase">Operational</span>
+                                            <div className="w-1.5 h-1.5 rounded-full bg-[var(--success-text)] animate-pulse" />
+                                            <span className="text-[10px] font-bold text-[var(--success-text)] uppercase tracking-wider">Operational</span>
                                         </div>
                                     ) : (
                                         <div className="flex items-center gap-1.5">
-                                            <div className="w-1.5 h-1.5 rounded-full bg-rose-500" />
-                                            <span className="text-[10px] font-black text-rose-600 uppercase">Mock Mode</span>
+                                            <div className="w-1.5 h-1.5 rounded-full bg-[var(--danger-text)]" />
+                                            <span className="text-[10px] font-bold text-[var(--danger-text)] uppercase tracking-wider">Mock Mode</span>
                                         </div>
                                     )}
                                 </div>
@@ -128,34 +128,34 @@ const Settings = () => {
                     </div>
 
                     {/* Admin Notes */}
-                    <div className="bg-white p-8 rounded-[2.5rem] border border-slate-50 shadow-sm">
+                    <div className="card-premium p-6">
                         <div className="flex items-center justify-between mb-8">
                             <div className="flex items-center gap-4">
-                                <div className="p-3 bg-blue-50 text-blue-600 rounded-2xl">
+                                <div className="p-2.5 bg-[var(--accent-bg)] text-[var(--accent-text)] rounded-xl">
                                     <MessageSquare size={20} />
                                 </div>
                                 <div>
-                                    <h2 className="text-xs font-black text-slate-900 uppercase tracking-widest leading-none mb-1">Administrative Notes</h2>
-                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Internal system annotations</p>
+                                    <h2 className="text-[10px] font-bold text-slate-500 uppercase tracking-wider leading-none mb-1">Administrative Notes</h2>
+                                    <p className="text-[10px] font-medium text-slate-400">Internal system annotations</p>
                                 </div>
                             </div>
                             <button 
                                 onClick={handleSaveNotes}
                                 disabled={loading}
                                 className={cn(
-                                    "btn-premium px-4 py-2 text-[9px] shadow-lg transition-all duration-500",
-                                    isSaved ? "bg-emerald-500 text-white" : "bg-slate-900 text-white shadow-slate-900/10"
+                                    "px-4 py-2 text-[10px] font-bold uppercase tracking-wider rounded-lg shadow-sm transition-all",
+                                    isSaved ? "bg-[var(--success-bg)] text-[var(--success-text)] border border-[var(--success-border)]" : "bg-slate-900 text-white"
                                 )}
                             >
                                 {loading ? <RefreshCw className="animate-spin" size={14} /> : isSaved ? <CheckCircle2 size={14} /> : <Save size={14} />}
-                                {isSaved ? "Synchronized" : "Commit Changes"}
+                                {isSaved ? "Saved" : "Save Notes"}
                             </button>
                         </div>
                         <textarea 
                             value={notes}
                             onChange={(e) => setNotes(e.target.value)}
                             placeholder="Type administrative instructions here..."
-                            className="w-full h-48 p-6 bg-slate-50/50 border border-slate-100 rounded-[2rem] text-sm font-bold text-slate-600 outline-none focus:bg-white focus:ring-4 focus:ring-blue-500/5 transition-all resize-none custom-scrollbar"
+                            className="w-full h-44 p-5 bg-slate-50/50 border border-slate-100 rounded-2xl text-xs font-semibold text-slate-600 outline-none focus:bg-white focus:border-[var(--accent-border)] focus:ring-4 focus:ring-[var(--accent-bg)] transition-all resize-none custom-scrollbar"
                         />
                     </div>
                 </div>
@@ -163,27 +163,27 @@ const Settings = () => {
                 {/* Right Column: Routing & Rules */}
                 <div className="space-y-8">
                     {/* Routing Protocols */}
-                    <div className="bg-white p-8 rounded-[2.5rem] border border-slate-50 shadow-sm">
+                    <div className="card-premium p-6">
                         <div className="flex items-center gap-4 mb-8">
-                            <div className="p-3 bg-emerald-50 text-emerald-600 rounded-2xl">
+                            <div className="p-2.5 bg-[var(--success-bg)] text-[var(--success-text)] rounded-xl">
                                 <Map size={20} />
                             </div>
                             <div>
-                                <h2 className="text-xs font-black text-slate-900 uppercase tracking-widest leading-none mb-1">Jurisdictional Routing</h2>
-                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">District assignment protocols</p>
+                                <h2 className="text-[10px] font-bold text-slate-500 uppercase tracking-wider leading-none mb-1">Jurisdictional Routing</h2>
+                                <p className="text-[10px] font-medium text-slate-400">District assignment protocols</p>
                             </div>
                         </div>
 
-                        <div className="space-y-4 max-h-[360px] overflow-y-auto pr-2 custom-scrollbar">
+                        <div className="space-y-3 max-h-[340px] overflow-y-auto pr-2 custom-scrollbar">
                             {provinceData.map((province, idx) => (
-                                <div key={idx} className="p-5 bg-slate-50/50 rounded-3xl border border-slate-50 group hover:bg-white hover:border-blue-100 transition-all duration-300">
+                                <div key={idx} className="p-4 bg-slate-50/50 rounded-xl border border-slate-100 group hover:bg-white hover:border-[var(--accent-border)] transition-all">
                                     <div className="flex items-center justify-between mb-3">
-                                        <span className="text-[10px] font-black text-slate-900 uppercase tracking-widest">{province.name}</span>
-                                        <ChevronRight size={14} className="text-slate-300 group-hover:text-blue-500 transition-colors" />
+                                        <span className="text-[10px] font-bold text-slate-700 uppercase tracking-wider">{province.name}</span>
+                                        <ChevronRight size={14} className="text-slate-300 group-hover:text-[var(--accent-solid)] transition-colors" />
                                     </div>
                                     <div className="flex flex-wrap gap-2">
                                         {province.districts.map((d, dIdx) => (
-                                            <span key={dIdx} className="px-2.5 py-1 bg-white rounded-lg text-[9px] font-black text-slate-400 uppercase border border-slate-100">
+                                            <span key={dIdx} className="px-2 py-0.5 bg-white rounded-md text-[9px] font-bold text-slate-400 uppercase border border-slate-100">
                                                 {d}
                                             </span>
                                         ))}
@@ -194,32 +194,31 @@ const Settings = () => {
                     </div>
 
                     {/* Report Thresholds */}
-                    <div className="bg-white p-8 rounded-[2.5rem] border border-slate-50 shadow-sm">
+                    <div className="card-premium p-6">
                         <div className="flex items-center gap-4 mb-8">
-                            <div className="p-3 bg-indigo-50 text-indigo-600 rounded-2xl">
+                            <div className="p-2.5 bg-[var(--info-bg)] text-[var(--info-text)] rounded-xl">
                                 <ShieldCheck size={20} />
                             </div>
                             <div>
-                                <h2 className="text-xs font-black text-slate-900 uppercase tracking-widest leading-none mb-1">Oversight Protocols</h2>
-                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Global lifecycle thresholds</p>
+                                <h2 className="text-[10px] font-bold text-slate-500 uppercase tracking-wider leading-none mb-1">Oversight Protocols</h2>
+                                <p className="text-[10px] font-medium text-slate-400">Global lifecycle thresholds</p>
                             </div>
                         </div>
 
-                        <div className="space-y-4">
-                            <div className="flex items-center justify-between p-5 bg-slate-50/50 rounded-3xl border border-slate-50">
+                        <div className="space-y-2">
+                            <div className="flex items-center justify-between p-4 bg-slate-50/50 rounded-xl border border-slate-100">
                                 <div className="flex items-center gap-3">
                                     <Clock size={14} className="text-slate-400" />
-                                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Overdue Threshold</span>
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Overdue Threshold</span>
                                 </div>
-                                <span className="text-sm font-black text-slate-900">14 Operations Days</span>
+                                <span className="text-sm font-semibold text-slate-900">14 Operations Days</span>
                             </div>
-                            <div className="flex items-center justify-between p-5 bg-slate-50/50 rounded-3xl border border-slate-50">
+                            <div className="flex items-center justify-between p-4 bg-slate-50/50 rounded-xl border border-slate-100">
                                 <div className="flex items-center gap-3">
                                     <Database size={14} className="text-slate-400" />
-                                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Data Retention</span>
-                                    <span className="px-1.5 py-0.5 bg-slate-900 text-white rounded text-[8px] font-black uppercase">Max</span>
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Data Retention</span>
                                 </div>
-                                <span className="text-sm font-black text-slate-900">Endless Audit</span>
+                                <span className="text-sm font-semibold text-slate-900">Endless Audit</span>
                             </div>
                         </div>
                     </div>
@@ -227,22 +226,22 @@ const Settings = () => {
             </div>
 
             {/* System Status Banner */}
-            <div className="bg-slate-950 p-10 rounded-[2.5rem] text-white flex flex-col md:flex-row items-center justify-between gap-10 shadow-2xl shadow-slate-950/30 border border-white/5 relative overflow-hidden group">
-                <div className="absolute top-0 right-0 p-12 opacity-[0.03] group-hover:scale-110 transition-transform duration-1000">
+            <div className="bg-slate-900 p-8 rounded-[1.5rem] text-white flex flex-col md:flex-row items-center justify-between gap-8 shadow-xl border border-white/5 relative overflow-hidden group">
+                <div className="absolute top-0 right-0 p-12 opacity-[0.02] group-hover:scale-110 transition-transform duration-1000">
                     <Database size={180} />
                 </div>
-                <div className="relative z-10 flex items-center gap-8">
-                    <div className="h-20 w-20 bg-white/5 rounded-[2rem] flex items-center justify-center backdrop-blur-xl border border-white/10 shadow-inner">
-                        <FileText size={36} className="text-blue-400" />
+                <div className="relative z-10 flex items-center gap-6">
+                    <div className="h-16 w-16 bg-white/5 rounded-2xl flex items-center justify-center backdrop-blur-xl border border-white/10">
+                        <FileText size={32} className="text-[var(--accent-solid)]" />
                     </div>
                     <div>
-                        <h4 className="text-2xl font-black uppercase tracking-tight">System Identity</h4>
-                        <p className="text-sm font-bold text-slate-400 uppercase tracking-widest mt-1">Version 1.2.4 Build 8820 &bull; Kernel: RoadPulse-OS</p>
+                        <h4 className="text-xl font-bold tracking-tight">System Identity</h4>
+                        <p className="text-xs font-medium text-slate-400 mt-1">Version 1.2.5 Build 8820 &bull; Kernel: RoadPulse-OS</p>
                     </div>
                 </div>
                 <div className="relative z-10 flex items-center gap-4">
-                    <div className="px-5 py-2.5 rounded-2xl bg-white/5 border border-white/10 text-[10px] font-black text-emerald-400 uppercase tracking-widest flex items-center gap-2">
-                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    <div className="px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-[10px] font-bold text-[var(--success-text)] uppercase tracking-wider flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 rounded-full bg-[var(--success-text)] animate-pulse" />
                         All Modules Operational
                     </div>
                 </div>

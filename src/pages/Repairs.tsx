@@ -134,28 +134,32 @@ const RepairsPage = () => {
 
     return (
         <div className="space-y-8 pb-12 animate-fade-in-up">
-            <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between mb-2">
                 <div className="flex flex-col gap-2">
                     <div className="flex items-center gap-3">
-                        <h1 className="section-heading">Repair Operations</h1>
+                        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Repair Operations</h1>
                         {province && province !== 'Unassigned' && (
-                            <div className="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-1.5 text-[10px] font-black uppercase tracking-widest text-emerald-700 flex items-center gap-2">
+                            <div className="rounded-lg border border-[var(--accent-border)] bg-[var(--accent-bg)] px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-[var(--accent-text)] flex items-center gap-2">
                                 <MapPin size={12} /> {getProvinceShortName(province)}
                             </div>
                         )}
                     </div>
-                    <p className="text-sm font-bold text-slate-500">Track provincial road repairs, update progress, and manage maintenance priorities.</p>
+                    <p className="text-sm text-slate-500 font-medium">Track provincial road repairs, update progress, and manage maintenance priorities.</p>
                 </div>
-                <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
-                    <Filter size={16} className="ml-2 text-slate-400" />
-                    <select
-                        value={priorityFilter}
-                        onChange={event => setPriorityFilter(event.target.value as RepairPriority | 'All')}
-                        className="rounded-xl bg-slate-50 px-3 py-2 text-xs font-black text-slate-700 outline-none"
-                    >
-                        <option value="All">All Priorities</option>
-                        {PRIORITIES.map(p => <option key={p} value={p}>{p}</option>)}
-                    </select>
+                <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 rounded-xl border border-slate-100 bg-white p-1.5 shadow-sm">
+                        <div className="p-1.5 text-slate-400">
+                            <Filter size={14} />
+                        </div>
+                        <select
+                            value={priorityFilter}
+                            onChange={event => setPriorityFilter(event.target.value as RepairPriority | 'All')}
+                            className="rounded-lg bg-slate-50 px-3 py-2 text-[11px] font-bold text-slate-700 outline-none cursor-pointer hover:bg-white transition-colors"
+                        >
+                            <option value="All">All Priorities</option>
+                            {PRIORITIES.map(p => <option key={p} value={p}>{p}</option>)}
+                        </select>
+                    </div>
                 </div>
             </div>
 
@@ -166,24 +170,28 @@ const RepairsPage = () => {
             )}
 
             {loading ? (
-                <div className="rounded-2xl border border-slate-100 bg-white p-12 text-center shadow-sm">
-                    <Wrench className="mx-auto mb-3 animate-pulse text-slate-300" size={32} />
-                    <p className="text-sm font-black uppercase tracking-widest text-slate-400">Loading repair board</p>
+                <div className="rounded-xl border border-slate-100 bg-white p-16 text-center shadow-sm">
+                    <div className="mx-auto mb-6 h-12 w-12 flex items-center justify-center rounded-xl bg-slate-50 text-slate-300">
+                        <Wrench className="animate-spin" size={24} />
+                    </div>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">Synchronizing repair board</p>
                 </div>
             ) : (
-                <div className="space-y-8">
+                <div className="space-y-12">
                     {Object.entries(sections).map(([title, items]) => (
-                        <section key={title} className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
-                            <div className="mb-5 flex items-center justify-between">
+                        <section key={title}>
+                            <div className="mb-6 flex items-center justify-between px-2">
                                 <div>
-                                    <h2 className="text-base font-black text-slate-950 uppercase tracking-tight">{title}</h2>
-                                    <p className="text-xs font-bold text-slate-400">{items.length} active records</p>
+                                    <h2 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-1">{title}</h2>
+                                    <p className="text-xl font-semibold tracking-tight text-slate-900">{items.length} Units Active</p>
                                 </div>
                             </div>
                             {items.length === 0 ? (
-                                <p className="rounded-xl bg-slate-50 p-5 text-sm font-bold text-slate-500 italic">No records in this sector.</p>
+                                <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/30 p-12 text-center">
+                                    <p className="text-sm font-medium text-slate-400">No active operational units in this lifecycle stage.</p>
+                                </div>
                             ) : (
-                                <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+                                <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
                                     {items.map(item => (
                                         <RepairCard
                                             key={item.id}
@@ -200,50 +208,51 @@ const RepairsPage = () => {
                 </div>
             )}
 
+            {/* Selection Dialog */}
             {selected && (
-                <div className="fixed inset-0 z-[2000] flex items-end justify-center bg-slate-950/50 p-4 backdrop-blur-sm sm:items-center">
-                    <div className="w-full max-w-xl rounded-[2.5rem] bg-white p-8 shadow-2xl">
+                <div className="fixed inset-0 z-[2000] flex items-end justify-center bg-slate-900/40 p-4 backdrop-blur-md sm:items-center animate-in fade-in duration-300">
+                    <div className="w-full max-w-xl rounded-2xl bg-white p-8 shadow-2xl animate-in slide-in-from-bottom-4 duration-300 border border-slate-100">
                         <div className="mb-8 flex items-start justify-between gap-4">
                             <div>
-                                <h2 className="text-xl font-black text-slate-950 uppercase tracking-tight">Update Repair Progress</h2>
-                                <p className="mt-1 text-sm font-bold text-slate-500">#{selected.id.split('-')[0]} · {selected.district} Sector</p>
+                                <h2 className="text-xl font-semibold tracking-tight text-slate-900">Update Operational Status</h2>
+                                <p className="mt-1 text-[10px] font-bold text-slate-400 uppercase tracking-widest">UNIT: #{selected.id.slice(0, 12)} · {selected.district} Sector</p>
                             </div>
-                            <button onClick={() => setSelected(null)} className="p-2 text-slate-400 hover:text-slate-900 transition-colors">
-                                <AlertTriangle size={24} className="rotate-180" />
+                            <button onClick={() => setSelected(null)} className="p-2 text-slate-400 hover:text-slate-900 transition-colors bg-slate-50 rounded-lg">
+                                <AlertTriangle size={20} className="rotate-180" />
                             </button>
                         </div>
 
                         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                            <Field label="Categorize Priority">
-                                <select value={form.priority} onChange={event => setForm({ ...form, priority: event.target.value as RepairPriority })} className={fieldClass}>
+                            <Field label="Assign Priority">
+                                <select value={form.priority} onChange={event => setForm({ ...form, priority: event.target.value as RepairPriority })} className="w-full rounded-xl border border-slate-100 bg-slate-50/50 px-4 py-3 text-[11px] font-semibold text-slate-700 outline-none focus:bg-white focus:border-[var(--accent-border)] focus:ring-4 focus:ring-[var(--accent-bg)] transition-all">
                                     {PRIORITIES.map(priority => <option key={priority} value={priority}>{priority}</option>)}
                                 </select>
                             </Field>
                             <Field label="Current Status">
-                                <select value={form.repairStatus} onChange={event => setForm({ ...form, repairStatus: event.target.value as RepairStatus })} className={fieldClass}>
+                                <select value={form.repairStatus} onChange={event => setForm({ ...form, repairStatus: event.target.value as RepairStatus })} className="w-full rounded-xl border border-slate-100 bg-slate-50/50 px-4 py-3 text-[11px] font-semibold text-slate-700 outline-none focus:bg-white focus:border-[var(--accent-border)] focus:ring-4 focus:ring-[var(--accent-bg)] transition-all">
                                     {REPAIR_STATUSES.map(status => <option key={status} value={status}>{status}</option>)}
                                 </select>
                             </Field>
                             <div className="sm:col-span-2">
-                                <label className="mb-2 block text-[10px] font-black uppercase tracking-widest text-slate-400">Maintenance & Field Notes</label>
+                                <label className="mb-2 block text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">Maintenance Observations</label>
                                 <textarea
                                     value={form.maintenanceNotes}
                                     onChange={event => setForm({ ...form, maintenanceNotes: event.target.value })}
                                     rows={4}
-                                    placeholder="Add field coordination notes, material updates, or completion remarks..."
-                                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-900 outline-none transition-all focus:border-emerald-400 focus:bg-white focus:ring-4 focus:ring-emerald-500/10"
+                                    placeholder="Add field coordination notes or material updates..."
+                                    className="w-full rounded-xl border border-slate-100 bg-slate-50/50 px-4 py-3 text-[11px] font-medium text-slate-600 outline-none focus:bg-white focus:border-[var(--accent-border)] focus:ring-4 focus:ring-[var(--accent-bg)] transition-all resize-none"
                                 />
                             </div>
                         </div>
 
                         <div className="mt-8 flex gap-3">
-                            <button onClick={() => setSelected(null)} className="flex-1 px-5 py-4 text-xs font-black uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-colors">Cancel</button>
+                            <button onClick={() => setSelected(null)} className="flex-1 px-5 py-4 text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-colors">Discard</button>
                             <button
                                 onClick={saveUpdate}
                                 disabled={saving}
-                                className="flex-[2] flex items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 py-4 text-xs font-black uppercase tracking-widest text-white shadow-xl shadow-slate-900/20 transition-all hover:bg-black disabled:opacity-60"
+                                className="flex-[2] flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-4 text-[10px] font-bold uppercase tracking-[0.2em] text-white shadow-lg hover:bg-black disabled:opacity-60 transition-all"
                             >
-                                <Save size={16} /> {saving ? 'Syncing...' : 'Update Records'}
+                                <Save size={16} /> {saving ? 'Updating...' : 'Commit Update'}
                             </button>
                         </div>
                     </div>
@@ -268,76 +277,76 @@ const RepairCard = ({
     const isInProgress = pothole.status === 'In Progress';
 
     return (
-        <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm group hover:shadow-md transition-all">
-            <div className="mb-4 flex items-start justify-between gap-4">
+        <div className="rounded-xl border border-slate-100 bg-white p-6 shadow-sm group hover:shadow-md transition-all">
+            <div className="mb-6 flex items-start justify-between gap-4">
                 <div>
-                    <p className="text-xs font-black text-slate-950 uppercase tracking-tight">#{pothole.id.split('-')[0]}</p>
-                    <p className="mt-1 flex items-center gap-1.5 text-[11px] font-bold text-slate-500 uppercase tracking-tight">
-                        <MapPin size={12} className="text-slate-400" /> {pothole.roadName || pothole.district}
+                    <p className="text-[11px] font-bold text-slate-900 mb-1">UNIT: #{pothole.id.slice(0, 8)}</p>
+                    <p className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-tight">
+                        <MapPin size={12} className="text-slate-300" /> {pothole.roadName || pothole.district} Sector
                     </p>
                 </div>
                 <StatusPill status={pothole.status as any} />
             </div>
 
-            <div className="grid grid-cols-2 gap-3 mb-4">
+            <div className="grid grid-cols-2 gap-4 mb-6">
                 <div className={cn(
-                    "rounded-xl border p-3",
-                    ['High', 'Urgent'].includes(pothole.priority || '') ? "border-rose-100 bg-rose-50 text-rose-700" : "border-slate-100 bg-slate-50"
+                    "rounded-xl border p-4",
+                    ['High', 'Urgent'].includes(pothole.priority || '') ? "border-rose-100 bg-rose-50/50 text-rose-600" : "border-slate-50 bg-slate-50/50 text-slate-600"
                 )}>
-                    <p className="text-[9px] font-black uppercase tracking-widest opacity-60">Priority</p>
-                    <p className="mt-0.5 font-black text-xs">{pothole.priority || 'Medium'}</p>
+                    <p className="text-[9px] font-bold uppercase tracking-widest opacity-60 mb-1">Operational Priority</p>
+                    <p className="font-bold text-xs">{pothole.priority || 'Medium'}</p>
                 </div>
-                <div className="rounded-xl border border-slate-100 bg-slate-50 p-3">
-                    <p className="text-[9px] font-black uppercase tracking-widest opacity-60 text-slate-400">Report Date</p>
-                    <p className="mt-0.5 font-black text-xs text-slate-700">{new Date(pothole.timestamp).toLocaleDateString()}</p>
+                <div className="rounded-xl border border-slate-50 bg-slate-50/50 p-4">
+                    <p className="text-[9px] font-bold uppercase tracking-widest opacity-60 text-slate-400 mb-1">Protocol Date</p>
+                    <p className="font-bold text-xs text-slate-700">{new Date(pothole.timestamp).toLocaleDateString()}</p>
                 </div>
             </div>
 
             {pothole.maintenanceNotes && (
-                <div className="mb-4 rounded-xl bg-slate-50 p-3 border border-slate-100/50">
-                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Maintenance Note</p>
-                    <p className="text-[11px] font-bold leading-relaxed text-slate-600 italic">
+                <div className="mb-6 rounded-xl bg-slate-50/30 p-4 border border-slate-100/50">
+                    <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">Administrative Observation</p>
+                    <p className="text-xs font-medium leading-relaxed text-slate-600">
                         "{pothole.maintenanceNotes}"
                     </p>
                 </div>
             )}
 
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap items-center gap-2">
                 <button
                     onClick={onUpdate}
-                    className="inline-flex items-center gap-1.5 rounded-xl bg-slate-900 px-3.5 py-2 text-[10px] font-black uppercase tracking-widest text-white shadow-lg shadow-slate-900/10 hover:bg-black transition-all"
+                    className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-white shadow-sm hover:bg-black transition-all"
                 >
-                    <ClipboardEdit size={13} /> Update Status
+                    <ClipboardEdit size={14} /> Update Progress
                 </button>
                 
                 {!isDone && !isInProgress && (
                     <button
                         onClick={onStart}
-                        className="inline-flex items-center gap-1.5 rounded-xl bg-white border border-slate-200 px-3.5 py-2 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-50 transition-all"
+                        className="inline-flex items-center gap-2 rounded-xl bg-white border border-slate-200 px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-all"
                     >
-                        <Play size={13} /> Start Work
+                        <Play size={14} /> Initiate
                     </button>
                 )}
 
                 {isInProgress && (
                     <button
                         onClick={onComplete}
-                        className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-50 border border-emerald-100 px-3.5 py-2 text-[10px] font-black uppercase tracking-widest text-emerald-700 hover:bg-emerald-100 transition-all"
+                        className="inline-flex items-center gap-2 rounded-xl bg-[var(--accent-bg)] border border-[var(--accent-border)] px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-[var(--accent-text)] hover:opacity-80 transition-all"
                     >
-                        <CheckCircle2 size={13} /> Mark Completed
+                        <CheckCircle2 size={14} /> Finalize Unit
                     </button>
                 )}
 
                 <Link 
-                    to={`/potholes/${pothole.id}`}
-                    className="inline-flex items-center gap-1.5 rounded-xl bg-slate-50 px-3.5 py-2 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-all ml-auto"
+                    to={`/staff/reports/${pothole.id}`}
+                    className="ml-auto p-2.5 text-slate-400 hover:text-slate-900 hover:bg-slate-50 rounded-xl transition-all border border-transparent hover:border-slate-100"
                 >
-                    View Record
+                    <Wrench size={16} />
                 </Link>
             </div>
         </div>
     );
-};
+};;
 
 const Field = ({ label, children }: { label: string; children: React.ReactNode }) => (
     <label>
