@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { cn } from '../lib/utils';
+import { Logo } from './Logo';
 import { BackendStatusBanner } from './BackendStatusBanner';
 import { isBackendDown } from '../lib/api';
 
@@ -49,15 +50,9 @@ const AdminSidebar = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => voi
                 isOpen ? "translate-x-0" : "-translate-x-full"
             )}>
                 {/* Brand Logo */}
-                <div className="flex h-16 items-center justify-between border-b border-slate-50 px-5">
-                    <Link to="/admin/overview" onClick={onClose} className="flex items-center gap-3">
-                        <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--accent-border)] bg-[var(--accent-bg)] text-[var(--accent-text)]">
-                            <Shield size={18} />
-                        </div>
-                        <div className="flex flex-col">
-                            <span className="text-sm font-semibold leading-none tracking-tight text-slate-900">RoadPulse</span>
-                            <span className="mt-1 text-[10px] font-medium leading-none text-slate-400 uppercase tracking-wider">Admin Console</span>
-                        </div>
+                <div className="flex h-20 items-center justify-between border-b border-slate-50 px-6">
+                    <Link to="/admin/overview" onClick={onClose} className="transition-opacity hover:opacity-80">
+                        <Logo subtext="Admin Console" />
                     </Link>
                     <button 
                         onClick={onClose}

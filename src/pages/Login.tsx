@@ -135,13 +135,12 @@ const LoginPage = () => {
                             src={logo} 
                             alt="RP" 
                             className={cn(
-                                "h-9 w-9 object-contain",
-                                isAdmin && "brightness-0 invert opacity-90"
+                                "h-9 w-9 object-contain"
                             )} 
                         />
                     </div>
                     <div className="text-center">
-                        <h1 className="mb-1 text-2xl font-semibold leading-none tracking-tight text-slate-950">RoadPulse</h1>
+                        <h1 className="mb-1 text-2xl font-bold leading-none tracking-tight text-[#0f172a]">RoadPulse</h1>
                         <p className="text-sm text-slate-500">{portalTitle}</p>
                     </div>
                 </div>
