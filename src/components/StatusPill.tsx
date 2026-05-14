@@ -122,13 +122,14 @@ const statusConfig: Record<string, StatusConfig> = {
 
 interface StatusPillProps {
     status: string;
+    label?: string;
     className?: string;
     showIcon?: boolean;
     hideLabel?: boolean;
     variant?: 'citizen' | 'staff';
 }
 
-export const StatusPill = ({ status, className, showIcon = true, hideLabel = false, variant = 'staff' }: StatusPillProps) => {
+export const StatusPill = ({ status, label, className, showIcon = true, hideLabel = false, variant = 'staff' }: StatusPillProps) => {
     const config = statusConfig[status] || {
         class: 'status-pending',
         icon: <AlertCircle size={11} />,
@@ -138,7 +139,7 @@ export const StatusPill = ({ status, className, showIcon = true, hideLabel = fal
     };
 
     const isCitizen = variant === 'citizen';
-    const displayLabel = isCitizen ? config.citizenLabel : config.staffLabel;
+    const displayLabel = label || (isCitizen ? config.citizenLabel : config.staffLabel);
     const displayClass = isCitizen ? (config.citizenClass || config.class) : config.class;
 
     return (
@@ -148,7 +149,7 @@ export const StatusPill = ({ status, className, showIcon = true, hideLabel = fal
             hideLabel ? "w-6 h-6 p-0 rounded-full" : "px-2.5 py-0.5",
             className
         )}>
-            {showIcon && React.cloneElement(config.icon as React.ReactElement, { size: 10 })}
+            {showIcon && React.isValidElement<{ size?: number }>(config.icon) ? React.cloneElement(config.icon, { size: 11 }) : config.icon}
             {!hideLabel && <span className="leading-none">{displayLabel}</span>}
         </div>
     );

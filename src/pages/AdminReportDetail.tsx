@@ -23,6 +23,7 @@ import { PROVINCIAL_COUNCILS } from '../lib/provinceResolver';
 import { cn } from '../lib/utils';
 import { format } from 'date-fns';
 import type { CitizenReport, AuditLog, ProvincialCouncil } from '../types';
+import { StatusPill, type StatusType } from '../components/StatusPill';
 
 const AdminReportDetail = () => {
     const { id } = useParams<{ id: string }>();
