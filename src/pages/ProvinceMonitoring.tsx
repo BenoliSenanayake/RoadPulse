@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
     Search, 
     ChevronRight, 
@@ -24,6 +25,7 @@ import type { CitizenReport, PotholeEvent } from '../types';
 
 
 const ProvinceMonitoring = () => {
+    const navigate = useNavigate();
     const [reports, setReports] = useState<CitizenReport[]>([]);
     const [potholes, setPotholes] = useState<PotholeEvent[]>([]);
     const [loading, setLoading] = useState(true);
@@ -272,7 +274,10 @@ const ProvinceMonitoring = () => {
                             </div>
                         </div>
 
-                        <button className="w-full mt-8 py-3 bg-white border border-slate-100 rounded-2xl text-[9px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-900 hover:text-white hover:border-slate-900 transition-all flex items-center justify-center gap-2">
+                        <button 
+                            onClick={() => navigate(`/admin/provinces/${stat.id}`)}
+                            className="w-full mt-8 py-3 bg-white border border-slate-100 rounded-2xl text-[9px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-900 hover:text-white hover:border-slate-900 transition-all flex items-center justify-center gap-2"
+                        >
                             Open Dashboard
                             <ChevronRight size={14} />
                         </button>

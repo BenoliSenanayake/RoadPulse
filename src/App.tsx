@@ -29,6 +29,7 @@ import Overview from './pages/Overview';
 import AdminReports from './pages/AdminReports';
 import AdminReportDetail from './pages/AdminReportDetail';
 import ProvinceMonitoring from './pages/ProvinceMonitoring';
+import ProvinceDetailDashboard from './pages/ProvinceDetailDashboard';
 import Users from './pages/Users';
 import AuditLogs from './pages/AuditLogs';
 import Settings from './pages/Settings';
@@ -287,6 +288,14 @@ const AdminApp = () => (
             element={
                 <ProtectedRoute allowedRoles={['ADMIN']}>
                     <AdminLayout><ProvinceMonitoring /></AdminLayout>
+                </ProtectedRoute>
+            }
+        />
+        <Route
+            path="/admin/provinces/:provinceId"
+            element={
+                <ProtectedRoute allowedRoles={['ADMIN']}>
+                    <AdminLayout><ProvinceDetailDashboard /></AdminLayout>
                 </ProtectedRoute>
             }
         />
